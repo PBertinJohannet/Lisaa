@@ -3,6 +3,9 @@
 use keywords::KEYWORDS;
 use token::{TokenType, Token};
 
+
+/// The scanner, will scan the tokens as expected.
+/// Does not report the position of the tokens in the lines but will soon.
 pub struct Scanner {
     tokens: Vec<Token>,
     source: Vec<char>,
@@ -11,6 +14,7 @@ pub struct Scanner {
     line: usize,
 }
 impl Scanner {
+    /// Creates a new scanner for the given source code.
     pub fn new(source: &String) -> Self {
         Scanner {
             tokens: vec![],
@@ -20,6 +24,8 @@ impl Scanner {
             line: 1,
         }
     }
+
+    /// Returns the list of tokens contained in the code.
     pub fn tokens(&mut self) -> Result<Vec<Token>, String> {
         while !self.is_at_end() {
             self.start = self.current;
@@ -31,14 +37,17 @@ impl Scanner {
         Ok(self.tokens.clone())
     }
 
+    /// Creates an error with the given message at the current line.
     pub fn error(&self, message: String) -> Result<Token, String> {
         Err(format!("[line : {}] Error : {}", self.line, message))
     }
 
+    /// Checks if we are at the end of the file.
     fn is_at_end(&self) -> bool {
         self.current >= self.source.len()
     }
 
+    /// Scan the tokens, basically match everything known and returns an error if we can't
     fn scan_token(&mut self) -> Result<Token, String> {
         return match self.advance() {
             '(' => Ok(self.token(TokenType::LeftParen, "")),
@@ -93,6 +102,8 @@ impl Scanner {
         };
     }
 
+    /// Parses an identifier at the current position
+    /// If it is a known keyword, register it as a keyword.
     fn identifier(&mut self) -> Result<Token, String> {
         while self.peek().is_alphanumeric() && !self.is_at_end() {
             self.advance();
@@ -104,6 +115,9 @@ impl Scanner {
         }
     }
 
+    /// Parses a string literal at the given position
+    /// Checks for unterminated string.
+    /// It allows multiline strings.
     fn string(&mut self) -> Result<Token, String> {
         while self.peek() != '"' && !self.is_at_end() {
             if self.peek() == '\n' {
@@ -120,6 +134,7 @@ impl Scanner {
         }
     }
 
+    /// Parses a number at the given position. (float or int)
     fn number(&mut self) -> Result<Token, String> {
         while self.peek().is_numeric() && !self.is_at_end() {
             self.advance();
@@ -135,7 +150,7 @@ impl Scanner {
         Ok(self.token(TokenType::NUMBER, &sub_string))
     }
 
-
+    /// Peeks twice for next chars in the source but do not advance.
     fn peek_next(&mut self) -> char {
         if self.current+1 == self.source.len() {
             '\0'
@@ -144,6 +159,7 @@ impl Scanner {
         }
     }
 
+    /// Peeks once for next char in the source but do not advance.
     fn peek(&mut self) -> char {
         if self.is_at_end() {
             '\0'
@@ -152,6 +168,7 @@ impl Scanner {
         }
     }
 
+    /// Matches the given char, if it is a match, advance, else do nothing.
     fn match_next(&mut self, expect: char) -> bool {
         if self.is_at_end() {
             false
@@ -163,11 +180,13 @@ impl Scanner {
         }
     }
 
+    /// Advance and consume a char, returning it.
     fn advance(&mut self) -> char {
         self.current += 1;
         self.source[self.current - 1]
     }
 
+    /// Creates a new token at the given line and position.
     fn token(&mut self, token: TokenType, lexeme: &str) -> Token {
         Token::new(self.line, token, lexeme.to_string())
     }
