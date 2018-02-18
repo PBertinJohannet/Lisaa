@@ -2,6 +2,7 @@ use token::TokenType;
 use std::collections::HashMap;
 
 lazy_static! {
+    /// These are the langage's keywords.
     pub static ref KEYWORDS: HashMap<&'static str, TokenType> = {
         let mut m = HashMap::new();
         m.insert("and",    TokenType::AND);

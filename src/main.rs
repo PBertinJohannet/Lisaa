@@ -1,3 +1,9 @@
+#![deny(missing_docs)]
+
+//! An interpreter for a language,
+//! This is an experiment.
+//!
+
 extern crate clap;
 #[macro_use]
 extern crate lazy_static;
@@ -39,6 +45,8 @@ fn main() {
         }
     });
 }
+
+/// Runs the given file with the interpreter.
 fn run_file(input_file: &str) -> Result<(), String> {
     let mut file = match File::open(input_file) {
         Ok(file) => file,
