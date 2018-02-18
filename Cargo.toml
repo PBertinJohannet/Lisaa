@@ -1,0 +1,7 @@
+[package]
+authors = ["xahigoyez <pierre.bertin-johannet@orange.fr>"]
+name = "ytp"
+version = "0.1.0"
+[dependencies]
+clap = "*"
+lazy_static = "*"
