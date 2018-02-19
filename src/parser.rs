@@ -4,6 +4,7 @@ use token::{TokenType, Token};
 use expression::{BinaryExpr, UnaryExpr, LiteralExpr};
 use expression::Expr;
 use std::fmt;
+use statement::{Statement, Declaration, Assignment};
 
 #[derive(Debug)]
 /// The struct for a parse error, contains just enough information to show
@@ -60,22 +61,58 @@ impl Parser {
     /// When an error happens in an expression, we leave the expression to avoid cascading errors.
     ///
     /// But we start again with the new expressions.
-    pub fn parse(&mut self) -> Result<Vec<Expr>, Vec<ParseError>> {
+    pub fn program(&mut self) -> Result<Vec<Statement>, Vec<ParseError>> {
         let mut fails = vec![];
         let mut expressions = vec![];
         while !self.is_at_end() {
-            match self.expression() {
+            match self.declaration() {
                 Ok(e) => expressions.push(e),
                 Err(e) => fails.push(ParseError::new(self.previous(), e)),
             }
+            if fails.len() > 5 {
+                return Err(fails);
+            }
         }
+
         if fails.is_empty() {
             Ok(expressions)
         } else {
             Err(fails)
         }
     }
-
+    /// Matches a declaration or an assignment.
+    pub fn declaration(&mut self) -> Result<Statement, String> {
+        match self.peek().get_type() {
+            &TokenType::IDENTIFIER => self.assignment(),
+            _ => self.expr_statement(),
+        }
+    }
+    /// Parses an assignment.
+    /// should probably parse
+    pub fn assignment(&mut self) -> Result<Statement, String> {
+        let ident = self.advance();
+        match self.match_nexts(&[TokenType::EQUAL]){
+            true => {
+                let res = Ok(Statement::Assignment(Assignment::new(ident, self.expression()?)));
+                match self.match_nexts(&[TokenType::SEMICOLON]) {
+                    true => res,
+                    false => Err("Expected semicolon at the end of expression".to_string()),
+                }
+            },
+            false => Err("expected Equals after string declaration".to_string()),
+        }
+    }
+    /// Matches an expression statement, an expr ending with a semicolon.
+    pub fn expr_statement(&mut self) -> Result<Statement, String>{
+        let expr = self.expression()?;
+        match self.match_nexts(&[TokenType::SEMICOLON]) {
+            true => {
+                self.advance();
+                Ok(Statement::ExprStatement(expr))
+            },
+            false => Err("Expected semicolon at the end of expression".to_string()),
+        }
+    }
     /// Parses an expression, the lowest level of precedence is equality.
     pub fn expression(&mut self) -> Result<Expr, String> {
         self.equality()
@@ -138,6 +175,7 @@ impl Parser {
     pub fn unary(&mut self) -> Result<Expr, String> {
         if self.match_nexts(&[TokenType::MINUS, TokenType::BANG]) {
             let previous = self.previous();
+            println!("prev : {:?} ask unary", previous);
             let right = self.unary()?;
             return Ok(Expr::Unary(UnaryExpr::new(previous.clone(), right)));
         }
@@ -204,7 +242,11 @@ impl Parser {
 
     /// Returns the previous token.
     pub fn previous(&self) -> Token {
-        self.tokens[self.current - 1].clone()
+        if self.current == 0 {
+            self.tokens[0].clone()
+        } else {
+            self.tokens[self.current - 1].clone()
+        }
     }
 
     /// Checks if we are at the end of the file.

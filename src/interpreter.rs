@@ -2,19 +2,46 @@
 use expression::{Expr, UnaryExpr, LiteralExpr, BinaryExpr};
 use token::TokenType;
 use operations::{BinaryOperations, UnaryOperations};
+use statement::{Statement, Assignment};
+use std::collections::HashMap;
 
 /// The interpreter's struct, will interpret the expressions.
 pub struct Interpreter {
-
+    variables : HashMap<String, LiteralExpr>
 }
 
 impl Interpreter {
     /// Creates a new interpreter.
     pub fn new() -> Self {
         Interpreter {
-
+            variables : HashMap::new()
         }
     }
+    /// Outputs the state as a string.
+    pub fn state(&self) -> String {
+        format!("vars : {:?}", self.variables)
+    }
+    /// Runs the given statement, returns an error if it failed.
+    pub fn run(&mut self, statement : &Statement) -> Result<(), String>{
+        match statement {
+            &Statement::Assignment(ref a) => self.assignment(&a),
+            &Statement::ExprStatement(ref e) => {self.evaluate(&e); Ok(())},
+            _ => Err("declarations are not supported for now".to_string()),
+        }
+    }
+    /// Runs an assignment.
+    pub fn assignment(&mut self, assignment : &Assignment) -> Result<(), String>{
+        let mut res = self.evaluate(assignment.expr())?;
+        let var_name = assignment.identifier().get_lexeme().to_string();
+        if self.variables.get(&var_name).is_none(){
+            self.variables.insert(var_name, res);
+        } else {
+            let mut a = self.variables.get_mut(&var_name);
+            a = Some(&mut res);
+        }
+        Ok(())
+    }
+
     /// Evaluates the given expression.
     /// Returns a litteral if possible,
     /// if any fail occurs, returns an error.

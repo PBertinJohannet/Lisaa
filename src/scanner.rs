@@ -112,8 +112,8 @@ impl Scanner {
         }
         let sub_string: String = self.source[self.start..self.current].into_iter().collect();
         match KEYWORDS.get::<str>(&sub_string) {
-            Some(k) => Ok(self.token(k.clone(), "")),
-            None => Ok(self.token(TokenType::IDENTIFIER, "")),
+            Some(k) => Ok(self.token(k.clone(), &sub_string)),
+            None => Ok(self.token(TokenType::IDENTIFIER, &sub_string)),
         }
     }
 
@@ -130,7 +130,7 @@ impl Scanner {
         if self.is_at_end() {
             self.error("Unterminated string sequence".to_string())
         } else {
-            let sub_string: String = self.source[self.start + 1..self.current - 1]
+            let sub_string: String = self.source[self.start + 1..self.current]
                 .into_iter()
                 .collect();
             self.advance();
