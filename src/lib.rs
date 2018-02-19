@@ -15,6 +15,9 @@ pub mod ytp;
 pub mod keywords;
 pub mod token;
 pub mod scanner;
+pub mod interpreter;
+pub mod operations;
+
 #[cfg(test)]
 mod tests {
     // tests coming afterwards.

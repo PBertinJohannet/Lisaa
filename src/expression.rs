@@ -1,7 +1,8 @@
 //! The module containing the code for the different expressions.
 //!
 
-use token::{Token, TokenType};
+use token::Token;
+use std::fmt;
 
 #[derive(Debug)]
 /// The base for an expression.
@@ -32,6 +33,14 @@ impl UnaryExpr {
             expr: Box::new(expr),
         }
     }
+    /// Returns the expression.
+    pub fn expression(&self) -> &Expr {
+        &*self.expr
+    }
+    /// Returns the operator.
+    pub fn operator(&self) -> Operator {
+        self.operator.clone()
+    }
 }
 #[derive(Debug)]
 /// An unary expression contains an operator and two expressions.
@@ -51,11 +60,22 @@ impl BinaryExpr {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// An literal expression is a string/number literal.
 pub enum LiteralExpr {
     /// Anything from bool to null will be a number
     NUMBER(f64),
     /// Anything else will be a string.
     STRING(String),
+}
+
+
+impl fmt::Display for LiteralExpr {
+    /// Formats the error to a user readable format.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &LiteralExpr::NUMBER(n) => write!(f, "{}", n),
+            &LiteralExpr::STRING(ref s) => write!(f, "{}", s),
+        }
+    }
 }

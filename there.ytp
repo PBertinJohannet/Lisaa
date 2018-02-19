@@ -1,11 +1,9 @@
-//cool language isnt it ?
-1+1 // this will not fail and it is good
-2+k // this will fail
-"ah ah ah"*10+1<"12a" // works too
-1/(2)
-1/(false + 2*true - (4 > (2==3)))+6
+// try to negate some things
+-"aha"
+!"aha"
+5
+!5
+"h"
+5
+!5.0
 
-
-t
-
-1+5-3 85 9*6 // no problem here, just 3 useless expressions

@@ -136,7 +136,7 @@ impl Parser {
 
     /// Parses an unary expression.
     pub fn unary(&mut self) -> Result<Expr, String> {
-        if self.match_nexts(&[TokenType::MINUS, TokenType::PLUS]) {
+        if self.match_nexts(&[TokenType::MINUS, TokenType::BANG]) {
             let previous = self.previous();
             let right = self.unary()?;
             return Ok(Expr::Unary(UnaryExpr::new(previous.clone(), right)));
@@ -147,7 +147,7 @@ impl Parser {
     /// Parses a litteral expression.
     pub fn literal(&mut self) -> Result<Expr, String> {
         if self.match_nexts(&[TokenType::LeftParen]) {
-            let mut expr = self.expression();
+            let expr = self.expression();
             match self.peek().is_type(&TokenType::RightParen) {
                 true => {
                     self.advance();
