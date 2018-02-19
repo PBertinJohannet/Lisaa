@@ -13,6 +13,8 @@ pub enum Expr {
     Binary(BinaryExpr),
     /// The literals, see below.
     Literal(LiteralExpr),
+    /// an identifier
+    Identifier(String),
 }
 
 /// Operators are represented by tokens for now.
