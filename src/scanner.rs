@@ -95,9 +95,9 @@ impl Scanner {
             '\r' => Ok(self.token(TokenType::IGNORE, "")),
             '\t' => Ok(self.token(TokenType::IGNORE, "")),
             '"' => self.string(),
-            '0' ... '9' => self.number(),
-            'a' ... 'z' => self.identifier(),
-            'A' ... 'Z' => self.identifier(),
+            '0'...'9' => self.number(),
+            'a'...'z' => self.identifier(),
+            'A'...'Z' => self.identifier(),
             c => Err(format!("unexpected token : {}", c)),
         };
     }
@@ -108,7 +108,7 @@ impl Scanner {
         while self.peek().is_alphanumeric() && !self.is_at_end() {
             self.advance();
         }
-        let sub_string : String= self.source[self.start..self.current].into_iter().collect();
+        let sub_string: String = self.source[self.start..self.current].into_iter().collect();
         match KEYWORDS.get::<str>(&sub_string) {
             Some(k) => Ok(self.token(k.clone(), "")),
             None => Ok(self.token(TokenType::IDENTIFIER, "")),
@@ -128,7 +128,9 @@ impl Scanner {
         if self.is_at_end() {
             self.error("Unterminated string sequence".to_string())
         } else {
-            let sub_string : String= self.source[self.start + 1..self.current - 1].into_iter().collect();
+            let sub_string: String = self.source[self.start + 1..self.current - 1]
+                .into_iter()
+                .collect();
             self.advance();
             Ok(self.token(TokenType::STRING, &sub_string))
         }
@@ -146,16 +148,16 @@ impl Scanner {
                 self.advance();
             }
         }
-        let sub_string : String= self.source[self.start..self.current].into_iter().collect();
+        let sub_string: String = self.source[self.start..self.current].into_iter().collect();
         Ok(self.token(TokenType::NUMBER, &sub_string))
     }
 
     /// Peeks twice for next chars in the source but do not advance.
     fn peek_next(&mut self) -> char {
-        if self.current+1 == self.source.len() {
+        if self.current + 1 == self.source.len() {
             '\0'
         } else {
-            self.source[self.current+1]
+            self.source[self.current + 1]
         }
     }
 

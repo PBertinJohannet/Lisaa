@@ -5,53 +5,92 @@
 /// All the different types of tokens.
 pub enum TokenType {
     // Single-character tokens.
+    /// A left parenthesis.
     LeftParen,
+    /// A right parenthesis.
     RightParen,
+    /// A left brace.
     LeftBrace,
+    /// A right brace.
     RightBrace,
+    /// A comma.
     COMMA,
+    /// A dot.
     DOT,
+    /// A minus sign.
     MINUS,
+    /// A plus sign.
     PLUS,
+    /// A semicolon.
     SEMICOLON,
+    /// A slash, used to divide.
     SLASH,
+    /// A star "*".
     STAR,
 
     // One or two character tokens.
+    /// A not "!".
     BANG,
+    /// A not equals "!=".
     BangEqual,
+    /// A single equal sign.
     EQUAL,
+    /// A double equal sign.
     EqualEqual,
+    /// A single greater than sign.
     GREATER,
+    /// A greater than or equals sign ">=".
     GreaterEqual,
+    /// A single less sign.
     LESS,
+    /// A less than or equals sign "<=".
     LessEqual,
 
     // Literals.
+    /// An identifier, variables, classes names etc...
     IDENTIFIER,
+    /// A string literal.
     STRING,
+    /// A number.
     NUMBER,
 
     // Keywords.
+    /// The and keyword, used for comparison.
     AND,
+    /// The class keyword, not used yet
     CLASS,
+    /// The class keyword, not used yet
     ELSE,
+    /// The class keyword, not used yet
     FALSE,
+    /// The class keyword, not used yet
     FUN,
+    /// The class keyword, not used yet.
     FOR,
+    /// The class keyword, not used yet
     IF,
+    /// The class keyword, not used yet
     NIL,
+    /// The class keyword, not used yet
     OR,
+    /// The class keyword, not used yet
     PRINT,
+    /// The class keyword, not used yet
     RETURN,
+    /// The class keyword, not used yet
     SUPER,
+    /// The class keyword, not used yet
     THIS,
+    /// The class keyword, not used yet
     TRUE,
+    /// The class keyword, not used yet
     VAR,
+    /// The class keyword, not used yet
     WHILE,
-
+    /// The ignore keyword, tells that this keyword may be ignored.
     IGNORE,
 
+    /// The End of the File
     EOF,
 }
 
@@ -79,7 +118,7 @@ impl Token {
     }
 
     /// checks if the token is of the given type.
-    pub fn is_type(&self, token_type : &TokenType) -> bool {
+    pub fn is_type(&self, token_type: &TokenType) -> bool {
         &self.token_type == token_type
     }
 
