@@ -36,8 +36,7 @@ impl Interpreter {
         if self.variables.get(&var_name).is_none(){
             self.variables.insert(var_name, res);
         } else {
-            let mut a = self.variables.get_mut(&var_name);
-            a = Some(&mut res);
+            *self.variables.get_mut(&var_name).unwrap() = res;
         }
         Ok(())
     }
@@ -50,6 +49,15 @@ impl Interpreter {
             &Expr::Literal(ref l) => Ok(l.clone()),
             &Expr::Unary(ref u) => self.unary(u),
             &Expr::Binary(ref b) => self.binary(b),
+            &Expr::Identifier(ref i) => self.identifier(i),
+        }
+    }
+
+    /// Evaluates an identifier.
+    pub fn identifier(&self, i : &str) -> Result<LiteralExpr, String>{
+        match self.variables.get(i){
+            Some(v) => Ok(v.clone()),
+            _ => Err(format!("use of uninitialised variable : {}", i)),
         }
     }
 

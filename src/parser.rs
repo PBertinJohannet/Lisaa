@@ -205,6 +205,7 @@ impl Parser {
                 &TokenType::NIL => Ok(Expr::Literal(LiteralExpr::NUMBER(0.0))),
                 &TokenType::FALSE => Ok(Expr::Literal(LiteralExpr::NUMBER(0.0))),
                 &TokenType::TRUE => Ok(Expr::Literal(LiteralExpr::NUMBER(1.0))),
+                &TokenType::IDENTIFIER => Ok(Expr::Identifier(token.get_lexeme().to_string())),
                 _ => Err("Cant parse literal".to_string()),
             }
         }
