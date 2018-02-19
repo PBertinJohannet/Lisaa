@@ -34,6 +34,8 @@ impl Scanner {
                 self.tokens.push(token);
             }
         }
+        let _end = self.token(TokenType::EOF, "");
+        //self.tokens.push(end);
         Ok(self.tokens.clone())
     }
 

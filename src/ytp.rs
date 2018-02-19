@@ -1,7 +1,7 @@
 //! The ytp module, where the interpreter just calls the other modules.
 use scanner::Scanner;
 use parser::Parser;
-
+use interpreter::Interpreter;
 /// The interpreter, contains the code.
 pub struct Ytp {
     source: String,
@@ -23,7 +23,13 @@ impl Ytp {
 
         let tree = Parser::new(tokens).parse();
         match tree {
-            Ok(e) => eprintln!("parsing completed"),
+            Ok(e) => {
+                let mut inter = Interpreter::new();
+                e.iter().map(|expr| match inter.evaluate(expr) {
+                    Ok(res) => println!("{}", res),
+                    Err(s) => eprintln!("{}", s),
+                }).collect()
+            },
             Err(e) => e.iter().map(|p_err| eprintln!("{}\n", p_err)).collect(),
         }
         Ok(())

@@ -14,6 +14,8 @@ mod ytp;
 mod scanner;
 mod expression;
 mod parser;
+mod interpreter;
+mod operations;
 use std::io::Read;
 
 use clap::{Arg, App};
