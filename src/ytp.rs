@@ -24,7 +24,7 @@ impl Ytp {
         let tree = Parser::new(tokens).parse();
         match tree {
             Ok(e) => eprintln!("parsing completed"),
-            Err(e) => e.iter().map(|p_err|eprintln!("{}\n", p_err)).collect(),
+            Err(e) => e.iter().map(|p_err| eprintln!("{}\n", p_err)).collect(),
         }
         Ok(())
     }
