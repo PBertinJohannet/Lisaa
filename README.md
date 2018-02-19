@@ -14,4 +14,5 @@ target/release/ytp my_file.ytp
 ```
 
 It will parse and emit errors if some expressions could not be parsed correctly.
-
+It will also evaluate unary operation.
+Does not support binary evaluations yet(will crash if reuested).

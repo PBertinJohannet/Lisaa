@@ -58,6 +58,18 @@ impl BinaryExpr {
             rhs: Box::new(rhs),
         }
     }
+    /// returns the left hand side of the expression.
+    pub fn lhs(&self)  -> &Expr {
+        &*self.lhs
+    }
+    /// Returns the riht hand side of the expression.
+    pub fn rhs(&self)  -> &Expr {
+        &*self.rhs
+    }
+    /// Returns the operator.
+    pub fn operator(&self) -> Operator {
+        self.operator.clone()
+    }
 }
 
 #[derive(Debug, Clone)]
