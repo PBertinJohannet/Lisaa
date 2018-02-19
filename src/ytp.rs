@@ -21,12 +21,12 @@ impl Ytp {
             Err(e) => return Err(e),
         };
 
-        let tree = Parser::new(tokens).parse();
+        let tree = Parser::new(tokens).program();
         match tree {
             Ok(e) => {
                 let mut inter = Interpreter::new();
-                e.iter().map(|expr| match inter.evaluate(expr) {
-                    Ok(res) => println!("{}", res),
+                e.iter().map(|expr| match inter.run(expr) {
+                    Ok(res) => println!("{:?}", inter.state()),
                     Err(s) => eprintln!("{}", s),
                 }).collect()
             },

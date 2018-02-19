@@ -16,6 +16,7 @@ mod expression;
 mod parser;
 mod interpreter;
 mod operations;
+pub mod statement;
 use std::io::Read;
 
 use clap::{Arg, App};

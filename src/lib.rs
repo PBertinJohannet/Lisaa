@@ -17,6 +17,7 @@ pub mod token;
 pub mod scanner;
 pub mod interpreter;
 pub mod operations;
+pub mod statement;
 
 #[cfg(test)]
 mod tests {

@@ -1,2 +1,2 @@
 cargo build --release
-./target/release/ytp there.ytp
+RUST_BACKTRACE=2 ./target/release/ytp there.ytp
