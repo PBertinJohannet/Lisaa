@@ -57,6 +57,6 @@ mod tests {
             a = 2;
         }
         c = a+2;";
-        assert_eq!(Ytp::new(source).run().is_ok(), true);
+        assert_eq!(Ytp::new(source.to_string()).run().is_ok(), true);
     }
 }
