@@ -132,6 +132,11 @@ impl Token {
         &self.token_type
     }
 
+    /// Changes the type of this token.
+    pub fn set_type(&mut self, tp : TokenType) {
+        self.token_type = tp;
+    }
+
     /// Returns the lexeme of the token.
     pub fn get_lexeme(&self) -> &String {
         &self.lexeme

@@ -11,6 +11,8 @@ pub enum Statement {
     Assignment(Assignment),
     /// A declaration.
     Declaration(Declaration),
+    /// A scope
+    Scope(Vec<Statement>),
 }
 
 

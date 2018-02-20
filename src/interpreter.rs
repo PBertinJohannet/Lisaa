@@ -4,40 +4,126 @@ use token::TokenType;
 use operations::{BinaryOperations, UnaryOperations};
 use statement::{Statement, Assignment};
 use std::collections::HashMap;
+use std::rc::Rc;
+
+/// Represents a scope with its variables.
+#[derive(Debug)]
+pub struct Scope {
+    variables : HashMap<String, LiteralExpr>,
+    /// This represents the number of scopes that shares variables with this one.
+    depth : usize,
+}
+impl Scope {
+    /// Creates a new scope.
+    pub fn new(depth : usize) -> Self {
+        Scope {
+            depth : depth,
+            variables : HashMap::new(),
+        }
+    }
+    /// Checks if the given variable exists in scope.
+    pub fn has_var(&self, var_name : &str) -> bool {
+        self.variables.contains_key(var_name)
+    }
+    /// Returns the given variable.
+    pub fn get_var(&self, var_name : &str) -> Option<&LiteralExpr> {
+        self.variables.get(var_name)
+    }
+    /// Sets the value of the given variable to the required value.
+    /// If the variable is not existing it crashes.
+    pub fn set_var(&mut self, var_name : &str, val : LiteralExpr) {
+        *self.variables.get_mut(var_name).unwrap() = val;
+    }
+    /// Creates a new variable with the given name.
+    pub fn create_var(&mut self, var_name : &str, val : LiteralExpr) {
+        self.variables.insert(var_name.to_string(), val);
+    }
+}
+
 
 /// The interpreter's struct, will interpret the expressions.
+/// contains the current scope.
 pub struct Interpreter {
-    variables : HashMap<String, LiteralExpr>
+    scopes : Vec<Scope>,
 }
 
 impl Interpreter {
-    /// Creates a new interpreter.
-    pub fn new() -> Self {
-        Interpreter {
-            variables : HashMap::new()
+    /// Creates a new interpreter with a parent or not.
+    pub fn new(parent : Option<Rc<Interpreter>>) -> Self{
+        Interpreter{
+            scopes : vec![Scope::new(1)],
         }
+    }
+    /// Finds the variable in the scope or the scope of its parent.
+    pub fn set_var(&mut self, var_name : &str, result : LiteralExpr){
+        let current_scope = self.scopes.last().unwrap().depth;
+        let len = self.scopes.len();
+        let mut found = false;
+        for sc in 0..current_scope {
+            if self.scopes[len-sc-1].has_var(var_name){
+                found = true;
+                self.scopes[len-sc-1].set_var(var_name, result);
+                return;
+            }
+        }
+        if !found {
+            self.scopes.last_mut().unwrap().create_var(var_name, result);
+        }
+    }
+    /// Finds the variable in the scope or the scope of its parent.
+    pub fn has_var(&self, var_name : &str) -> bool{
+        let current_scope = self.scopes.last().unwrap().depth;
+        let len = self.scopes.len();
+        let mut found = false;
+        for sc in 0..current_scope {
+            if self.scopes[len-sc-1].has_var(var_name){
+                found = true;
+            }
+        }
+        found
+    }
+    /// Finds the variable in the scope or the scope of its parent.
+    pub fn get_var(&self, var_name : &str) -> Option<&LiteralExpr>{
+        let current_scope = self.scopes.last().unwrap().depth;
+        let len = self.scopes.len();
+        let mut found = false;
+        for sc in 0..current_scope {
+            if self.scopes[len-sc-1].has_var(var_name){
+                found = true;
+                return self.scopes[len-sc-1].get_var(var_name);
+            }
+        }
+        None
     }
     /// Outputs the state as a string.
     pub fn state(&self) -> String {
-        format!("vars : {:?}", self.variables)
+        format!("vars : {:?}", self.scopes)
     }
     /// Runs the given statement, returns an error if it failed.
     pub fn run(&mut self, statement : &Statement) -> Result<(), String>{
         match statement {
             &Statement::Assignment(ref a) => self.assignment(&a),
             &Statement::ExprStatement(ref e) => {self.evaluate(&e); Ok(())},
+            &Statement::Scope(ref s) => self.scope(s),
             _ => Err("declarations are not supported for now".to_string()),
         }
     }
+    /// Interprets the new scope.
+    pub fn scope(&mut self, scope : &Vec<Statement>) -> Result<(), String>{
+        let depth = self.scopes.last().unwrap().depth;
+        self.scopes.push(Scope::new(depth+1));
+        for s in scope {
+            self.run(s)?;
+        }
+        self.scopes.pop();
+        Ok(())
+    }
+
     /// Runs an assignment.
     pub fn assignment(&mut self, assignment : &Assignment) -> Result<(), String>{
         let mut res = self.evaluate(assignment.expr())?;
         let var_name = assignment.identifier().get_lexeme().to_string();
-        if self.variables.get(&var_name).is_none(){
-            self.variables.insert(var_name, res);
-        } else {
-            *self.variables.get_mut(&var_name).unwrap() = res;
-        }
+        self.set_var(&var_name, res);
         Ok(())
     }
 
@@ -55,7 +141,7 @@ impl Interpreter {
 
     /// Evaluates an identifier.
     pub fn identifier(&self, i : &str) -> Result<LiteralExpr, String>{
-        match self.variables.get(i){
+        match self.get_var(i){
             Some(v) => Ok(v.clone()),
             _ => Err(format!("use of uninitialised variable : {}", i)),
         }
