@@ -65,7 +65,7 @@ impl Parser {
         let mut fails = vec![];
         let mut expressions = vec![];
         while !self.is_at_end() {
-            match self.declaration() {
+            match self.statement() {
                 Ok(e) => expressions.push(e),
                 Err(e) => fails.push(ParseError::new(self.previous(), e)),
             }
@@ -80,6 +80,37 @@ impl Parser {
             Err(fails)
         }
     }
+    /// parses a statement and waits for a semicolon at the end.
+    pub fn statement(&mut self) -> Result<Statement, String> {
+        let stat = self.scope()?;
+        match self.match_nexts(&[TokenType::SEMICOLON]) {
+            true => Ok(stat),
+            false => Err("Expected semicolon at the end of expression".to_string()),
+        }
+    }
+    /// Parses a scope.
+    pub fn scope(&mut self) -> Result<Statement, String> {
+        match self.peek().is_type(&TokenType::LeftBrace){
+            true => self.parse_scope(),
+            false => self.declaration()
+        }
+    }
+    /// Parses all the statements in a scope.
+    ///
+    /// scopes have implicit semicolons, it will be added if it does not exists.
+    pub fn parse_scope(&mut self) -> Result<Statement, String> {
+        self.advance();
+        let mut statements = vec![];
+        while !self.peek().is_type(&TokenType::RightBrace ){
+            if self.is_at_end() {
+                return Err("Expected closing brace at the end of scope".to_string());
+            }
+            statements.push(self.statement()?);
+        }
+        self.advance();
+        Ok(Statement::Scope(statements))
+    }
+
     /// Matches a declaration or an assignment.
     pub fn declaration(&mut self) -> Result<Statement, String> {
         match self.peek().get_type() {
@@ -92,26 +123,13 @@ impl Parser {
     pub fn assignment(&mut self) -> Result<Statement, String> {
         let ident = self.advance();
         match self.match_nexts(&[TokenType::EQUAL]){
-            true => {
-                let res = Ok(Statement::Assignment(Assignment::new(ident, self.expression()?)));
-                match self.match_nexts(&[TokenType::SEMICOLON]) {
-                    true => res,
-                    false => Err("Expected semicolon at the end of expression".to_string()),
-                }
-            },
-            false => Err("expected Equals after string declaration".to_string()),
+            true => Ok(Statement::Assignment(Assignment::new(ident, self.expression()?))),
+            false => Err("expected Equals after variable declaration".to_string()),
         }
     }
     /// Matches an expression statement, an expr ending with a semicolon.
     pub fn expr_statement(&mut self) -> Result<Statement, String>{
-        let expr = self.expression()?;
-        match self.match_nexts(&[TokenType::SEMICOLON]) {
-            true => {
-                self.advance();
-                Ok(Statement::ExprStatement(expr))
-            },
-            false => Err("Expected semicolon at the end of expression".to_string()),
-        }
+        Ok(Statement::ExprStatement(self.expression()?))
     }
     /// Parses an expression, the lowest level of precedence is equality.
     pub fn expression(&mut self) -> Result<Expr, String> {

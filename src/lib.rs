@@ -8,7 +8,7 @@ extern crate clap;
 #[macro_use]
 extern crate lazy_static;
 
-
+/*
 pub mod parser;
 pub mod expression;
 pub mod ytp;
@@ -18,8 +18,4 @@ pub mod scanner;
 pub mod interpreter;
 pub mod operations;
 pub mod statement;
-
-#[cfg(test)]
-mod tests {
-    // tests coming afterwards.
-}
+*/

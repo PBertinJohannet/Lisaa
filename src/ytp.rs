@@ -20,11 +20,10 @@ impl Ytp {
             Ok(tokens) => tokens,
             Err(e) => return Err(e),
         };
-
         let tree = Parser::new(tokens).program();
         match tree {
             Ok(e) => {
-                let mut inter = Interpreter::new();
+                let mut inter = Interpreter::new(None);
                 e.iter().map(|expr| match inter.run(expr) {
                     Ok(res) => println!("{:?}", inter.state()),
                     Err(s) => eprintln!("{}", s),
@@ -33,5 +32,34 @@ impl Ytp {
             Err(e) => e.iter().map(|p_err| eprintln!("{}\n", p_err)).collect(),
         }
         Ok(())
+    }
+}
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_expr(){
+        let source = "a= 1;
+        b = 2+2;
+        c = \"h\";
+        a = b;
+        b = a*2+55-12;".to_string();
+        assert_eq!(Ytp::new(source).run().is_ok(), true);
+    }
+    #[test]
+    fn test_scope(){
+        let source = "a= 1;
+        {
+            b = 1;
+            a = b+1;
+        }
+        {
+            a = 2;
+        }
+        c = a+2;";
+        assert_eq!(Ytp::new(source).run().is_ok(), true);
     }
 }
