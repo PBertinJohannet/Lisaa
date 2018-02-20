@@ -108,6 +108,11 @@ impl Parser {
             statements.push(self.statement()?);
         }
         self.advance();
+        // add implicit semicolon.
+        if !self.peek().is_type(&TokenType::SEMICOLON){
+            self.current-=1;
+            self.tokens[self.current].set_type(TokenType::SEMICOLON);
+        }
         Ok(Statement::Scope(statements))
     }
 
