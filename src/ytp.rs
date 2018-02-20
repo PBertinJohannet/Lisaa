@@ -16,21 +16,16 @@ impl Ytp {
     pub fn run(&mut self) -> Result<(), String> {
         //println!("source : {}", self.source);
 
-        let tokens = match Scanner::new(&self.source).tokens() {
-            Ok(tokens) => tokens,
-            Err(e) => return Err(e),
-        };
-        let tree = Parser::new(tokens).program();
-        match tree {
-            Ok(e) => {
-                let mut inter = Interpreter::new(None);
-                e.iter().map(|expr| match inter.run(expr) {
-                    Ok(res) => println!("{:?}", inter.state()),
-                    Err(s) => eprintln!("{}", s),
-                }).collect()
-            },
-            Err(e) => e.iter().map(|p_err| eprintln!("{}\n", p_err)).collect(),
-        }
+        let tokens = Scanner::new(&self.source).tokens()?;
+        let tree = Parser::new(tokens).program()?;
+
+        let mut inter = Interpreter::new(None);
+        let mut errors = vec![];
+        e.iter().map(|expr| match inter.run(expr) {
+            Ok(res) => println!("{:?}", inter.state()),
+            Err(s) => eprintln!("{}", s),
+        }).collect();
+
         Ok(())
     }
 }
