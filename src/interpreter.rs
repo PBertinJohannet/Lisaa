@@ -2,7 +2,7 @@
 use expression::{Expr, UnaryExpr, LiteralExpr, BinaryExpr};
 use token::TokenType;
 use operations::{BinaryOperations, UnaryOperations};
-use statement::{Statement, Assignment};
+use statement::{Statement, Assignment, IfStatement};
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -105,8 +105,17 @@ impl Interpreter {
             &Statement::Assignment(ref a) => self.assignment(&a),
             &Statement::ExprStatement(ref e) => {self.evaluate(&e); Ok(())},
             &Statement::Scope(ref s) => self.scope(s),
-            _ => Err("declarations are not supported for now".to_string()),
+            &Statement::IfStatement(ref i) => self.if_statement(i),
+            _ => Err("other statements are not supported for now".to_string()),
         }
+    }
+    /// Interprets an if statement.
+    pub fn if_statement(&mut self, statement : &IfStatement) -> Result<(), String> {
+        let res = self.evaluate(statement.condition())?;
+        if self.is_true(&res) {
+            self.run(statement.statement())?;
+        }
+        Ok(())
     }
     /// Interprets the new scope.
     pub fn scope(&mut self, scope : &Vec<Statement>) -> Result<(), String>{
@@ -154,6 +163,13 @@ impl Interpreter {
             &TokenType::MINUS => UnaryOperations::minus(&exp_res),
             &TokenType::BANG => exp_res.bang(),
             e => Err(format!("operator {:?} can not be aplied to one value", e))
+        }
+    }
+    /// Checks if the value is true
+    pub fn is_true(&self, expr : &LiteralExpr) -> bool {
+        match expr {
+            &LiteralExpr::NUMBER(0.0) => false,
+            _ => true,
         }
     }
     /// Evaluates a binary expression.

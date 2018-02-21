@@ -4,7 +4,7 @@ use token::{TokenType, Token};
 use expression::{BinaryExpr, UnaryExpr, LiteralExpr};
 use expression::Expr;
 use std::fmt;
-use statement::{Statement, Declaration, Assignment};
+use statement::{Statement, Declaration, Assignment, IfStatement};
 
 #[derive(Debug)]
 /// The struct for a parse error, contains just enough information to show
@@ -80,14 +80,35 @@ impl Parser {
             Err(fails)
         }
     }
-    /// parses a statement and waits for a semicolon at the end.
-    pub fn statement(&mut self) -> Result<Statement, String> {
-        let stat = self.scope()?;
+    pub fn expect_semicolon(&mut self, statement : Statement) -> Result<Statement, String>{
         match self.match_nexts(&[TokenType::SEMICOLON]) {
-            true => Ok(stat),
-            false => Err("Expected semicolon at the end of expression".to_string()),
+            true => Ok(statement),
+            false => Err("Expected semicolon at the end of statement".to_string()),
         }
     }
+    /// parses a statement and waits for a semicolon at the end.
+    pub fn statement(&mut self) -> Result<Statement, String> {
+        self.if_condition()
+    }
+    pub fn if_condition(&mut self) -> Result<Statement, String> {
+        match self.peek().is_type(&TokenType::IF){
+            true => self.parse_if(),
+            false => self.scope()
+        }
+    }
+    /// Parses all the statements in a scope.
+    ///
+    /// scopes have implicit semicolons, it will be added if it does not exists.
+    pub fn parse_if(&mut self) -> Result<Statement, String> {
+        self.advance();
+        println!("next is : {:?}\nparse expr", self.peek());
+        let condition = self.expression()?;
+        println!("parse statement");
+        let next_statement = self.statement()?;
+        // add implicit semicolon.
+        Ok(Statement::IfStatement(IfStatement::new(condition, next_statement)))
+    }
+
     /// Parses a scope.
     pub fn scope(&mut self) -> Result<Statement, String> {
         match self.peek().is_type(&TokenType::LeftBrace){
@@ -108,20 +129,16 @@ impl Parser {
             statements.push(self.statement()?);
         }
         self.advance();
-        // add implicit semicolon.
-        if !self.peek().is_type(&TokenType::SEMICOLON){
-            self.current-=1;
-            self.tokens[self.current].set_type(TokenType::SEMICOLON);
-        }
         Ok(Statement::Scope(statements))
     }
 
     /// Matches a declaration or an assignment.
     pub fn declaration(&mut self) -> Result<Statement, String> {
-        match self.peek().get_type() {
+        let decl = match self.peek().get_type() {
             &TokenType::IDENTIFIER => self.assignment(),
             _ => self.expr_statement(),
-        }
+        };
+        self.expect_semicolon(decl?)
     }
     /// Parses an assignment.
     /// should probably parse

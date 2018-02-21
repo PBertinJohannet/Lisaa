@@ -13,6 +13,8 @@ pub enum Statement {
     Declaration(Declaration),
     /// A scope
     Scope(Vec<Statement>),
+    /// An if statement with the close and ... the elses.
+    IfStatement(IfStatement),
 }
 
 
@@ -57,5 +59,28 @@ impl Declaration {
             identifier : identifier,
             expr : expr,
         }
+    }
+}
+/// Represents an if statement, its condition and the statement to exeute if it is true.
+#[derive(Debug)]
+pub struct IfStatement {
+    cond : Expr,
+    statement : Box<Statement>,
+}
+impl IfStatement {
+    /// Creates a new if statement with the following condition and statement to execute.
+    pub fn new(cond : Expr, statement : Statement) -> Self {
+        IfStatement{
+            cond : cond,
+            statement : Box::new(statement),
+        }
+    }
+    /// Returns the condition to execute.
+    pub fn condition(&self) -> &Expr {
+        &self.cond
+    }
+    /// Returns the statement to execute.
+    pub fn statement(&self) -> &Statement{
+        &*self.statement
     }
 }
