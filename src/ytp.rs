@@ -18,13 +18,12 @@ impl Ytp {
 
         let tokens = Scanner::new(&self.source).tokens()?;
         let tree = Parser::new(tokens).program();
+
         match tree {
             Ok(e) => {
                 let mut inter = Interpreter::new(None);
-                e.iter().map(|expr| match inter.run(expr) {
-                    Ok(res) => println!("{:?}", inter.state()),
-                    Err(s) => eprintln!("{}", s),
-                }).collect()
+                inter.run(e);
+                println!("{:?}", inter.state());
             },
             Err(e) => e.iter().map(|p_err| eprintln!("{}\n", p_err)).collect(),
         }

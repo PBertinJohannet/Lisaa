@@ -4,7 +4,8 @@ use token::{TokenType, Token};
 use expression::{BinaryExpr, UnaryExpr, LiteralExpr};
 use expression::Expr;
 use std::fmt;
-use statement::{Statement, Declaration, Assignment, IfStatement};
+use statement::{Statement, Declaration, Assignment, IfStatement, FunctionDecl};
+use std::collections::HashMap;
 
 #[derive(Debug)]
 /// The struct for a parse error, contains just enough information to show
@@ -61,12 +62,15 @@ impl Parser {
     /// When an error happens in an expression, we leave the expression to avoid cascading errors.
     ///
     /// But we start again with the new expressions.
-    pub fn program(&mut self) -> Result<Vec<Statement>, Vec<ParseError>> {
+    pub fn program(&mut self) -> Result<HashMap<String, FunctionDecl>, Vec<ParseError>> {
         let mut fails = vec![];
-        let mut expressions = vec![];
+        let mut functions = HashMap::new();
         while !self.is_at_end() {
-            match self.statement() {
-                Ok(e) => expressions.push(e),
+            match self.function_decl() {
+                Ok(e) => {
+                    let name = e.name().to_string();
+                    functions.insert(name, e);
+                },
                 Err(e) => fails.push(ParseError::new(self.previous(), e)),
             }
             if fails.len() > 5 {
@@ -75,11 +79,56 @@ impl Parser {
         }
 
         if fails.is_empty() {
-            Ok(expressions)
+            Ok(functions)
         } else {
             Err(fails)
         }
     }
+    /// A new function declaration.
+    pub fn function_decl(&mut self) -> Result<FunctionDecl, String>{
+        match self.peek().get_type() {
+            &TokenType::FUN => {
+                self.advance(); // skip the func keyword
+                let name = match self.check(&TokenType::IDENTIFIER){
+                    true => self.advance().get_lexeme().to_string(),
+                    false => return Err("Expected identifier after function".to_string()),
+                };
+                let arguments = self.func_args()?;
+                let scope = self.scope()?;
+                Ok(FunctionDecl::new(name, arguments, scope))
+            }
+            _ => Err("error : expected function declaration there".to_string()),
+        }
+    }
+    /// Parses the declaration of arguments
+    /// Should be refactored a little bit tho.
+    pub fn func_args(&mut self) -> Result<Vec<String>, String>{
+        let mut args = vec![];
+        if self.check(&TokenType::LeftParen){
+            self.advance();
+        } else {
+            return Err("Expected left parenthesis after function name".to_string());
+        }
+        if self.check(&TokenType::IDENTIFIER){
+            args.push(self.advance().get_lexeme().to_string());
+        } else {
+            return Err("Expected identifier".to_string());
+        }
+        while !self.peek().is_type(&TokenType::RightParen){
+            if !self.check(&TokenType::COMMA) {
+                return Err("Expected comma after identifier".to_string());
+            }
+            if self.check(&TokenType::IDENTIFIER){
+                args.push(self.advance().get_lexeme().to_string());
+            } else {
+                return Err("Expected identifier".to_string());
+            }
+        }
+        self.advance();
+        Ok(args)
+    }
+
+    /// Expects a semeicolon after the statement, else break it.
     pub fn expect_semicolon(&mut self, statement : Statement) -> Result<Statement, String>{
         match self.match_nexts(&[TokenType::SEMICOLON]) {
             true => Ok(statement),
