@@ -2,7 +2,7 @@
 use expression::{Expr, UnaryExpr, LiteralExpr, BinaryExpr};
 use token::TokenType;
 use operations::{BinaryOperations, UnaryOperations};
-use statement::{Statement, Assignment, IfStatement, StatementResult};
+use statement::{Statement, Assignment, IfStatement, StatementResult, FunctionDecl};
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -99,8 +99,22 @@ impl Interpreter {
     pub fn state(&self) -> String {
         format!("vars : {:?}", self.scopes)
     }
+    /// Runs the programm, starting from the main function
+    pub fn run(&mut self, programm : HashMap<String, FunctionDecl>) -> Result<StatementResult, String>{
+        match programm.get("main"){
+            Some(f) => self.function(f),
+            None => Err("Error, no main function found".to_string()),
+        }
+    }
+    pub fn function(&mut self, func : &FunctionDecl)-> Result<StatementResult, String>{
+        for st in func.scope(){
+            self.run_statement(st)?;
+        }
+        Ok(StatementResult::Empty)
+    }
+
     /// Runs the given statement, returns an error if it failed.
-    pub fn run(&mut self, statement : &Statement) -> Result<StatementResult, String>{
+    pub fn run_statement(&mut self, statement : &Statement) -> Result<StatementResult, String>{
         match statement {
             &Statement::Assignment(ref a) => self.assignment(&a),
             &Statement::ExprStatement(ref e) => {self.evaluate(&e); Ok(StatementResult::Empty)},
@@ -114,7 +128,7 @@ impl Interpreter {
     pub fn if_statement(&mut self, statement : &IfStatement) -> Result<StatementResult, String> {
         let res = self.evaluate(statement.condition())?;
         if self.is_true(&res) {
-            self.run(statement.statement())?;
+            self.run_statement(statement.statement())?;
         }
         Ok(StatementResult::Empty)
     }
@@ -123,7 +137,7 @@ impl Interpreter {
         let depth = self.scopes.last().unwrap().depth;
         self.scopes.push(Scope::new(depth+1));
         for s in scope {
-            let res = self.run(s)?;
+            let res = self.run_statement(s)?;
             if res.is_quit(){
                 println!("quit scope ");
                 self.scopes.pop();

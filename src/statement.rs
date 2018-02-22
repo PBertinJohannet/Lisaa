@@ -2,6 +2,42 @@
 use expression::{Expr, LiteralExpr};
 use token::Token;
 
+
+/// A function declaration
+#[derive(Debug)]
+pub struct FunctionDecl{
+    name : String,
+    args : Vec<String>,
+    scope : Statement,
+}
+
+impl FunctionDecl {
+    /// Creates a new function declaration.
+    pub fn new(name : String, args : Vec<String>, scope : Statement) -> Self {
+        FunctionDecl {
+            name : name,
+            args : args,
+            scope : scope,
+        }
+    }
+    /// Returns the name of the function.
+    pub fn name(&self) -> &String {
+        &self.name
+    }
+    /// Returns the arguments of a function.
+    pub fn args(&self) -> &Vec<String> {
+        &self.args
+    }
+    /// Returns the scope of the function.
+    pub fn scope(&self) -> &Vec<Statement >{
+        let val = match &self.scope {
+            &Statement::Scope(ref v) => Some(v),
+            _ => None,
+        };
+        val.unwrap()
+    }
+}
+
 #[derive(Debug)]
 /// The enum for statements.
 pub enum Statement {
