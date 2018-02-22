@@ -60,6 +60,8 @@ pub enum TokenType {
     StringDecl,
 
     // Keywords.
+    /// A break to quit a scope.
+    BREAK,
     /// The and keyword, used for comparison.
     AND,
     /// The class keyword, not used yet

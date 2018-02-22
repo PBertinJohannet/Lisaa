@@ -2,7 +2,7 @@
 use expression::{Expr, UnaryExpr, LiteralExpr, BinaryExpr};
 use token::TokenType;
 use operations::{BinaryOperations, UnaryOperations};
-use statement::{Statement, Assignment, IfStatement};
+use statement::{Statement, Assignment, IfStatement, StatementResult};
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -100,40 +100,46 @@ impl Interpreter {
         format!("vars : {:?}", self.scopes)
     }
     /// Runs the given statement, returns an error if it failed.
-    pub fn run(&mut self, statement : &Statement) -> Result<(), String>{
+    pub fn run(&mut self, statement : &Statement) -> Result<StatementResult, String>{
         match statement {
             &Statement::Assignment(ref a) => self.assignment(&a),
-            &Statement::ExprStatement(ref e) => {self.evaluate(&e); Ok(())},
+            &Statement::ExprStatement(ref e) => {self.evaluate(&e); Ok(StatementResult::Empty)},
             &Statement::Scope(ref s) => self.scope(s),
             &Statement::IfStatement(ref i) => self.if_statement(i),
+            &Statement::BreakStatement => Ok(StatementResult::Break),
             _ => Err("other statements are not supported for now".to_string()),
         }
     }
     /// Interprets an if statement.
-    pub fn if_statement(&mut self, statement : &IfStatement) -> Result<(), String> {
+    pub fn if_statement(&mut self, statement : &IfStatement) -> Result<StatementResult, String> {
         let res = self.evaluate(statement.condition())?;
         if self.is_true(&res) {
             self.run(statement.statement())?;
         }
-        Ok(())
+        Ok(StatementResult::Empty)
     }
     /// Interprets the new scope.
-    pub fn scope(&mut self, scope : &Vec<Statement>) -> Result<(), String>{
+    pub fn scope(&mut self, scope : &Vec<Statement>) -> Result<StatementResult, String>{
         let depth = self.scopes.last().unwrap().depth;
         self.scopes.push(Scope::new(depth+1));
         for s in scope {
-            self.run(s)?;
+            let res = self.run(s)?;
+            if res.is_quit(){
+                println!("quit scope ");
+                self.scopes.pop();
+                return Ok(res);
+            }
         }
         self.scopes.pop();
-        Ok(())
+        Ok(StatementResult::Empty)
     }
 
     /// Runs an assignment.
-    pub fn assignment(&mut self, assignment : &Assignment) -> Result<(), String>{
+    pub fn assignment(&mut self, assignment : &Assignment) -> Result<StatementResult, String>{
         let mut res = self.evaluate(assignment.expr())?;
         let var_name = assignment.identifier().get_lexeme().to_string();
         self.set_var(&var_name, res);
-        Ok(())
+        Ok(StatementResult::Empty)
     }
 
     /// Evaluates the given expression.

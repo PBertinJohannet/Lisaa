@@ -6,6 +6,7 @@ lazy_static! {
     /// These are the langage's keywords.
     pub static ref KEYWORDS: HashMap<&'static str, TokenType> = {
         let mut m = HashMap::new();
+        m.insert("break",    TokenType::BREAK);
         m.insert("and",    TokenType::AND);
         m.insert("class",  TokenType::CLASS);
         m.insert("else",   TokenType::ELSE);
