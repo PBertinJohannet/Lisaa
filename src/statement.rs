@@ -1,5 +1,5 @@
 //! The module for statement.
-use expression::Expr;
+use expression::{Expr, LiteralExpr};
 use token::Token;
 
 #[derive(Debug)]
@@ -15,6 +15,8 @@ pub enum Statement {
     Scope(Vec<Statement>),
     /// An if statement with the close and ... the elses.
     IfStatement(IfStatement),
+    /// A break statement.
+    BreakStatement,
 }
 
 
@@ -82,5 +84,25 @@ impl IfStatement {
     /// Returns the statement to execute.
     pub fn statement(&self) -> &Statement{
         &*self.statement
+    }
+}
+
+/// The result of a statement.
+pub enum StatementResult {
+    /// The statement does not return anything.
+    Empty,
+    /// The statement Is a break statement.
+    Break,
+    /// The statement was broken by a return.
+    Return(LiteralExpr),
+}
+
+impl StatementResult {
+    /// Checks if the statement will make the scope quit.
+    pub fn is_quit(&self) -> bool {
+        match self {
+            &StatementResult::Empty => false,
+            _ => true,
+        }
     }
 }

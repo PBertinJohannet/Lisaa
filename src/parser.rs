@@ -88,8 +88,19 @@ impl Parser {
     }
     /// parses a statement and waits for a semicolon at the end.
     pub fn statement(&mut self) -> Result<Statement, String> {
-        self.if_condition()
+        self.break_statement()
     }
+    /// try to parse a break statement.
+    pub fn break_statement(&mut self)  -> Result<Statement, String> {
+        match self.peek().is_type(&TokenType::BREAK){
+            true => {
+                self.advance();
+                self.expect_semicolon(Statement::BreakStatement)
+            },
+            false => self.if_condition()
+        }
+    }
+    /// parses an if condition.
     pub fn if_condition(&mut self) -> Result<Statement, String> {
         match self.peek().is_type(&TokenType::IF){
             true => self.parse_if(),
@@ -101,9 +112,7 @@ impl Parser {
     /// scopes have implicit semicolons, it will be added if it does not exists.
     pub fn parse_if(&mut self) -> Result<Statement, String> {
         self.advance();
-        println!("next is : {:?}\nparse expr", self.peek());
         let condition = self.expression()?;
-        println!("parse statement");
         let next_statement = self.statement()?;
         // add implicit semicolon.
         Ok(Statement::IfStatement(IfStatement::new(condition, next_statement)))
