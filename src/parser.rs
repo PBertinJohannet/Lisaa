@@ -148,9 +148,17 @@ impl Parser {
     pub fn if_condition(&mut self) -> Result<Statement, String> {
         match self.peek().is_type(&TokenType::IF){
             true => self.parse_if(),
+            false => self.while_loop()
+        }
+    }
+    /// parses an if condition.
+    pub fn while_loop(&mut self) -> Result<Statement, String> {
+        match self.peek().is_type(&TokenType::IF){
+            true => self.parse_while(),
             false => self.scope()
         }
     }
+
     /// Parses all the statements in a scope.
     ///
     /// scopes have implicit semicolons, it will be added if it does not exists.
@@ -160,6 +168,17 @@ impl Parser {
         let next_statement = self.statement()?;
         // add implicit semicolon.
         Ok(Statement::IfStatement(IfStatement::new(condition, next_statement)))
+    }
+
+    /// Parses all the statements in a scope.
+    ///
+    /// scopes have implicit semicolons, it will be added if it does not exists.
+    pub fn parse_while(&mut self) -> Result<Statement, String> {
+        self.advance();
+        let condition = self.expression()?;
+        let next_statement = self.statement()?;
+        // add implicit semicolon.
+        Ok(Statement::WhileStatement(WhileStatement::new(condition, next_statement)))
     }
 
     /// Parses a scope.
