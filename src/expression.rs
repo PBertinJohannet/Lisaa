@@ -15,6 +15,42 @@ pub enum Expr {
     Literal(LiteralExpr),
     /// an identifier
     Identifier(String),
+    /// A function call
+    FunctionCall(FunctionCall),
+}
+
+impl Expr {
+    pub fn identifier(&self) -> &String {
+        match self {
+            &Expr::Identifier(ref i) =>i,
+            _ => panic!("parsing identifier where not expected")
+        }
+    }
+}
+
+/// Represents a function call in the code.
+#[derive(Debug)]
+pub struct FunctionCall {
+    name : String,
+    args : Vec<Expr>
+}
+
+impl FunctionCall {
+    /// Creates a new function call expression
+    pub fn new(name : String, args : Vec<Expr>) -> Self {
+        FunctionCall {
+            name : name,
+            args : args,
+        }
+    }
+    /// Returns the name.
+    pub fn name(&self) -> &String {
+        &self.name
+    }
+    /// Returns the list of arguments.
+    pub fn args(&self) -> &Vec<Expr>{
+        &self.args
+    }
 }
 
 /// Operators are represented by tokens for now.

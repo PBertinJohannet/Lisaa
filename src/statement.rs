@@ -53,7 +53,10 @@ pub enum Statement {
     IfStatement(IfStatement),
     /// A break statement.
     BreakStatement,
+    /// A return statement,
+    ReturnStatement(Expr),
 }
+
 
 
 #[derive(Debug)]
@@ -124,6 +127,7 @@ impl IfStatement {
 }
 
 /// The result of a statement.
+#[derive(Debug)]
 pub enum StatementResult {
     /// The statement does not return anything.
     Empty,

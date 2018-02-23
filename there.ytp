@@ -1,8 +1,13 @@
 fn main (a) {
+a = 5;
+b = add(1, 2);
 a = 1;
 {
 break;
-a=2;
+a=2+add(a, 2);
 }
-b=1;
+}
+
+fn add (a, b){
+    return a + b;
 }

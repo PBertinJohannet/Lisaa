@@ -1,7 +1,7 @@
 //! Contains the code for the parser,
 //! currently only contains enough to parse expressions and return parse errors.
 use token::{TokenType, Token};
-use expression::{BinaryExpr, UnaryExpr, LiteralExpr};
+use expression::{BinaryExpr, UnaryExpr, LiteralExpr, FunctionCall};
 use expression::Expr;
 use std::fmt;
 use statement::{Statement, Declaration, Assignment, IfStatement, FunctionDecl};
@@ -104,24 +104,19 @@ impl Parser {
     /// Should be refactored a little bit tho.
     pub fn func_args(&mut self) -> Result<Vec<String>, String>{
         let mut args = vec![];
-        if self.check(&TokenType::LeftParen){
-            self.advance();
-        } else {
-            return Err("Expected left parenthesis after function name".to_string());
-        }
-        if self.check(&TokenType::IDENTIFIER){
-            args.push(self.advance().get_lexeme().to_string());
-        } else {
-            return Err("Expected identifier".to_string());
-        }
-        while !self.peek().is_type(&TokenType::RightParen){
-            if !self.check(&TokenType::COMMA) {
-                return Err("Expected comma after identifier".to_string());
-            }
-            if self.check(&TokenType::IDENTIFIER){
-                args.push(self.advance().get_lexeme().to_string());
-            } else {
-                return Err("Expected identifier".to_string());
+        self.expect(TokenType::LeftParen)?;
+        loop {
+            match self.peek().get_type(){
+                &TokenType::RightParen => break,
+                &TokenType::IDENTIFIER => {
+                    args.push(self.advance().get_lexeme().to_string());
+                    match self.peek().get_type(){
+                        &TokenType::RightParen => break,
+                        &TokenType::COMMA => {self.advance();}
+                        _ => Err("expected right paren or comma".to_string())?
+                    }
+                }
+                _ => Err("Expected closing paren or identifier".to_string())?
             }
         }
         self.advance();
@@ -194,10 +189,22 @@ impl Parser {
     pub fn declaration(&mut self) -> Result<Statement, String> {
         let decl = match self.peek().get_type() {
             &TokenType::IDENTIFIER => self.assignment(),
-            _ => self.expr_statement(),
+            _ => self.return_statement(),
         };
         self.expect_semicolon(decl?)
     }
+    /// Parses a return statement
+    pub fn return_statement(&mut self) -> Result<Statement, String> {
+        match self.peek().get_type() {
+            &TokenType::RETURN => {
+                self.advance(); // skip the return.
+                let expr = self.expression()?; // get what is to return
+                Ok(Statement::ReturnStatement(expr))
+            },
+            _ => self.expr_statement(),
+        }
+    }
+
     /// Parses an assignment.
     /// should probably parse
     pub fn assignment(&mut self) -> Result<Statement, String> {
@@ -277,8 +284,45 @@ impl Parser {
             let right = self.unary()?;
             return Ok(Expr::Unary(UnaryExpr::new(previous.clone(), right)));
         }
-        return self.literal();
+        return self.function_call();
     }
+
+    /// Represents a function call.
+    pub fn function_call(&mut self) -> Result<Expr, String> {
+        let lit = self.literal()?;
+        match self.peek().is_type(&TokenType::LeftParen) {
+            false => Ok(lit),
+            true => self.parse_function_call(lit),
+        }
+    }
+    /// Parse the function call but it is ugly and should be modified.
+    pub fn parse_function_call(&mut self, lit : Expr) -> Result<Expr, String> {
+        let mut args = vec![];
+        self.expect(TokenType::LeftParen)?;
+        loop {
+            match self.peek().get_type(){
+                &TokenType::RightParen => break,
+                _ => {
+                    args.push(self.expression()?);
+                    match self.peek().get_type(){
+                        &TokenType::RightParen => break,
+                        &TokenType::COMMA => {self.advance();}
+                        _ => Err("expected right paren or comma".to_string())?
+                    }
+                }
+            }
+        }
+        self.advance();
+        Ok(Expr::FunctionCall(FunctionCall::new(lit.identifier().to_string(), args)))
+    }
+
+    pub fn expect(&mut self, token_type : TokenType) -> Result<(), String> {
+        match self.match_nexts(&[token_type]) {
+            true => Ok(()),
+            false => Err("Expected token".to_string()),
+        }
+    }
+
 
     /// Parses a litteral expression.
     pub fn literal(&mut self) -> Result<Expr, String> {
