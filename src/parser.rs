@@ -4,7 +4,7 @@ use token::{TokenType, Token};
 use expression::{BinaryExpr, UnaryExpr, LiteralExpr, FunctionCall};
 use expression::Expr;
 use std::fmt;
-use statement::{Statement, Declaration, Assignment, IfStatement, FunctionDecl};
+use statement::{Statement, Declaration, Assignment, IfStatement, FunctionDecl, WhileStatement};
 use std::collections::HashMap;
 
 #[derive(Debug)]
@@ -153,7 +153,7 @@ impl Parser {
     }
     /// parses an if condition.
     pub fn while_loop(&mut self) -> Result<Statement, String> {
-        match self.peek().is_type(&TokenType::IF){
+        match self.peek().is_type(&TokenType::WHILE){
             true => self.parse_while(),
             false => self.scope()
         }

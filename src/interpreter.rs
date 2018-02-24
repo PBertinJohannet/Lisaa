@@ -2,7 +2,7 @@
 use expression::{Expr, UnaryExpr, LiteralExpr, BinaryExpr, FunctionCall};
 use token::TokenType;
 use operations::{BinaryOperations, UnaryOperations};
-use statement::{Statement, Assignment, IfStatement, StatementResult, FunctionDecl};
+use statement::{Statement, Assignment, IfStatement, StatementResult, FunctionDecl, WhileStatement};
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -132,6 +132,7 @@ impl Interpreter {
             &Statement::ExprStatement(ref e) => {self.evaluate(&e); Ok(StatementResult::Empty)},
             &Statement::Scope(ref s) => self.scope(s),
             &Statement::IfStatement(ref i) => self.if_statement(i),
+            &Statement::WhileStatement(ref i) => self.while_statement(i),
             &Statement::BreakStatement => Ok(StatementResult::Break),
             &Statement::ReturnStatement(ref i) => Ok(StatementResult::Return(self.evaluate(i)?)),
             ref a => Err(format!("other statements are not supported for now : {:?}", a).to_string()),
@@ -142,6 +143,15 @@ impl Interpreter {
         let res = self.evaluate(statement.condition())?;
         if self.is_true(&res) {
             self.run_statement(statement.statement())?;
+        }
+        Ok(StatementResult::Empty)
+    }
+    /// Interprets an if statement.
+    pub fn while_statement(&self, statement : &WhileStatement) -> Result<StatementResult, String> {
+        let mut res = self.evaluate(statement.condition())?;
+        while self.is_true(&res) {
+            self.run_statement(statement.statement())?;
+            res = self.evaluate(statement.condition())?;
         }
         Ok(StatementResult::Empty)
     }
