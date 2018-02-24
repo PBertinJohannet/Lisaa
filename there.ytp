@@ -1,11 +1,10 @@
 fn main (a) {
-a = 5;
-b = add(1, 2);
-a = 1;
-{
-break;
-a=2+add(a, 2);
-}
+    b = 0;
+    a = 5;
+    while a > 0 {
+        a = a-1;
+        b = b+1;
+    }
 }
 
 fn add (a, b){
