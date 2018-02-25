@@ -2,10 +2,11 @@
 use expression::{Expr, UnaryExpr, LiteralExpr, BinaryExpr, FunctionCall};
 use token::TokenType;
 use operations::{BinaryOperations, UnaryOperations};
-use statement::{Statement, Assignment, IfStatement, StatementResult, FunctionDecl, WhileStatement};
+use statement::{Statement, Assignment, IfStatement, StatementResult, FunctionDecl, WhileStatement, Declaration};
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::cell::RefCell;
+use native::get_native;
 
 /// Represents a scope with its variables.
 #[derive(Debug)]
@@ -55,6 +56,7 @@ impl Scope {
 pub struct Interpreter {
     scopes : RefCell<Vec<Scope>>,
     functions : HashMap<String, FunctionDecl>,
+    native_functions : HashMap<String, Box<Fn(Vec<LiteralExpr>) -> Result<LiteralExpr, String>>>
 }
 
 impl Interpreter {
@@ -63,10 +65,11 @@ impl Interpreter {
         Interpreter{
             scopes : RefCell::new(vec![Scope::new(1)]),
             functions : HashMap::new(),
+            native_functions : HashMap::new(),
         }
     }
     /// Finds the variable in the scope or the scope of its parent.
-    pub fn set_var(&self, var_name : &str, result : LiteralExpr){
+    pub fn set_var(&self, var_name : &str, result : LiteralExpr) -> Result<(), String>{
         let current_scope = self.scopes.borrow().last().unwrap().depth;
         let len = self.scopes.borrow().len();
         let mut found = false;
@@ -74,12 +77,17 @@ impl Interpreter {
             if self.scopes.borrow()[len-sc-1].has_var(var_name){
                 found = true;
                 self.scopes.borrow()[len-sc-1].set_var(var_name, result);
-                return;
+                return Ok(());
             }
         }
-        if !found {
-            self.scopes.borrow().last().unwrap().create_var(var_name, result);
-        }
+        Err(format!("Use of uninitialised variable : {}", var_name))
+    }
+    /// Creates a variable in the current scope.
+    pub fn create_var(&self, var_name : &str, result : LiteralExpr){
+        let current_scope = self.scopes.borrow().last().unwrap().depth;
+        let len = self.scopes.borrow().len();
+        let mut found = false;
+        self.scopes.borrow_mut().last().unwrap().create_var(var_name, result);
     }
     /// Finds the variable in the scope or the scope of its parent.
     pub fn has_var(&self, var_name : &str) -> bool{
@@ -110,8 +118,15 @@ impl Interpreter {
     pub fn state(&self) -> String {
         format!("vars : {:?}", self.scopes.borrow())
     }
+    /// Takes all the libraries from a file.
+    pub fn add_lib(&mut self, lib : &str) {
+        for (s, f) in get_native(lib){
+            self.native_functions.insert(s, f);
+        }
+    }
     /// Runs the programm, starting from the main function
     pub fn run(&mut self, programm : HashMap<String, FunctionDecl>) -> Result<StatementResult, String>{
+        self.add_lib("base");
         self.functions = programm;
         match self.functions.get("main"){
             Some(f) => self.function(f),
@@ -129,6 +144,7 @@ impl Interpreter {
     pub fn run_statement(&self, statement : &Statement) -> Result<StatementResult, String>{
         match statement {
             &Statement::Assignment(ref a) => self.assignment(&a),
+            &Statement::Declaration(ref d) => self.declaration(&d),
             &Statement::ExprStatement(ref e) => {self.evaluate(&e); Ok(StatementResult::Empty)},
             &Statement::Scope(ref s) => self.scope(s),
             &Statement::IfStatement(ref i) => self.if_statement(i),
@@ -137,6 +153,13 @@ impl Interpreter {
             &Statement::ReturnStatement(ref i) => Ok(StatementResult::Return(self.evaluate(i)?)),
             ref a => Err(format!("other statements are not supported for now : {:?}", a).to_string()),
         }
+    }
+    /// Parses a declaration.
+    pub fn declaration(&self, decl : &Declaration) ->Result<StatementResult, String>{
+        let name = decl.name();
+        let res = self.evaluate(decl.expr())?;
+        self.create_var(name, res);
+        Ok(StatementResult::Empty)
     }
     /// Interprets an if statement.
     pub fn if_statement(&self, statement : &IfStatement) -> Result<StatementResult, String> {
@@ -174,7 +197,7 @@ impl Interpreter {
     /// Runs an assignment.
     pub fn assignment(&self, assignment : &Assignment) -> Result<StatementResult, String>{
         let mut res = self.evaluate(assignment.expr())?;
-        let var_name = assignment.identifier().get_lexeme().to_string();
+        let var_name = assignment.identifier().to_string();
         self.set_var(&var_name, res);
         Ok(StatementResult::Empty)
     }
@@ -192,7 +215,25 @@ impl Interpreter {
         }
     }
 
+    /// Calls a function.
     pub fn function_call(&self, func : &FunctionCall) -> Result<LiteralExpr, String>{
+        if self.native_functions.contains_key(func.name()){
+            self.native_func(func)
+        } else {
+            self.user_defined_func(func)
+        }
+    }
+
+    pub fn native_func(&self, func : &FunctionCall) -> Result<LiteralExpr, String>{
+        let mut args = vec![];
+        for i in func.args() {
+            args.push(self.evaluate(i)?);
+        }
+        self.native_functions.get(func.name()).unwrap()(args)
+    }
+
+    /// Calls a function created by the user.
+    pub fn user_defined_func(&self, func : &FunctionCall) -> Result<LiteralExpr, String>{
         let depth = self.scopes.borrow().last().unwrap().depth;
         self.scopes.borrow_mut().push(Scope::new(1));
         let args_given = func.args();
@@ -201,7 +242,7 @@ impl Interpreter {
 
         let actual_args = actual_function.args();
         for i in 0..args_given.len() {
-            self.scopes.borrow_mut().last().unwrap().create_var(&actual_args[i], self.evaluate(&args_given[i])?);
+            self.create_var(&actual_args[i], self.evaluate(&args_given[i])?);
         }
         for s in actual_function.scope() {
             let res = self.run_statement(s)?;
@@ -253,6 +294,7 @@ impl Interpreter {
             &TokenType::GREATER => exp_left.gt(&exp_right),
             &TokenType::LessEqual => exp_left.le(&exp_right),
             &TokenType::LESS => exp_left.lt(&exp_right),
+            &TokenType::EqualEqual => exp_left.equals(&exp_right),
             e => Err(format!("operator {:?} can not be applied to binbary expression", e))
         }
     }

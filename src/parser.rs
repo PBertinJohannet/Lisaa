@@ -207,11 +207,23 @@ impl Parser {
     /// Matches a declaration or an assignment.
     pub fn declaration(&mut self) -> Result<Statement, String> {
         let decl = match self.peek().get_type() {
-            &TokenType::IDENTIFIER => self.assignment(),
+            &TokenType::VAR => self.parse_declaration(),
+            &TokenType::IDENTIFIER => {
+                let expr = self.expression()?;
+                self.assignment(expr)
+            },
             _ => self.return_statement(),
         };
         self.expect_semicolon(decl?)
     }
+    pub fn parse_declaration(&mut self) -> Result<Statement, String> {
+        let val_type = "var";
+        self.advance();
+        let ident = self.expression()?;
+        let ass = self.parse_assignment(&ident)?;
+        Ok(Statement::Declaration(Declaration::new(val_type.to_string(), ident.identifier()?.to_string(), ass)))
+    }
+
     /// Parses a return statement
     pub fn return_statement(&mut self) -> Result<Statement, String> {
         match self.peek().get_type() {
@@ -226,12 +238,19 @@ impl Parser {
 
     /// Parses an assignment.
     /// should probably parse
-    pub fn assignment(&mut self) -> Result<Statement, String> {
-        let ident = self.advance();
-        match self.match_nexts(&[TokenType::EQUAL]){
-            true => Ok(Statement::Assignment(Assignment::new(ident, self.expression()?))),
-            false => Err("expected Equals after variable declaration".to_string()),
+    pub fn assignment(&mut self, ex : Expr) -> Result<Statement, String> {
+        match self.peek().get_type(){
+            &TokenType::EQUAL => Ok(Statement::Assignment(self.parse_assignment(&ex)?)),
+            &TokenType::SEMICOLON => Ok(Statement::ExprStatement(ex)),
+            _ => Err("expected Equals or end of declaration after expression declaration".to_string()),
         }
+    }
+    /// Parses an assignment.
+    pub fn parse_assignment(&mut self, id : &Expr) -> Result<Assignment, String>{
+        self.advance();
+        let lit = id.identifier()?;
+        Ok(Assignment::new(lit.to_string(), self.expression()?))
+
     }
     /// Matches an expression statement, an expr ending with a semicolon.
     pub fn expr_statement(&mut self) -> Result<Statement, String>{
@@ -332,7 +351,7 @@ impl Parser {
             }
         }
         self.advance();
-        Ok(Expr::FunctionCall(FunctionCall::new(lit.identifier().to_string(), args)))
+        Ok(Expr::FunctionCall(FunctionCall::new(lit.identifier()?.to_string(), args)))
     }
 
     pub fn expect(&mut self, token_type : TokenType) -> Result<(), String> {
