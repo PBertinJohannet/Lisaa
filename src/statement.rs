@@ -64,20 +64,20 @@ pub enum Statement {
 #[derive(Debug)]
 /// An assignment is an identifier plus an expression.
 pub struct Assignment {
-    identifier : Token,
+    identifier : String,
     expr : Expr,
 }
 
 impl Assignment {
     /// Creates a new assignment.
-    pub fn new(identifier : Token, expr : Expr) -> Self{
+    pub fn new(identifier : String, expr : Expr) -> Self{
         Assignment {
             identifier : identifier,
             expr : expr,
         }
     }
     /// Returns the identifier.
-    pub fn identifier(&self) -> &Token {
+    pub fn identifier(&self) -> &String {
         &self.identifier
     }
     /// Returns the expression.
@@ -89,19 +89,27 @@ impl Assignment {
 #[derive(Debug)]
 /// A declaration is an assignment. no null values
 pub struct Declaration {
-    val_type : Token,
-    identifier : Token,
-    expr : Option<Expr>,
+    val_name : String,
+    val_type : String,
+    assignment : Assignment,
 }
 
 impl Declaration {
     /// Creates a new declaration.
-    pub fn new(val_type : Token, identifier : Token, expr : Option<Expr>) -> Self {
+    pub fn new(val_type : String, identifier : String, assignment : Assignment) -> Self {
         Declaration {
             val_type : val_type,
-            identifier : identifier,
-            expr : expr,
+            val_name : identifier,
+            assignment : assignment,
         }
+    }
+    /// Returns the name of the variable assigned to.
+    pub fn name(&self) -> &String {
+        &self.val_name
+    }
+    /// Returns the expression assigned to the value.
+    pub fn expr(&self) -> &Expr {
+        self.assignment.expr()
     }
 }
 /// Represents an if statement, its condition and the statement to exeute if it is true.

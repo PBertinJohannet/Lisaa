@@ -45,6 +45,8 @@ pub trait BinaryOperations {
     fn le(&self, other : &Self) -> Result<LiteralExpr, String>;
     /// Returns 1 or 0 if other is greater or equal.
     fn lt(&self, other : &Self) -> Result<LiteralExpr, String>;
+    /// Returns 1 if they are equals.
+    fn equals(&self, other : &Self) -> Result<LiteralExpr, String>;
 }
 
 
@@ -126,6 +128,12 @@ impl BinaryOperations for LiteralExpr {
                 _ => Err("Cannot compare string with int".to_string()),
             }
             _ => Err("Cannot compare with string".to_string()),
+        }
+    }
+    fn equals(&self, other: &Self) -> Result<LiteralExpr, String> {
+        match self == other {
+            true => Ok(LiteralExpr::NUMBER(0.0)),
+            false => Ok(LiteralExpr::NUMBER(1.0)),
         }
     }
 }

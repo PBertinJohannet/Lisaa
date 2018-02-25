@@ -81,8 +81,6 @@ pub enum TokenType {
     /// The class keyword, not used yet
     OR,
     /// The class keyword, not used yet
-    PRINT,
-    /// The class keyword, not used yet
     RETURN,
     /// The class keyword, not used yet
     SUPER,

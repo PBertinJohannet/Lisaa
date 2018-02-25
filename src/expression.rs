@@ -20,10 +20,10 @@ pub enum Expr {
 }
 
 impl Expr {
-    pub fn identifier(&self) -> &String {
+    pub fn identifier(&self) -> Result<&String, String> {
         match self {
-            &Expr::Identifier(ref i) =>i,
-            _ => panic!("parsing identifier where not expected")
+            &Expr::Identifier(ref i) =>Ok(i),
+            _ => panic!("expected identifier")
         }
     }
 }
@@ -110,7 +110,7 @@ impl BinaryExpr {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 /// An literal expression is a string/number literal.
 pub enum LiteralExpr {
     /// Anything from bool to null will be a number

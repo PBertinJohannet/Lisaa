@@ -16,7 +16,6 @@ lazy_static! {
         m.insert("if",     TokenType::IF);
         m.insert("nil",    TokenType::NIL);
         m.insert("or",     TokenType::OR);
-        m.insert("print",  TokenType::PRINT);
         m.insert("return", TokenType::RETURN);
         m.insert("super",  TokenType::SUPER);
         m.insert("this",   TokenType::THIS);

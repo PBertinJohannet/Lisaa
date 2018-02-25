@@ -23,7 +23,6 @@ impl Ytp {
             Ok(e) => {
                 let mut inter = Interpreter::new(None);
                 inter.run(e)?;
-                println!("{:?}", inter.state());
             },
             Err(e) => e.iter().map(|p_err| eprintln!("{}\n", p_err)).collect(),
         }
