@@ -18,6 +18,7 @@ mod interpreter;
 mod operations;
 pub mod statement;
 mod native;
+mod vartype;
 use std::io::Read;
 
 use clap::{Arg, App};
