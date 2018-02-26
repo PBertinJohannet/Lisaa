@@ -6,7 +6,6 @@ use expression::Expr;
 use std::fmt;
 use statement::{Statement, Declaration, Assignment, IfStatement, FunctionDecl, WhileStatement};
 use std::collections::HashMap;
-use vartype::VarType;
 
 #[derive(Debug)]
 /// The struct for a parse error, contains just enough information to show
@@ -90,7 +89,6 @@ impl Parser {
         match self.peek().get_type() {
             &TokenType::FUN => {
                 self.advance(); // skip the func keyword
-                let type_var = self.type_var()?;
                 let name = match self.check(&TokenType::IDENTIFIER){
                     true => self.advance().get_lexeme().to_string(),
                     false => return Err("Expected identifier after function".to_string()),
@@ -101,10 +99,6 @@ impl Parser {
             }
             _ => Err("error : expected function declaration there".to_string()),
         }
-    }
-    /// Gets a declaration of variable type.
-    pub fn type_var(&mut self) -> Result<VarType, String>{
-        VarType::new(self.advance())?
     }
     /// Parses the declaration of arguments
     /// Should be refactored a little bit tho.

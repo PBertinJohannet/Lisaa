@@ -53,6 +53,31 @@ impl FunctionCall {
     }
 }
 
+/// Represents a function called in the interpreter.
+#[derive(Debug)]
+pub struct FunctionCalled {
+    name : String,
+    args : Vec<LiteralExpr>
+}
+
+impl FunctionCalled {
+    /// Creates a new function call expression
+    pub fn new(name : String, args : Vec<LiteralExpr>) -> Self {
+        FunctionCalled {
+            name : name,
+            args : args,
+        }
+    }
+    /// Returns the name.
+    pub fn name(&self) -> &String {
+        &self.name
+    }
+    /// Returns the list of arguments.
+    pub fn args(&self) -> &Vec<LiteralExpr>{
+        &self.args
+    }
+}
+
 /// Operators are represented by tokens for now.
 pub type Operator = Token;
 

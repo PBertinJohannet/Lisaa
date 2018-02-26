@@ -165,7 +165,10 @@ impl Interpreter {
     pub fn if_statement(&self, statement : &IfStatement) -> Result<StatementResult, String> {
         let res = self.evaluate(statement.condition())?;
         if self.is_true(&res) {
-            self.run_statement(statement.statement())?;
+            let res = self.run_statement(statement.statement())?;
+            if res.is_quit(){
+                return Ok(res);
+            }
         }
         Ok(StatementResult::Empty)
     }
@@ -174,6 +177,10 @@ impl Interpreter {
         let mut res = self.evaluate(statement.condition())?;
         while self.is_true(&res) {
             self.run_statement(statement.statement())?;
+            let r = self.run_statement(statement.statement())?;
+            if r.is_quit(){
+                return Ok(r);
+            }
             res = self.evaluate(statement.condition())?;
         }
         Ok(StatementResult::Empty)
@@ -185,7 +192,6 @@ impl Interpreter {
         for s in scope {
             let res = self.run_statement(s)?;
             if res.is_quit(){
-                println!("quit scope ");
                 self.scopes.borrow_mut().pop();
                 return Ok(res);
             }
@@ -220,7 +226,8 @@ impl Interpreter {
         if self.native_functions.contains_key(func.name()){
             self.native_func(func)
         } else {
-            self.user_defined_func(func)
+            self.user_defined_func(func.name(), func.args().iter().map(|a|
+                self.evaluate(a)).collect())
         }
     }
 
@@ -233,21 +240,19 @@ impl Interpreter {
     }
 
     /// Calls a function created by the user.
-    pub fn user_defined_func(&self, func : &FunctionCall) -> Result<LiteralExpr, String>{
+    pub fn user_defined_func(&self, name : &String, args_given : Vec<Result<LiteralExpr, String>>) -> Result<LiteralExpr, String>{
         let depth = self.scopes.borrow().last().unwrap().depth;
         self.scopes.borrow_mut().push(Scope::new(1));
-        let args_given = func.args();
-        let actual_function = self.functions.get(func.name())
+        let actual_function = self.functions.get(name)
             .ok_or("could not find function in scope".to_string())?;
-
         let actual_args = actual_function.args();
         for i in 0..args_given.len() {
-            self.create_var(&actual_args[i], self.evaluate(&args_given[i])?);
+            self.create_var(&actual_args[i], args_given[i].clone()?);
         }
         for s in actual_function.scope() {
             let res = self.run_statement(s)?;
             match res {
-                StatementResult::Return(l) => {println!("returning value"); self.scopes.borrow_mut().pop(); return Ok(l)},
+                StatementResult::Return(l) => { self.scopes.borrow_mut().pop(); return Ok(l)},
                 StatementResult::Break => Err("can't break a function like that you silly".to_string()),
                 _ => Ok(())
             }?;

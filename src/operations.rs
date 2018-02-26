@@ -74,7 +74,7 @@ impl BinaryOperations for LiteralExpr {
     fn times(&self, other: &Self) -> Result<LiteralExpr, String> {
         match self{
             &LiteralExpr::NUMBER(n) =>  match other {
-                &LiteralExpr::NUMBER(k) => Ok(LiteralExpr::NUMBER(n + k)),
+                &LiteralExpr::NUMBER(k) => Ok(LiteralExpr::NUMBER(n * k)),
                 _ => Err("Cannot multiply string with int".to_string()),
             }
             _ => Err("Cannot multiply with string".to_string()),
@@ -132,8 +132,8 @@ impl BinaryOperations for LiteralExpr {
     }
     fn equals(&self, other: &Self) -> Result<LiteralExpr, String> {
         match self == other {
-            true => Ok(LiteralExpr::NUMBER(0.0)),
-            false => Ok(LiteralExpr::NUMBER(1.0)),
+            true => Ok(LiteralExpr::NUMBER(1.0)),
+            false => Ok(LiteralExpr::NUMBER(0.0)),
         }
     }
 }
