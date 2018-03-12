@@ -7,11 +7,29 @@ A interpreter for a programming language.
 Just create a file like the .ytp or .build
 
 
-
+then run
 ```
 cargo build --release
 target/release/ytp my_file.ytp
 ```
 
-It will parse and emit errors if some expressions could not be parsed correctly.
-It will also evaluate unary operation.
+currently it supports functions, strings and integers.
+
+#Example
+
+```
+fn main(a) {
+     var b = 5;
+     while b < 50 {
+        print("fac ", b, " is ", fac(b));
+        b=b+1;
+    }
+}
+fn fac(a){
+    if a == 1{
+        return 1;
+    }
+    return a * fac(a-1);
+}
+```
+

@@ -257,7 +257,6 @@ impl Interpreter {
                 _ => Ok(())
             }?;
         }
-        println!("returning nothing");
         self.scopes.borrow_mut().pop();
         Ok(LiteralExpr::NUMBER(0.0))
     }
