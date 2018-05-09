@@ -1,5 +1,5 @@
 //! The interpreter for the language
-use expression::{Expr, UnaryExpr, LiteralExpr, BinaryExpr, FunctionCall};
+use expression::{Expr, UnaryExpr, LiteralExpr, BinaryExpr, FunctionCall, ExprEnum};
 use token::TokenType;
 use operations::{BinaryOperations, UnaryOperations};
 use statement::{Statement, Assignment, IfStatement, StatementResult, FunctionDecl, WhileStatement, Declaration};
@@ -10,7 +10,7 @@ use native::get_native;
 
 /// Represents a scope with its variables.
 #[derive(Debug)]
-pub struct Scope {
+struct Scope {
     variables : Rc<RefCell<HashMap<String, LiteralExpr>>>,
     /// This represents the number of scopes that shares variables with this one.
     depth : usize,
@@ -212,12 +212,12 @@ impl Interpreter {
     /// Returns a litteral if possible,
     /// if any fail occurs, returns an error.
     pub fn evaluate(&self, expr : &Expr) -> Result<LiteralExpr, String>{
-        match expr {
-            &Expr::Literal(ref l) => Ok(l.clone()),
-            &Expr::Unary(ref u) => self.unary(u),
-            &Expr::Binary(ref b) => self.binary(b),
-            &Expr::Identifier(ref i) => self.identifier(i),
-            &Expr::FunctionCall(ref f) => self.function_call(f),
+        match expr.expr() {
+            &ExprEnum::Literal(ref l) => Ok(l.clone()),
+            &ExprEnum::Unary(ref u) => self.unary(u),
+            &ExprEnum::Binary(ref b) => self.binary(b),
+            &ExprEnum::Identifier(ref i) => self.identifier(i),
+            &ExprEnum::FunctionCall(ref f) => self.function_call(f),
         }
     }
 
@@ -247,7 +247,7 @@ impl Interpreter {
             .ok_or("could not find function in scope".to_string())?;
         let actual_args = actual_function.args();
         for i in 0..args_given.len() {
-            self.create_var(&actual_args[i], args_given[i].clone()?);
+            self.create_var(&actual_args[i].name(), args_given[i].clone()?);
         }
         for s in actual_function.scope() {
             let res = self.run_statement(s)?;

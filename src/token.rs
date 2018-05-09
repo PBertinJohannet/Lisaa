@@ -54,8 +54,8 @@ pub enum TokenType {
     /// A number.
     NUMBER,
 
-    /// The type of a num variable.
-    NUM,
+    /// The type of a num variable removed .
+    //NUM,
     /// The type string before an assignment.
     StringDecl,
 

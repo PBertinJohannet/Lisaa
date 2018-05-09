@@ -1,19 +1,49 @@
 //! The module for statement.
 use expression::{Expr, LiteralExpr};
-use token::Token;
 
+/// A variable associated with a type.
+#[derive(Debug, Clone)]
+pub struct TypedVar  {
+    type_var : String,
+    name : String,
+}
+
+impl TypedVar {
+    /// Creates a new variable with the type.
+    pub fn new(type_var : String, name : String) -> TypedVar{
+        TypedVar {
+            name : name,
+            type_var : type_var,
+        }
+    }
+    /// Matches any type (used in polyvariadic functions)
+    pub fn any() -> Self {
+        TypedVar {
+            name : "any".to_string(),
+            type_var : "var".to_string(),
+        }
+    }
+    /// Returns the name of the variable.
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+    /// Returns the name of the variable.
+    pub fn args(&self) -> &String {
+        &self.type_var
+    }
+}
 
 /// A function declaration
 #[derive(Debug)]
 pub struct FunctionDecl{
     name : String,
-    args : Vec<String>,
+    args : Vec<TypedVar>,
     scope : Statement,
 }
 
 impl FunctionDecl {
     /// Creates a new function declaration.
-    pub fn new(name : String, args : Vec<String>, scope : Statement) -> Self {
+    pub fn new(name : String, args : Vec<TypedVar>, scope : Statement) -> Self {
         FunctionDecl {
             name : name,
             args : args,
@@ -25,10 +55,11 @@ impl FunctionDecl {
         &self.name
     }
     /// Returns the arguments of a function.
-    pub fn args(&self) -> &Vec<String> {
+    pub fn args(&self) -> &Vec<TypedVar> {
         &self.args
     }
     /// Returns the scope of the function.
+    /// TODO : this unwrap ?
     pub fn scope(&self) -> &Vec<Statement >{
         let val = match &self.scope {
             &Statement::Scope(ref v) => Some(v),

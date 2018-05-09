@@ -1,10 +1,9 @@
 //! Contains the code for the parser,
 //! currently only contains enough to parse expressions and return parse errors.
 use token::{TokenType, Token};
-use expression::{BinaryExpr, UnaryExpr, LiteralExpr, FunctionCall};
 use expression::Expr;
 use std::fmt;
-use statement::{Statement, Declaration, Assignment, IfStatement, FunctionDecl, WhileStatement};
+use statement::{Statement, Declaration, Assignment, IfStatement, FunctionDecl, WhileStatement, TypedVar};
 use std::collections::HashMap;
 
 #[derive(Debug)]
@@ -102,14 +101,14 @@ impl Parser {
     }
     /// Parses the declaration of arguments
     /// Should be refactored a little bit tho.
-    pub fn func_args(&mut self) -> Result<Vec<String>, String>{
+    pub fn func_args(&mut self) -> Result<Vec<TypedVar>, String>{
         let mut args = vec![];
         self.expect(TokenType::LeftParen)?;
         loop {
             match self.peek().get_type(){
                 &TokenType::RightParen => break,
                 &TokenType::IDENTIFIER => {
-                    args.push(self.advance().get_lexeme().to_string());
+                    args.push(self.typed_identifier()?);
                     match self.peek().get_type(){
                         &TokenType::RightParen => break,
                         &TokenType::COMMA => {self.advance();}
@@ -121,6 +120,11 @@ impl Parser {
         }
         self.advance();
         Ok(args)
+    }
+
+    pub fn typed_identifier(&mut self) -> Result<TypedVar, String>{
+        Ok(TypedVar::new(self.advance().get_lexeme().to_string(),
+                         self.advance().get_lexeme().to_string()))
     }
 
     /// Expects a semeicolon after the statement, else break it.
@@ -207,7 +211,10 @@ impl Parser {
     /// Matches a declaration or an assignment.
     pub fn declaration(&mut self) -> Result<Statement, String> {
         let decl = match self.peek().get_type() {
-            &TokenType::VAR => self.parse_declaration(),
+            &TokenType::VAR => {
+                self.advance();
+                self.parse_declaration("var".to_string())
+            },
             &TokenType::IDENTIFIER => {
                 let expr = self.expression()?;
                 self.assignment(expr)
@@ -216,12 +223,10 @@ impl Parser {
         };
         self.expect_semicolon(decl?)
     }
-    pub fn parse_declaration(&mut self) -> Result<Statement, String> {
-        let val_type = "var";
-        self.advance();
+    pub fn parse_declaration(&mut self, val_type : String) -> Result<Statement, String> {
         let ident = self.expression()?;
         let ass = self.parse_assignment(&ident)?;
-        Ok(Statement::Declaration(Declaration::new(val_type.to_string(), ident.identifier()?.to_string(), ass)))
+        Ok(Statement::Declaration(Declaration::new(val_type, ident.get_identifier()?.to_string(), ass)))
     }
 
     /// Parses a return statement
@@ -242,13 +247,14 @@ impl Parser {
         match self.peek().get_type(){
             &TokenType::EQUAL => Ok(Statement::Assignment(self.parse_assignment(&ex)?)),
             &TokenType::SEMICOLON => Ok(Statement::ExprStatement(ex)),
+            &TokenType::IDENTIFIER => self.parse_declaration(ex.get_identifier()?.to_string()),
             _ => Err("expected Equals or end of declaration after expression declaration".to_string()),
         }
     }
     /// Parses an assignment.
     pub fn parse_assignment(&mut self, id : &Expr) -> Result<Assignment, String>{
         self.advance();
-        let lit = id.identifier()?;
+        let lit = id.get_identifier()?;
         Ok(Assignment::new(lit.to_string(), self.expression()?))
 
     }
@@ -266,7 +272,7 @@ impl Parser {
         while self.match_nexts(&[TokenType::EqualEqual, TokenType::BangEqual]) {
             let previous = self.previous();
             let right = self.comparison()?;
-            let new_expr = Expr::Binary(BinaryExpr::new(expr, previous.clone(), right));
+            let new_expr = Expr::binary(expr, previous.clone(), right);
             expr = new_expr;
         }
         Ok(expr)
@@ -285,7 +291,7 @@ impl Parser {
         {
             let previous = self.previous();
             let right = self.addition()?;
-            let new_expr = Expr::Binary(BinaryExpr::new(expr, previous.clone(), right));
+            let new_expr = Expr::binary(expr, previous.clone(), right);
             expr = new_expr;
         }
         Ok(expr)
@@ -296,7 +302,7 @@ impl Parser {
         while self.match_nexts(&[TokenType::MINUS, TokenType::PLUS]) {
             let previous = self.previous();
             let right = self.multiplication()?;
-            let new_expr = Expr::Binary(BinaryExpr::new(expr, previous.clone(), right));
+            let new_expr = Expr::binary(expr, previous.clone(), right);
             expr = new_expr;
         }
         Ok(expr)
@@ -308,7 +314,7 @@ impl Parser {
         while self.match_nexts(&[TokenType::STAR, TokenType::SLASH]) {
             let previous = self.previous();
             let right = self.unary()?;
-            let new_expr = Expr::Binary(BinaryExpr::new(expr, previous.clone(), right));
+            let new_expr = Expr::binary(expr, previous.clone(), right);
             expr = new_expr;
         }
         Ok(expr)
@@ -320,7 +326,7 @@ impl Parser {
             let previous = self.previous();
             println!("prev : {:?} ask unary", previous);
             let right = self.unary()?;
-            return Ok(Expr::Unary(UnaryExpr::new(previous.clone(), right)));
+            return Ok(Expr::unary(previous.clone(), right));
         }
         return self.function_call();
     }
@@ -351,7 +357,7 @@ impl Parser {
             }
         }
         self.advance();
-        Ok(Expr::FunctionCall(FunctionCall::new(lit.identifier()?.to_string(), args)))
+        Ok(Expr::function_call(lit.get_identifier()?.to_string(), args))
     }
 
     pub fn expect(&mut self, token_type : TokenType) -> Result<(), String> {
@@ -376,16 +382,15 @@ impl Parser {
         } else {
             let token = self.advance();
             match token.get_type() {
-                &TokenType::NUMBER => Ok(Expr::Literal(LiteralExpr::NUMBER(
+                &TokenType::NUMBER => Ok(Expr::number(
                     token.get_lexeme().parse::<f64>().unwrap(),
-                ))),
-                &TokenType::STRING => Ok(Expr::Literal(
-                    LiteralExpr::STRING(token.get_lexeme().to_string()),
                 )),
-                &TokenType::NIL => Ok(Expr::Literal(LiteralExpr::NUMBER(0.0))),
-                &TokenType::FALSE => Ok(Expr::Literal(LiteralExpr::NUMBER(0.0))),
-                &TokenType::TRUE => Ok(Expr::Literal(LiteralExpr::NUMBER(1.0))),
-                &TokenType::IDENTIFIER => Ok(Expr::Identifier(token.get_lexeme().to_string())),
+                &TokenType::STRING => Ok(Expr::string(token.get_lexeme().to_string(),
+                )),
+                &TokenType::NIL => Err("nil no longer supported".to_string()),
+                &TokenType::FALSE => Ok(Expr::number(0.0)),
+                &TokenType::TRUE => Ok(Expr::number(1.0)),
+                &TokenType::IDENTIFIER => Ok(Expr::identifier(token.get_lexeme().to_string())),
                 _ => Err("Cant parse literal".to_string()),
             }
         }
