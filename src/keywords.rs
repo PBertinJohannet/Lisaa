@@ -22,7 +22,7 @@ lazy_static! {
         m.insert("true",   TokenType::TRUE);
         m.insert("var",    TokenType::VAR);
         m.insert("while",  TokenType::WHILE);
-        m.insert("num",  TokenType::NUM);
+        //m.insert("num",  TokenType::NUM);
         m.insert("string",  TokenType::StringDecl);
         m
     };

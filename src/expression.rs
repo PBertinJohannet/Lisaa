@@ -6,7 +6,7 @@ use std::fmt;
 
 #[derive(Debug)]
 /// The base for an expression.
-pub enum Expr {
+pub enum ExprEnum {
     /// The unary expressions, see below.
     Unary(UnaryExpr),
     /// The binary expressions, see below.
@@ -19,11 +19,57 @@ pub enum Expr {
     FunctionCall(FunctionCall),
 }
 
+#[derive(Debug)]
+pub struct Expr {
+    expr : ExprEnum,
+    return_type : String,
+}
+
+
 impl Expr {
-    pub fn identifier(&self) -> Result<&String, String> {
-        match self {
-            &Expr::Identifier(ref i) =>Ok(i),
-            _ => panic!("expected identifier")
+   pub fn binary(lhs: Expr, operator: Operator, rhs: Expr) -> Self {
+        Expr {
+            expr : ExprEnum::Binary(BinaryExpr::new(lhs, operator, rhs)),
+            return_type : "var".to_string()
+        }
+    }
+    pub fn expr(&self) -> &ExprEnum {
+        &self.expr
+    }
+    pub fn function_call(name : String, args : Vec<Expr>) -> Self {
+        Expr {
+            expr : ExprEnum::FunctionCall(FunctionCall::new(name, args)),
+            return_type : "var".to_string()
+        }
+    }
+    pub fn unary(operator: Operator, expr: Expr) -> Self {
+        Expr {
+            expr : ExprEnum::Unary(UnaryExpr::new(operator, expr)),
+            return_type : "var".to_string()
+        }
+    }
+    pub fn number(num : f64) -> Self {
+        Expr {
+            expr : ExprEnum::Literal(LiteralExpr::NUMBER(num)),
+            return_type : "num".to_string()
+        }
+    }
+    pub fn string(string : String) -> Self {
+        Expr {
+            expr : ExprEnum::Literal(LiteralExpr::STRING(string)),
+            return_type : "str".to_string()
+        }
+    }
+    pub fn identifier(string : String) -> Self {
+        Expr {
+            expr : ExprEnum::Identifier(string),
+            return_type : "var".to_string()
+        }
+    }
+    pub fn get_identifier(&self) -> Result<&String, String> {
+        match self.expr {
+            ExprEnum::Identifier(ref i) =>Ok(i),
+            _ => Err("expected identifier".to_string())
         }
     }
 }
