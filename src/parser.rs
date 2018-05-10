@@ -93,12 +93,22 @@ impl Parser {
                     false => return Err("Expected identifier after function".to_string()),
                 };
                 let arguments = self.func_args()?;
+                let return_type = self.func_return_type()?;
                 let scope = self.scope()?;
-                Ok(FunctionDecl::new(name, arguments, scope))
+                Ok(FunctionDecl::new(name, arguments, scope, return_type))
             }
             _ => Err("error : expected function declaration there".to_string()),
         }
     }
+
+    /// Parses the return type of a function.
+    pub fn func_return_type(&mut self) -> Result<String, String>{
+        if self.match_nexts(&[TokenType::ARROW]){
+            return Ok(self.advance().get_lexeme().to_string());
+        }
+        return Ok(String::from("any"))
+    }
+
     /// Parses the declaration of arguments
     /// Should be refactored a little bit tho.
     pub fn func_args(&mut self) -> Result<Vec<TypedVar>, String>{

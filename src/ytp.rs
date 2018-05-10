@@ -2,6 +2,7 @@
 use scanner::Scanner;
 use parser::Parser;
 use interpreter::Interpreter;
+use typecheck::TypeChecker;
 /// The interpreter, contains the code.
 pub struct Ytp {
     source: String,
@@ -17,15 +18,18 @@ impl Ytp {
         //println!("source : {}", self.source);
 
         let tokens = Scanner::new(&self.source).tokens()?;
-        let tree = Parser::new(tokens).program();
-
-        match tree {
-            Ok(e) => {
-                let mut inter = Interpreter::new(None);
-                inter.run(e)?;
-            },
-            Err(e) => e.iter().map(|p_err| eprintln!("{}\n", p_err)).collect(),
+        let mut tree = Parser::new(tokens).program().map_err(|e|{
+                for p_err in e.iter(){
+                    eprintln!("{}\n", p_err);
+                }
+                String::from("Compilation aborted because of preceding errors.")
+            })?;
+        if let Err(e) = TypeChecker::new().resolve(&mut tree){
+            println!("TypeError : {}", e);
+            return Err(String::from("Compilation aborted because of preceding errors."));
         }
+        let mut inter = Interpreter::new(None);
+        inter.run(tree)?;
         Ok(())
     }
 }

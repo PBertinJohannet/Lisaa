@@ -27,6 +27,8 @@ pub enum TokenType {
     SLASH,
     /// A star "*".
     STAR,
+    /// An arrow "->"
+    ARROW,
 
     // One or two character tokens.
     /// A not "!".

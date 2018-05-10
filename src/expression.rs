@@ -4,7 +4,7 @@
 use token::Token;
 use std::fmt;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// The base for an expression.
 pub enum ExprEnum {
     /// The unary expressions, see below.
@@ -19,7 +19,7 @@ pub enum ExprEnum {
     FunctionCall(FunctionCall),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Expr {
     expr : ExprEnum,
     return_type : String,
@@ -35,6 +35,15 @@ impl Expr {
     }
     pub fn expr(&self) -> &ExprEnum {
         &self.expr
+    }
+    pub fn expr_mut(&mut self) -> &mut ExprEnum {
+        &mut self.expr
+    }
+    pub fn set_type(&mut self, ret_type : String){
+        self.return_type = ret_type;
+    }
+    pub fn return_type(&self) -> &String {
+        &self.return_type
     }
     pub fn function_call(name : String, args : Vec<Expr>) -> Self {
         Expr {
@@ -75,7 +84,7 @@ impl Expr {
 }
 
 /// Represents a function call in the code.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FunctionCall {
     name : String,
     args : Vec<Expr>
@@ -102,7 +111,7 @@ impl FunctionCall {
 /// Operators are represented by tokens for now.
 pub type Operator = Token;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// An unary expression contains only an operator and the expression.
 pub struct UnaryExpr {
     operator: Operator,
@@ -120,12 +129,16 @@ impl UnaryExpr {
     pub fn expression(&self) -> &Expr {
         &*self.expr
     }
+    /// Returns the expression.
+    pub fn expression_mut(&mut self) -> &mut Expr {
+        &mut *self.expr
+    }
     /// Returns the operator.
     pub fn operator(&self) -> Operator {
         self.operator.clone()
     }
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// An unary expression contains an operator and two expressions.
 pub struct BinaryExpr {
     lhs: Box<Expr>,
