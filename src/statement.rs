@@ -34,21 +34,27 @@ impl TypedVar {
 }
 
 /// A function declaration
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FunctionDecl{
     name : String,
     args : Vec<TypedVar>,
     scope : Statement,
+    ret_type : String,
 }
 
 impl FunctionDecl {
     /// Creates a new function declaration.
-    pub fn new(name : String, args : Vec<TypedVar>, scope : Statement) -> Self {
+    pub fn new(name : String, args : Vec<TypedVar>, scope : Statement, ret_type : String) -> Self {
         FunctionDecl {
             name : name,
             args : args,
             scope : scope,
+            ret_type : ret_type
         }
+    }
+    /// returns the return type of the function.
+    pub fn ret_type(&self) -> &String {
+        &self.ret_type
     }
     /// Returns the name of the function.
     pub fn name(&self) -> &String {
@@ -67,9 +73,18 @@ impl FunctionDecl {
         };
         val.unwrap()
     }
+    /// Returns the scope of the function.
+    /// TODO : this unwrap ?
+    pub fn scope_mut(&mut self) -> &mut Vec<Statement >{
+        let val = match &mut self.scope {
+            &mut Statement::Scope(ref mut v) => Some(v),
+            _ => None,
+        };
+        val.unwrap()
+    }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// The enum for statements.
 pub enum Statement {
     /// an expression followed by a semicolon.
@@ -92,7 +107,7 @@ pub enum Statement {
 
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// An assignment is an identifier plus an expression.
 pub struct Assignment {
     identifier : String,
@@ -115,9 +130,13 @@ impl Assignment {
     pub fn expr(&self) -> &Expr {
         &self.expr
     }
+    /// Returns the expression.
+    pub fn expr_mut(&mut self) -> &mut Expr {
+        &mut self.expr
+    }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// A declaration is an assignment. no null values
 pub struct Declaration {
     val_name : String,
@@ -139,12 +158,21 @@ impl Declaration {
         &self.val_name
     }
     /// Returns the expression assigned to the value.
+    pub fn expr_mut(&mut self) -> &mut Expr {
+        self.assignment.expr_mut()
+    }
+    /// Returns the expression assigned to the value.
     pub fn expr(&self) -> &Expr {
         self.assignment.expr()
     }
+    /// Returns the expression assigned to the value.
+    pub fn val_type(&self) -> &String {
+        &self.val_type
+    }
+
 }
 /// Represents an if statement, its condition and the statement to exeute if it is true.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct IfStatement {
     cond : Expr,
     statement : Box<Statement>,
@@ -168,7 +196,7 @@ impl IfStatement {
 }
 
 /// Represents an while statement, its condition and the statement to exeute if it is true.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct WhileStatement {
     cond : Expr,
     statement : Box<Statement>,
@@ -192,7 +220,7 @@ impl WhileStatement {
 }
 
 /// The result of a statement.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum StatementResult {
     /// The statement does not return anything.
     Empty,

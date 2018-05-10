@@ -58,9 +58,12 @@ impl Scanner {
             '}' => Ok(self.token(TokenType::RightBrace, "")),
             ',' => Ok(self.token(TokenType::COMMA, "")),
             '.' => Ok(self.token(TokenType::DOT, "")),
-            '-' => Ok(self.token(TokenType::MINUS, "")),
             '+' => Ok(self.token(TokenType::PLUS, "")),
             ';' => Ok(self.token(TokenType::SEMICOLON, "")),
+            '-' => Ok(match self.match_next('>') {
+                true => self.token(TokenType::ARROW, ""),
+                _ => self.token(TokenType::MINUS, ""),
+            }),
             '*' => Ok(self.token(TokenType::STAR, "")),
             '!' => Ok(match self.match_next('=') {
                 true => self.token(TokenType::BangEqual, ""),
