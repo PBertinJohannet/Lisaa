@@ -1,4 +1,4 @@
-fn main (str a) {
+fn main (str given) {
     str b = 3;
     num a = 5;
 	while b < 50{

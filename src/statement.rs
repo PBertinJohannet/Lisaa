@@ -27,8 +27,8 @@ impl TypedVar {
     pub fn name(&self) -> &str {
         &self.name
     }
-    /// Returns the name of the variable.
-    pub fn args(&self) -> &String {
+    /// Returns the type of the variable.
+    pub fn type_var(&self) -> &String {
         &self.type_var
     }
 }
@@ -193,6 +193,14 @@ impl IfStatement {
     pub fn statement(&self) -> &Statement{
         &*self.statement
     }
+    /// Returns the condition to execute.
+    pub fn condition_mut(&mut self) -> &mut Expr {
+        &mut self.cond
+    }
+    /// Returns the statement to execute.
+    pub fn statement_mut(&mut self) -> &mut Statement{
+        &mut *self.statement
+    }
 }
 
 /// Represents an while statement, its condition and the statement to exeute if it is true.
@@ -216,6 +224,14 @@ impl WhileStatement {
     /// Returns the statement to execute.
     pub fn statement(&self) -> &Statement{
         &*self.statement
+    }
+    /// Returns the condition to execute.
+    pub fn condition_mut(&mut self) -> &mut Expr {
+        &mut self.cond
+    }
+    /// Returns the statement to execute.
+    pub fn statement_mut(&mut self) -> &mut Statement{
+        &mut *self.statement
     }
 }
 

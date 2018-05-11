@@ -117,27 +117,57 @@ impl TypeChecker {
     ///     Checks the return type
     pub fn function(&mut self, func : &mut FunctionDecl) -> Result<(), String>{
         let ret_type = func.ret_type().clone();
+        let depth = self.scopes.len();
+        self.scopes.push(Scope::new(depth));
+        for arg in func.args(){
+            self.create_var(arg.clone());
+        }
         for st in func.scope_mut(){
             self.statement(st)?;
             if let &mut Statement::ReturnStatement(ref mut expr) = st {
                 self.check_type(&expr, &ret_type)?;
             }
         }
+        self.scopes.pop();
         Ok(())
     }
     /// Resolve what needs to be resolved in a statement.
     pub fn statement(&mut self, statement: &mut Statement) -> Result<(), String>{
         match statement {
-        //    &mut Statement::Assignment(ref mut a) => self.assignment(a),
+            &mut Statement::Assignment(ref mut a) => self.assignment(a),
             &mut Statement::Declaration(ref mut  d) => self.declaration(d),
-        //    &mut Statement::ExprStatement(ref mut e) => self.expression(e),
-        //    &mut Statement::Scope(ref mut  s) => self.scope(s),
-        //    &mut Statement::IfStatement(ref mut i) => self.if_statement(i),
-        //    &mut Statement::WhileStatement(ref mut  i) => self.while_statement(i),
-        //    &mut Statement::BreakStatement => Ok(()),
-        //    &mut Statement::ReturnStatement(ref mut e) =>self.expression(e),
+            &mut Statement::ExprStatement(ref mut e) => self.expression(e),
+            &mut Statement::Scope(ref mut  s) => self.scope(s),
+            &mut Statement::IfStatement(ref mut i) => self.if_statement(i),
+            &mut Statement::WhileStatement(ref mut  i) => self.while_statement(i),
+            &mut Statement::BreakStatement => Ok(()),
+            &mut Statement::ReturnStatement(ref mut e) =>self.expression(e),
             ref a => Err(format!("other statements are not supported for now : {:?}", a).to_string()),
         }
+    }
+
+    pub fn if_statement(&mut self, if_statement : &mut IfStatement) -> Result<(), String>{
+        self.expression(if_statement.condition_mut())?;
+        self.statement(if_statement.statement_mut())?;
+        Ok(())
+    }
+
+    pub fn while_statement(&mut self, while_statement : &mut WhileStatement) -> Result<(), String>{
+        self.expression(while_statement.condition_mut())?;
+        self.statement(while_statement.statement_mut())?;
+        Ok(())
+    }
+
+    /// Checks a scope
+    /// checks every statement in the scope (easy this one).
+    pub fn scope(&mut self, scope : &mut Vec<Statement>) -> Result<(), String>{
+        let depth = self.scopes.len();
+        self.scopes.push(Scope::new(depth));
+        for st in scope{
+            self.statement(st)?;
+        }
+        self.scopes.pop();
+        Ok(())
     }
 
     /// Parses a declaration.
@@ -152,6 +182,17 @@ impl TypeChecker {
         Ok(())
     }
 
+    /// Checks the assignment :
+    /// First checks the expression assigned.
+    /// then what it is assigned to.
+    /// then if they match.
+    pub fn assignment(&mut self, assignment : &mut Assignment) -> Result<(), String>{
+        self.expression(assignment.expr_mut())?;
+        let res = self.identifier(assignment.identifier())?;
+        self.check_type(assignment.expr(), &res)?;
+        Ok(())
+    }
+
     /// Sets the expression's return type.
     /// Sets the type of incoming and outcoming variables so the compiler will know what it needs to.
     pub fn expression(&mut self, expr : &mut Expr) -> Result<(), String>{
@@ -159,13 +200,45 @@ impl TypeChecker {
         let tp = match expr.expr_mut() {
             &mut ExprEnum::Literal(_) => Ok(current_type),
             &mut ExprEnum::Unary(ref mut u) => self.unary(u),
-//            &mut ExprEnum::Binary(ref mut b) => self.binary(b),
-//            &mut ExprEnum::Identifier(ref mut i) => self.identifier(i),
- //           &mut ExprEnum::FunctionCall(ref mut f) => self.function_call(f),
+            &mut ExprEnum::Binary(ref mut b) => self.binary(b),
+            &mut ExprEnum::Identifier(ref mut i) => self.identifier(i),
+            &mut ExprEnum::FunctionCall(ref mut f) => self.function_call(f),
             _ => Err("fail".to_string()),
         }?;
         expr.set_type(tp);
         Ok(())
+    }
+
+    /// Returns the type of the given identifier if it exists in scope.
+    pub fn identifier(&mut self, id : &String) -> Result<String, String>{
+        match self.has_var(id){
+            true => Ok(self.get_var(id).unwrap().type_var().to_string()),
+            false => Err(String::from(format!("Unknown variable : {}", id))),
+        }
+    }
+
+    /// Find the return type of a function call expression and returns it.
+    /// Checks that arguments lists are the same size.
+    /// Checks for arguments given to the function.
+    /// And well... This is a bit embarassing...
+    /// The ugly hack with the closure feels a little bit odd.
+    pub fn function_call(&mut self, exp : &mut FunctionCall) -> Result<String, String>{
+        let (ret, args) = {
+            let (r, a) = match self.functions.get(exp.name()){
+                Some(f) => Ok((f.ret_type(), f.args())),
+                None => Err(String::from(format!("Unknown function : {:?}", exp.name())))
+            }?;
+            (r.clone(), a.clone())
+        };
+        let (args_count_given, args_count_expected) = (exp.args().len(), args.len());
+        if args_count_expected != args_count_given {
+            return Err(String::from(format!("Error : expected {} arguments, {} given", args_count_expected, args_count_given)))
+        }
+        for i in 0..args_count_given{
+            self.expression(&mut exp.args_mut()[i])?;
+            self.check_type(&exp.args_mut()[i], args[i].type_var())?;
+        }
+        Ok(ret.to_string())
     }
 
     /// Find the return type of a unary expression and returns it.
@@ -175,7 +248,7 @@ impl TypeChecker {
         match exp.operator().get_type() {
             &TokenType::MINUS => match exp_res.as_ref() {
                 "num" => Ok(String::from("num")),
-                "string" => Err(String::from("Cant apply operator '-' to String")),
+                "str" => Err(String::from("Cant apply operator '-' to String")),
                 _ => Err(String::from("Operator '-' supported only for primitives")),
             },
             &TokenType::BANG => match exp_res.as_ref() {
@@ -187,6 +260,47 @@ impl TypeChecker {
         }
     }
 
+    /// Find the return type of a binary expression and returns it.
+    pub fn binary(&mut self, exp : &mut BinaryExpr) -> Result<String, String>{
+        self.expression(exp.lhs_mut())?;
+        self.expression(exp.rhs_mut())?;
+        let exp_res = (exp.lhs().return_type().as_ref(),
+                                    exp.rhs().return_type().as_ref());
+        match exp.operator().get_type() {
+            &TokenType::MINUS => match exp_res {
+                ("num", "num") => Ok(String::from("num")),
+                ("str", _) => Err(String::from("Cant apply operator '-' to String")),
+                (_, "str") => Err(String::from("Cant apply operator '-' to String")),
+                _ => Err(String::from("Operator '-' supported only for primitives")),
+            },
+            &TokenType::PLUS => match exp_res {
+                ("num", "num") => Ok(String::from("num")),
+                ("str", _) => Ok(String::from("str")),
+                (_, "str") => Err(String::from("str")),
+                _ => Err(String::from("Operator '+' supported only for primitives")),
+            },
+            &TokenType::STAR => match exp_res {
+                ("num", "num") => Ok(String::from("num")),
+                ("str", "num") => Ok(String::from("str")),
+                ("num", "str") => Ok(String::from("str")),
+                ("str", "str") => Err(String::from("Cannot multiply String by String")),
+                _ => Err(String::from("Operator '*' supported only for primitives")),
+            },
+            &TokenType::SLASH => match exp_res {
+                ("num", "num") => Ok(String::from("num")),
+                ("str", _) => Err(String::from("Cant apply operator '/' to String")),
+                (_, "str") => Err(String::from("Cant apply operator '/' to String")),
+                _ => Err(String::from("Operator '/' supported only for primitives")),
+            },
+            &TokenType::GreaterEqual => Ok(String::from("num")),
+            &TokenType::GREATER => Ok(String::from("num")),
+            &TokenType::LessEqual => Ok(String::from("num")),
+            &TokenType::LESS => Ok(String::from("num")),
+            &TokenType::EqualEqual => Ok(String::from("num")),
+            &TokenType::BangEqual => Ok(String::from("num")),
+            e => Err(format!("operator {:?} can not be aplied to two value", e))
+        }
+    }
 }
 
 // so we traverse the tree and returns an option<string>, if Some(s) sets the type to S. (we will see).
@@ -258,23 +372,6 @@ impl TypeChecker {
         match expr {
             &LiteralExpr::NUMBER(0.0) => false,
             _ => true,
-        }
-    }
-    /// Evaluates a binary expression.
-    pub fn binary(&self, exp : &BinaryExpr) -> Result<LiteralExpr, String>{
-        let exp_left = self.evaluate(exp.lhs())?;
-        let exp_right = self.evaluate(exp.rhs())?;
-        match exp.operator().get_type() {
-            &TokenType::MINUS => BinaryOperations::minus(&exp_left,&exp_right),
-            &TokenType::PLUS => exp_left.plus(&exp_right),
-            &TokenType::STAR => exp_left.times(&exp_right),
-            &TokenType::SLASH => exp_left.divide(&exp_right),
-            &TokenType::GreaterEqual => exp_left.ge(&exp_right),
-            &TokenType::GREATER => exp_left.gt(&exp_right),
-            &TokenType::LessEqual => exp_left.le(&exp_right),
-            &TokenType::LESS => exp_left.lt(&exp_right),
-            &TokenType::EqualEqual => exp_left.equals(&exp_right),
-            e => Err(format!("operator {:?} can not be applied to binbary expression", e))
         }
     }
 

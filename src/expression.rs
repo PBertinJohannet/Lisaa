@@ -106,6 +106,10 @@ impl FunctionCall {
     pub fn args(&self) -> &Vec<Expr>{
         &self.args
     }
+    /// Returns the list of arguments.
+    pub fn args_mut(&mut self) -> &mut Vec<Expr>{
+        &mut self.args
+    }
 }
 
 /// Operators are represented by tokens for now.
@@ -161,6 +165,14 @@ impl BinaryExpr {
     /// Returns the riht hand side of the expression.
     pub fn rhs(&self)  -> &Expr {
         &*self.rhs
+    }
+    /// returns the left hand side of the expression as mutable ref.
+    pub fn lhs_mut(&mut self)  -> &mut Expr {
+        &mut *self.lhs
+    }
+    /// Returns the riht hand side of the expression as mutable ref.
+    pub fn rhs_mut(&mut self)  -> &mut Expr {
+        &mut *self.rhs
     }
     /// Returns the operator.
     pub fn operator(&self) -> Operator {
