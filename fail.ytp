@@ -2,5 +2,13 @@ fn main() {
     num a = 1;
     num b = -2;
     num i = 1;
-    str k = -"ij";
+    num c = 1+2;
+    str b = 2*"h" + c;
+    add(a, c);
+    add(a, c);
+    b = "h"*5;
+}
+
+fn add(num a, num b) -> num {
+
 }
