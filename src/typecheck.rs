@@ -225,11 +225,19 @@ impl TypeChecker {
     pub fn function_call(&mut self, exp : &mut FunctionCall) -> Result<String, String>{
         let (ret, args) = {
             let (r, a) = match self.functions.get(exp.name()){
-                Some(f) => Ok((f.ret_type(), f.args())),
-                None => Err(String::from(format!("Unknown function : {:?}", exp.name())))
+                Some(f) => Ok((f.ret_type().to_string(), f.args())),
+                None => match self.native_functions.get(exp.name()){
+                    Some(f) => Ok((String::from(""), f)),
+                    None => Err(String::from(format!("Unknown function : {:?}", exp.name())))
+                }
             }?;
             (r.clone(), a.clone())
         };
+        if let Some(t) = args.first() {
+            if t.type_var() == "any" {
+                return Ok(ret.to_string());
+            }
+        }
         let (args_count_given, args_count_expected) = (exp.args().len(), args.len());
         if args_count_expected != args_count_given {
             return Err(String::from(format!("Error : expected {} arguments, {} given", args_count_expected, args_count_given)))
@@ -302,132 +310,3 @@ impl TypeChecker {
         }
     }
 }
-
-// so we traverse the tree and returns an option<string>, if Some(s) sets the type to S. (we will see).
-
-/*
-    /// Evaluates the given expression.
-    /// Returns a litteral if possible,
-    /// if any fail occurs, returns an error.
-    pub fn evaluate(&self, expr : &Expr) -> Result<LiteralExpr, String>{
-        match expr.expr() {
-            &ExprEnum::Literal(ref l) => Ok(l.clone()),
-            &ExprEnum::Unary(ref u) => self.unary(u),
-            &ExprEnum::Binary(ref b) => self.binary(b),
-            &ExprEnum::Identifier(ref i) => self.identifier(i),
-            &ExprEnum::FunctionCall(ref f) => self.function_call(f),
-        }
-    }
-
-    /// Calls a function.
-    pub fn function_call(&self, func : &FunctionCall) -> Result<LiteralExpr, String>{
-        if self.native_functions.contains_key(func.name()){
-            self.native_func(func)
-        } else {
-            self.user_defined_func(func.name(), func.args().iter().map(|a|
-                self.evaluate(a)).collect())
-        }
-    }
-
-    pub fn native_func(&self, func : &FunctionCall) -> Result<LiteralExpr, String>{
-        let mut args = vec![];
-        for i in func.args() {
-            args.push(self.evaluate(i)?);
-        }
-        self.native_functions.get(func.name()).unwrap()(args)
-    }
-
-    /// Calls a function created by the user.
-    pub fn user_defined_func(&self, name : &String, args_given : Vec<Result<LiteralExpr, String>>) -> Result<LiteralExpr, String>{
-        let depth = self.scopes.borrow().last().unwrap().depth;
-        self.scopes.borrow_mut().push(Scope::new(1));
-        let actual_function = self.functions.get(name)
-            .ok_or("could not find function in scope".to_string())?;
-        let actual_args = actual_function.args();
-        for i in 0..args_given.len() {
-            self.create_var(&actual_args[i].name(), args_given[i].clone()?);
-        }
-        for s in actual_function.scope() {
-            let res = self.run_statement(s)?;
-            match res {
-                StatementResult::Return(l) => { self.scopes.borrow_mut().pop(); return Ok(l)},
-                StatementResult::Break => Err("can't break a function like that you silly".to_string()),
-                _ => Ok(())
-            }?;
-        }
-        self.scopes.borrow_mut().pop();
-        Ok(LiteralExpr::NUMBER(0.0))
-    }
-
-    /// Evaluates an identifier.
-    pub fn identifier(&self, i : &str) -> Result<LiteralExpr, String>{
-        match self.get_var(i){
-            Some(v) => Ok(v.clone()),
-            _ => Err(format!("use of uninitialised variable : {}", i)),
-        }
-    }
-
-    /// Checks if the value is true
-    pub fn is_true(&self, expr : &LiteralExpr) -> bool {
-        match expr {
-            &LiteralExpr::NUMBER(0.0) => false,
-            _ => true,
-        }
-    }
-
-
-    /// Parses a declaration.
-    pub fn declaration(&self, decl : &Declaration) ->Result<StatementResult, String>{
-        let name = decl.name();
-        let res = self.evaluate(decl.expr())?;
-        self.create_var(name, res);
-        Ok(StatementResult::Empty)
-    }
-    /// Interprets an if statement.
-    pub fn if_statement(&self, statement : &IfStatement) -> Result<StatementResult, String> {
-        let res = self.evaluate(statement.condition())?;
-        if self.is_true(&res) {
-            let res = self.run_statement(statement.statement())?;
-            if res.is_quit(){
-                return Ok(res);
-            }
-        }
-        Ok(StatementResult::Empty)
-    }
-    /// Interprets an if statement.
-    pub fn while_statement(&self, statement : &WhileStatement) -> Result<StatementResult, String> {
-        let mut res = self.evaluate(statement.condition())?;
-        while self.is_true(&res) {
-            self.run_statement(statement.statement())?;
-            let r = self.run_statement(statement.statement())?;
-            if r.is_quit(){
-                return Ok(r);
-            }
-            res = self.evaluate(statement.condition())?;
-        }
-        Ok(StatementResult::Empty)
-    }
-    /// Interprets the new scope.
-    pub fn scope(&self, scope : &Vec<Statement>) -> Result<StatementResult, String>{
-        let depth = self.scopes.borrow().last().unwrap().depth;
-        self.scopes.borrow_mut().push(Scope::new(depth+1));
-        for s in scope {
-            let res = self.run_statement(s)?;
-            if res.is_quit(){
-                self.scopes.borrow_mut().pop();
-                return Ok(res);
-            }
-        }
-        self.scopes.borrow_mut().pop();
-        Ok(StatementResult::Empty)
-    }
-
-    /// Runs an assignment.
-    pub fn assignment(&self, assignment : &Assignment) -> Result<StatementResult, String>{
-        let mut res = self.evaluate(assignment.expr())?;
-        let var_name = assignment.identifier().to_string();
-        self.set_var(&var_name, res);
-        Ok(StatementResult::Empty)
-    }
-
-*/

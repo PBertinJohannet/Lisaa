@@ -23,14 +23,16 @@ pub enum ExprEnum {
 pub struct Expr {
     expr : ExprEnum,
     return_type : String,
+    line : usize,
 }
 
 
 impl Expr {
-   pub fn binary(lhs: Expr, operator: Operator, rhs: Expr) -> Self {
+   pub fn binary(lhs: Expr, operator: Operator, rhs: Expr, line : usize) -> Self {
         Expr {
             expr : ExprEnum::Binary(BinaryExpr::new(lhs, operator, rhs)),
-            return_type : "var".to_string()
+            return_type : "var".to_string(),
+            line : line,
         }
     }
     pub fn expr(&self) -> &ExprEnum {
@@ -45,34 +47,39 @@ impl Expr {
     pub fn return_type(&self) -> &String {
         &self.return_type
     }
-    pub fn function_call(name : String, args : Vec<Expr>) -> Self {
+    pub fn function_call(name : String, args : Vec<Expr>, line : usize) -> Self {
         Expr {
             expr : ExprEnum::FunctionCall(FunctionCall::new(name, args)),
-            return_type : "var".to_string()
+            return_type : "var".to_string(),
+            line : line
         }
     }
-    pub fn unary(operator: Operator, expr: Expr) -> Self {
+    pub fn unary(operator: Operator, expr: Expr, line : usize) -> Self {
         Expr {
             expr : ExprEnum::Unary(UnaryExpr::new(operator, expr)),
-            return_type : "var".to_string()
+            return_type : "var".to_string(),
+            line : line
         }
     }
-    pub fn number(num : f64) -> Self {
+    pub fn number(num : f64, line : usize) -> Self {
         Expr {
             expr : ExprEnum::Literal(LiteralExpr::NUMBER(num)),
-            return_type : "num".to_string()
+            return_type : "num".to_string(),
+            line : line
         }
     }
-    pub fn string(string : String) -> Self {
+    pub fn string(string : String, line : usize) -> Self {
         Expr {
             expr : ExprEnum::Literal(LiteralExpr::STRING(string)),
-            return_type : "str".to_string()
+            return_type : "str".to_string(),
+            line : line
         }
     }
-    pub fn identifier(string : String) -> Self {
+    pub fn identifier(string : String, line : usize) -> Self {
         Expr {
             expr : ExprEnum::Identifier(string),
-            return_type : "var".to_string()
+            return_type : "var".to_string(),
+            line : line
         }
     }
     pub fn get_identifier(&self) -> Result<&String, String> {
@@ -80,6 +87,9 @@ impl Expr {
             ExprEnum::Identifier(ref i) =>Ok(i),
             _ => Err("expected identifier".to_string())
         }
+    }
+    pub fn get_line(&self) -> usize {
+        self.line
     }
 }
 

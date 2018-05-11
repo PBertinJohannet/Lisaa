@@ -282,7 +282,7 @@ impl Parser {
         while self.match_nexts(&[TokenType::EqualEqual, TokenType::BangEqual]) {
             let previous = self.previous();
             let right = self.comparison()?;
-            let new_expr = Expr::binary(expr, previous.clone(), right);
+            let new_expr = Expr::binary(expr, previous.clone(), right, previous.get_line());
             expr = new_expr;
         }
         Ok(expr)
@@ -301,7 +301,7 @@ impl Parser {
         {
             let previous = self.previous();
             let right = self.addition()?;
-            let new_expr = Expr::binary(expr, previous.clone(), right);
+            let new_expr = Expr::binary(expr, previous.clone(), right, previous.get_line());
             expr = new_expr;
         }
         Ok(expr)
@@ -312,7 +312,7 @@ impl Parser {
         while self.match_nexts(&[TokenType::MINUS, TokenType::PLUS]) {
             let previous = self.previous();
             let right = self.multiplication()?;
-            let new_expr = Expr::binary(expr, previous.clone(), right);
+            let new_expr = Expr::binary(expr, previous.clone(), right, previous.get_line());
             expr = new_expr;
         }
         Ok(expr)
@@ -324,7 +324,7 @@ impl Parser {
         while self.match_nexts(&[TokenType::STAR, TokenType::SLASH]) {
             let previous = self.previous();
             let right = self.unary()?;
-            let new_expr = Expr::binary(expr, previous.clone(), right);
+            let new_expr = Expr::binary(expr, previous.clone(), right, previous.get_line());
             expr = new_expr;
         }
         Ok(expr)
@@ -336,7 +336,7 @@ impl Parser {
             let previous = self.previous();
             println!("prev : {:?} ask unary", previous);
             let right = self.unary()?;
-            return Ok(Expr::unary(previous.clone(), right));
+            return Ok(Expr::unary(previous.clone(), right, previous.get_line()));
         }
         return self.function_call();
     }
@@ -367,7 +367,8 @@ impl Parser {
             }
         }
         self.advance();
-        Ok(Expr::function_call(lit.get_identifier()?.to_string(), args))
+        let line = args.first().unwrap().get_line();
+        Ok(Expr::function_call(lit.get_identifier()?.to_string(), args, line))
     }
 
     pub fn expect(&mut self, token_type : TokenType) -> Result<(), String> {
@@ -393,14 +394,14 @@ impl Parser {
             let token = self.advance();
             match token.get_type() {
                 &TokenType::NUMBER => Ok(Expr::number(
-                    token.get_lexeme().parse::<f64>().unwrap(),
+                    token.get_lexeme().parse::<f64>().unwrap(), token.get_line()
                 )),
-                &TokenType::STRING => Ok(Expr::string(token.get_lexeme().to_string(),
+                &TokenType::STRING => Ok(Expr::string(token.get_lexeme().to_string(), token.get_line()
                 )),
                 &TokenType::NIL => Err("nil no longer supported".to_string()),
-                &TokenType::FALSE => Ok(Expr::number(0.0)),
-                &TokenType::TRUE => Ok(Expr::number(1.0)),
-                &TokenType::IDENTIFIER => Ok(Expr::identifier(token.get_lexeme().to_string())),
+                &TokenType::FALSE => Ok(Expr::number(0.0, token.get_line())),
+                &TokenType::TRUE => Ok(Expr::number(1.0, token.get_line())),
+                &TokenType::IDENTIFIER => Ok(Expr::identifier(token.get_lexeme().to_string(), token.get_line())),
                 _ => Err("Cant parse literal".to_string()),
             }
         }

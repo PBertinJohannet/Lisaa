@@ -1,6 +1,7 @@
 fn main (str given) {
     str b = 3;
     num a = 5;
+    num c = "ok";
 	while b < 50{
 	    print("fac ", b, " is ", fac(b));
 	    b=b+1;
