@@ -5,7 +5,6 @@ use statement::{Statement, Assignment, IfStatement, StatementResult, FunctionDec
 use std::collections::HashMap;
 use native::get_native_types;
 
-
 /// Represents a scope with its variables.
 #[derive(Debug)]
 struct Scope {
@@ -186,7 +185,6 @@ impl TypeChecker {
             e => Err(format!("operator {:?} can not be aplied to one value", e))
         }
     }
-
 }
 
 // so we traverse the tree and returns an option<string>, if Some(s) sets the type to S. (we will see).
