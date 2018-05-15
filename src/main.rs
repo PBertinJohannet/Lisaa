@@ -19,6 +19,7 @@ mod operations;
 pub mod statement;
 mod typecheck;
 mod native;
+mod vm;
 use std::io::Read;
 
 use clap::{Arg, App};

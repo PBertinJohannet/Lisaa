@@ -1,6 +1,6 @@
 fn main() {
     num a = 1;
     num b = -2;
-    num i = 1;
+    num i = 1+2;
     str k = -"ij";
 }
