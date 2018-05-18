@@ -138,7 +138,6 @@ impl TypeChecker {
             ref a => Err(format!("other statements are not supported for now : {:?}", a).to_string()),
         }
     }
-
     /// Parses a declaration.
     /// Resolve the expression's types.
     /// checks that types match.
@@ -150,7 +149,6 @@ impl TypeChecker {
         self.create_var(TypedVar::new(val_type, decl.name().to_string()));
         Ok(())
     }
-
     /// Sets the expression's return type.
     /// Sets the type of incoming and outcoming variables so the compiler will know what it needs to.
     pub fn expression(&mut self, expr : &mut Expr) -> Result<(), String>{
