@@ -105,8 +105,6 @@ pub enum Statement {
     ReturnStatement(Expr),
 }
 
-
-
 #[derive(Debug, Clone)]
 /// An assignment is an identifier plus an expression.
 pub struct Assignment {
@@ -169,7 +167,6 @@ impl Declaration {
     pub fn val_type(&self) -> &String {
         &self.val_type
     }
-
 }
 /// Represents an if statement, its condition and the statement to exeute if it is true.
 #[derive(Debug, Clone)]

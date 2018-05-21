@@ -35,30 +35,3 @@ impl Ytp {
 }
 
 
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn test_expr(){
-        let source = "a= 1;
-        b = 2+2;
-        c = \"h\";
-        a = b;
-        b = a*2+55-12;".to_string();
-        assert_eq!(Ytp::new(source).run().is_ok(), true);
-    }
-    #[test]
-    fn test_scope(){
-        let source = "a= 1;
-        {
-            b = 1;
-            a = b+1;
-        }
-        {
-            a = 2;
-        }
-        c = a+2;";
-        assert_eq!(Ytp::new(source.to_string()).run().is_ok(), true);
-    }
-}

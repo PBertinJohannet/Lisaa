@@ -11,4 +11,6 @@ fn main() {
 
 fn add(num a, num b) -> num {
 
+    num i = 1+2;
+    str k = -"ij";
 }
