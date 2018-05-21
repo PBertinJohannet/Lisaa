@@ -233,8 +233,10 @@ impl TypeChecker {
             }?;
             (r.clone(), a.clone())
         };
-        if let Some(t) = args.first() && t.type_var() == "any"{
-            return Ok(ret.to_string());
+        if let Some(t) = args.first() {
+            if t.type_var() == "any" {
+                return Ok(ret.to_string());
+            }
         }
         let (args_count_given, args_count_expected) = (exp.args().len(), args.len());
         if args_count_expected != args_count_given {
