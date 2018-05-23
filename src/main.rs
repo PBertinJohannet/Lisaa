@@ -8,6 +8,7 @@ extern crate clap;
 #[macro_use]
 extern crate lazy_static;
 
+mod compile;
 mod keywords;
 mod token;
 mod ytp;

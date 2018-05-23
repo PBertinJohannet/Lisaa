@@ -151,6 +151,10 @@ impl Declaration {
             assignment : assignment,
         }
     }
+    /// Returns the assignment.
+    pub fn assignment(&self) -> &Assignment {
+        &self.assignment
+    }
     /// Returns the name of the variable assigned to.
     pub fn name(&self) -> &String {
         &self.val_name

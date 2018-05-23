@@ -165,6 +165,7 @@ impl TypeChecker {
         self.scopes.push(Scope::new(depth));
         for st in scope{
             self.statement(st)?;
+
         }
         self.scopes.pop();
         Ok(())

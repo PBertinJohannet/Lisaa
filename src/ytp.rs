@@ -3,6 +3,8 @@ use scanner::Scanner;
 use parser::Parser;
 use interpreter::Interpreter;
 use typecheck::TypeChecker;
+use compile::Compiler;
+use vm::Vm;
 /// The interpreter, contains the code.
 pub struct Ytp {
     source: String,
@@ -28,8 +30,13 @@ impl Ytp {
             println!("TypeError : {}", e);
             return Err(String::from("Compilation aborted because of preceding errors."));
         }
-        let mut inter = Interpreter::new(None);
-        inter.run(tree)?;
+        let code = Compiler::new().compile(&tree).map_err(|e|format!("compilation error : {:?}", e))?;
+        println!("code : {:?}", code);
+        let mut vm = Vm::new();
+        vm.run(code);
+        println!("vm state : {:?}", vm);
+        //let mut inter = Interpreter::new(None);
+        //inter.run(tree)?;
         Ok(())
     }
 }
