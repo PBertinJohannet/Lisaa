@@ -118,15 +118,22 @@ impl Allocator {
 }
 
 
-#[derive(Debug)]
-enum OP {
+#[derive(Debug, Clone)]
+pub enum OP {
+    Pop,
     Inv,
     Mul,
+    GreaterThan,
+    Eq,
+    Not,
+    LowerThan,
     Swap2,
     Swap(usize),
     Bring(usize),
     Set(usize),
+    /// Negates the current top of the stack.
     Neg,
+    /// Add the top and second value of the stack.
     Add,
     /// allocate an object of known size to the heap and put its adress at the top of the stack
     AllocObj,
@@ -137,7 +144,12 @@ enum OP {
     SetHeap,
     /// Prints the value at the top of the stack as a char
     PrintStr,
+    /// Jumps to the given number of instructions further if the top of the stack is 0.
+    JMPIf(usize),
+    /// Jumps to the given number of instructions further
+    JMP(usize),
     PushNum(f64),
+    ChangeTo(f64),
     PrintNum,
 }
 
@@ -163,14 +175,61 @@ impl Vm {
     }
 
     pub fn run(&mut self, program : Vec<OP>) {
-        for op in program{
-            println!("stack state : {:?}\nOP : {:?}\n\n", self, op);
+        let mut program_iter = program.into_iter();
+        while let Some(op) = program_iter.next(){
+            println!("executing {:?}", op);
             match op {
+                OP::Pop => {
+                    self.stack.pop();
+                }
+                OP::Not => {
+                    let val = match self.stack.pop().unwrap()==0.0{
+                        false => 0.0,
+                        _ => 1.0,
+                    };
+                    self.stack.push(val)
+                }
+                OP::GreaterThan => {
+                    let val = match self.stack.pop().unwrap()>self.stack.pop().unwrap() {
+                        false => 0.0,
+                        _ => 1.0,
+                    };
+                    self.stack.push(val)
+                },
+                OP::LowerThan => {
+                    let val = match self.stack.pop().unwrap()<self.stack.pop().unwrap() {
+                        false => 0.0,
+                        _ => 1.0,
+                    };
+                    self.stack.push(val)
+                },
+                OP::Eq => {
+                    let val = match self.stack.pop().unwrap()==self.stack.pop().unwrap() {
+                        false => 0.0,
+                        _ => 1.0,
+                    };
+                    self.stack.push(val)
+                },
                 OP::PushNum(n) => {
                     self.stack.push(n)
                 },
+                OP::ChangeTo(n) => {
+                    *self.stack.last_mut().unwrap() = n;
+                },
                 OP::PrintNum => {
                     print!("{}", self.stack.pop().unwrap());
+                },
+                OP::JMPIf(n) => {
+                    if *self.stack.last().unwrap() != 0.0 {
+                        for _ in 0..n{
+                            program_iter.next();
+                        }
+                    }
+                },
+                OP::JMP(n) => {
+                    for _ in 0..n{
+                        program_iter.next();
+                    }
                 }
                 OP::Inv => {
                     let val = self.stack.pop().unwrap();

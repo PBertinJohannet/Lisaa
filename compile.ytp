@@ -1,0 +1,10 @@
+fn main(){
+    num c = !1;
+    {
+    num b = !!!c;
+    num a = -b;
+    num d = a + c + !b;
+    a = c - a + b;
+    c = a;
+    }
+}
