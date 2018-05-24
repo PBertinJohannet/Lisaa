@@ -75,7 +75,7 @@ impl Ytp {
 
         let start = PreciseTime::now();
         {
-            let (to_find, mut a, mut b, mut found) = (75202, 0,0,false);
+            let (to_find, mut a, mut b, mut found) = (73987, 0,0,false);
             while !found && a < to_find/2{
                 a +=1;
                 while !found && a < to_find/2{
