@@ -78,13 +78,15 @@ impl Ytp {
             let (to_find, mut a, mut b, mut found) = (73987, 0,0,false);
             while !found && a < to_find/2{
                 a +=1;
-                while !found && a < to_find/2{
+                b = 0;
+                while !found && b < to_find/2{
                     b +=1;
                     if a*b==to_find{
                         found = true;
                     }
                 }
             }
+            println!("{}, {}", a, b);
         }
 
         let end = PreciseTime::now();
