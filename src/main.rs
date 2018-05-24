@@ -37,6 +37,7 @@ fn main() {
             Arg::with_name("INPUT")
                 .index(1)
                 .help("the file to run")
+                .default_value("compile.ytp")
                 .required(true),
         )
         .get_matches();
