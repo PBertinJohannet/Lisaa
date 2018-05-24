@@ -5,6 +5,12 @@ fn main(){
     num a = -b;
     num d = a + c + !b;
     a = c - a + b;
+    // ok
     c = a;
+    {
+      num a = 22;
+      a = c - d;
+      b = !d  * 6;
     }
+    c = b + a;
 }

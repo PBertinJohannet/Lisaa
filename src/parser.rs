@@ -196,7 +196,8 @@ impl Parser {
     }
 
     /// Parses a scope.
-    pub fn scope(&mut self) -> Result<Statement, String> {
+    pub fn scope(&mut self) -> Result<Statement,
+        String> {
         match self.peek().is_type(&TokenType::LeftBrace){
             true => self.parse_scope(),
             false => self.declaration()
@@ -209,10 +210,10 @@ impl Parser {
         self.advance();
         let mut statements = vec![];
         while !self.peek().is_type(&TokenType::RightBrace ){
+            statements.push(self.statement()?);
             if self.is_at_end() {
                 return Err("Expected closing brace at the end of scope".to_string());
             }
-            statements.push(self.statement()?);
         }
         self.advance();
         Ok(Statement::Scope(statements))
