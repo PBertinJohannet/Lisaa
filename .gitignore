@@ -13,3 +13,6 @@ Cargo.lock
 .idea/*
 
 .gdb*
+todo.md
+ok.tkt
+test.py
