@@ -38,9 +38,9 @@ fn fac(a){
 The following becnhmarks were done on the following code : 
 ```
 fn main(){
-    // finds two factors of this number 
+    // finds two factors of this number (241 and 307) 
 
-    num toFind = 75202;
+    num toFind = 73987;
     num a = 0;
     num b = 0;
     num found = 0;
@@ -59,10 +59,10 @@ fn main(){
 
 | Language/interpreter | time  |
 | -------------------- | --------- |
-| ytp (completely interpreted) | 53ms |
-| ytp (using the vm) | 5ms |
-| rust | 50us |
-| python | 11ms |
+| ytp (completely interpreted) | 6000 ms |
+| ytp (using the vm) | 500 ms |
+| rust | 57 us |
+| python | 1269 ms |
 
 The Vm interpreting the bytecode is way faster than the original interpreter.
 

@@ -1,6 +1,6 @@
 import cProfile
 def main():
-    toFind = 75202
+    toFind = 73987
     a = 0
     b = 0
     found = 0
