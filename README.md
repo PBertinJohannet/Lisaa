@@ -1,6 +1,8 @@
-# Eptx
+# Lisaa
 
-A interpreter for a programming language.
+Lisaa is surely an acronym
+
+The lisaa language is a simple scripting language featuring static typing.
 
 # Usage
 

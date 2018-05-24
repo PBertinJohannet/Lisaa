@@ -35,8 +35,8 @@ impl Ytp {
         }
 
         self.do_vm(tree.clone())?;
-        self.do_interpret(tree);
-        self.do_rust();
+        //self.do_interpret(tree);
+        //self.do_rust();
 
         Ok(())
     }
@@ -44,7 +44,7 @@ impl Ytp {
     pub fn do_vm(&self, tree :  HashMap<String, FunctionDecl>) -> Result<(), String>{
 
         let code = Compiler::new().compile(&tree).map_err(|e|format!("compilation error : {:?}", e))?;
-        //println!("code : {:?}", code);
+        println!("code : {:?}", code);
 
         let mut vm = Vm::new();
         let start = PreciseTime::now();
@@ -52,6 +52,8 @@ impl Ytp {
         let end = PreciseTime::now();
         let diff = start.to(end).num_milliseconds();
 
+
+        println!("vm state : {:?}", vm);
 
         println!("vm time : {:?}ms", diff);
         Ok(())
