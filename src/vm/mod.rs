@@ -183,7 +183,7 @@ impl Vm {
         while instruction_pointer < program.len(){
             let op = &program[instruction_pointer];
             instruction_pointer+=1;
-            println!("executing {:?}", op);
+            //println!("executing {:?}", op);
             match op {
                 &OP::End => println!("program execution terminated"),
                 &OP::Goto(u) => instruction_pointer = u,
@@ -209,9 +209,10 @@ impl Vm {
                     self.stack.push(val)
                 },
                 &OP::And => {
-                    let val =  (self.stack.pop().unwrap() != 0.0 &&
-                        self.stack.pop().unwrap() != 0.0) as i32 as f64;
-                    self.stack.push(val)
+                    let val1 = self.stack.pop().unwrap() != 0.0;
+                    let val2 = self.stack.pop().unwrap() != 0.0;
+                    let res = (val1 && val2)  as i32 as f64;
+                    self.stack.push(res)
                 },
                 &OP::Eq => {
                     let val = match self.stack.pop().unwrap()==self.stack.pop().unwrap() {
@@ -289,7 +290,7 @@ impl Vm {
                 }
                 _ => panic!("unsupported operand"),
             }
-            println!("stack : {:?}", self.stack);
+            //println!("stack : {:?}", self.stack);
         }
     }
 }
