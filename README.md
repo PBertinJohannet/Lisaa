@@ -38,6 +38,8 @@ fn fac(a){
 The following becnhmarks were done on the following code : 
 ```
 fn main(){
+    // finds two factors of this number 
+
     num toFind = 75202;
     num a = 0;
     num b = 0;
