@@ -11,3 +11,5 @@ Cargo.lock
 
 # We don't need the ide files either
 .idea/*
+
+.gdb*

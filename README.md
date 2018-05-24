@@ -61,7 +61,7 @@ fn main(){
 | -------------------- | --------- |
 | ytp (completely interpreted) | 6000 ms |
 | ytp (using the vm) | 500 ms |
-| rust | 57 us |
+| rust | 7 ms |
 | python | 1269 ms |
 
 The Vm interpreting the bytecode is way faster than the original interpreter.
