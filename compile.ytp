@@ -1,5 +1,5 @@
 fn main(){
-    num toFind = 73987;
+    num toFind = 4;
     num a = 0;
     num b = 0;
     num found = 0;
