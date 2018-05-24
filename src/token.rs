@@ -64,7 +64,9 @@ pub enum TokenType {
     // Keywords.
     /// A break to quit a scope.
     BREAK,
-    /// The and keyword, used for comparison.
+    /// The && keyword, used for comparison.
+    ANDAND,
+    /// The & keyword, used for binary operation.
     AND,
     /// The class keyword, not used yet
     CLASS,
@@ -82,6 +84,8 @@ pub enum TokenType {
     NIL,
     /// The class keyword, not used yet
     OR,
+    ///
+    OROR,
     /// The class keyword, not used yet
     RETURN,
     /// The class keyword, not used yet

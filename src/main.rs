@@ -8,6 +8,9 @@ extern crate clap;
 #[macro_use]
 extern crate lazy_static;
 
+extern crate time;
+use time::PreciseTime;
+
 mod compile;
 mod keywords;
 mod token;

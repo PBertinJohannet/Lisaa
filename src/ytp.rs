@@ -5,6 +5,9 @@ use interpreter::Interpreter;
 use typecheck::TypeChecker;
 use compile::Compiler;
 use vm::Vm;
+use time::PreciseTime;
+use std::collections::HashMap;
+use statement::FunctionDecl;
 /// The interpreter, contains the code.
 pub struct Ytp {
     source: String,
@@ -30,14 +33,64 @@ impl Ytp {
             println!("TypeError : {}", e);
             return Err(String::from("Compilation aborted because of preceding errors."));
         }
-        let code = Compiler::new().compile(&tree).map_err(|e|format!("compilation error : {:?}", e))?;
-        println!("code : {:?}", code);
-        let mut vm = Vm::new();
-        vm.run(code);
-        println!("vm state : {:?}", vm);
-        //let mut inter = Interpreter::new(None);
-        //inter.run(tree)?;
+
+        self.do_vm(tree.clone())?;
+        self.do_interpret(tree);
+        self.do_rust();
+
         Ok(())
+    }
+
+    pub fn do_vm(&self, tree :  HashMap<String, FunctionDecl>) -> Result<(), String>{
+
+        let code = Compiler::new().compile(&tree).map_err(|e|format!("compilation error : {:?}", e))?;
+        //println!("code : {:?}", code);
+
+        let mut vm = Vm::new();
+        let start = PreciseTime::now();
+        vm.run(code);
+        let end = PreciseTime::now();
+        let diff = start.to(end).num_milliseconds();
+
+
+        println!("vm time : {:?}ms", diff);
+        Ok(())
+    }
+
+
+    pub fn do_interpret(&self, tree : HashMap<String, FunctionDecl>){
+
+        let mut inter = Interpreter::new(None);
+        let start = PreciseTime::now();
+        inter.run(tree);
+        let end = PreciseTime::now();
+        let diff = start.to(end).num_milliseconds();
+
+        println!("interpreter time : {:?}ms", diff);
+
+    }
+
+    pub fn do_rust(&self){
+
+
+        let start = PreciseTime::now();
+        {
+            let (to_find, mut a, mut b, mut found) = (75202, 0,0,false);
+            while !found && a < to_find/2{
+                a +=1;
+                while !found && a < to_find/2{
+                    b +=1;
+                    if a*b==to_find{
+                        found = true;
+                    }
+                }
+            }
+        }
+
+        let end = PreciseTime::now();
+        let diff = start.to(end).num_microseconds();
+
+        println!("rust time : {:?}us", diff);
     }
 }
 

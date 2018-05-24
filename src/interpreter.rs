@@ -299,7 +299,9 @@ impl Interpreter {
             &TokenType::LessEqual => exp_left.le(&exp_right),
             &TokenType::LESS => exp_left.lt(&exp_right),
             &TokenType::EqualEqual => exp_left.equals(&exp_right),
-            e => Err(format!("operator {:?} can not be applied to binbary expression", e))
+            &TokenType::ANDAND => exp_left.and(&exp_right),
+            &TokenType::BangEqual => exp_left.equals(&exp_right)?.bang(),
+            e => Err(format!("operator {:?} can not be applied to binaary expression", e))
         }
     }
 }

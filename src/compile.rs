@@ -8,6 +8,15 @@ use std::collections::HashMap;
 use native::get_native_types;
 use vm::OP;
 
+/// These are unlinked instructions.
+/// the goto (symbol) will be replaced by goto(usize) when the program is completed.
+#[derive(Clone, Debug)]
+enum UnlinkedInstruction{
+    Op(OP),
+    Goto(String),
+}
+
+
 /// Represents a scope with its variables.
 /// Local variables are saved by their relative position on the stack.
 ///
@@ -47,9 +56,11 @@ impl Scope {
 /// The type checker
 /// Contains a programm and functions to resolve types/verify consistency.
 pub struct Compiler {
-    code : Vec<OP>,
+    code : Vec<UnlinkedInstruction>,
     functions : HashMap<String, FunctionDecl>,
     scopes : Vec<Scope>,
+    /// associates the labels with the positions in the code.
+    labels : HashMap<String, Option<usize>>
 }
 
 impl Compiler {
@@ -59,6 +70,7 @@ impl Compiler {
             code : vec![],
             scopes: vec![Scope::new(1, 0)],
             functions: HashMap::new(),
+            labels : HashMap::new(),
         }
     }
     /// Returns the current stack's size.
@@ -81,23 +93,44 @@ impl Compiler {
         let current_scope = self.scopes.last().unwrap().depth;
         let len = self.scopes.len();
         for sc in 0..current_scope+1 {
-            println!("search in {:?}", len - sc - 1);
             if self.scopes[len - sc - 1].get_var(var_name).is_some() {
-                println!("found");
                 return self.scopes[len - sc - 1].get_var(var_name);
             }
         }
-        println!("not found {:?}", var_name);
         None
     }
 
+    /// Creates a new label with the given name at the given position in the code.
+    pub fn new_label_here(&mut self, s : String)  {
+        self.labels.insert(s, Some(self.code.len()));
+    }
+
+    /// Creates a new label wich position is not known.
+    pub fn new_empty_label(&mut self) -> String{
+        let lab_name = self.labels.len().to_string();
+        self.labels.insert(lab_name.clone(), None);
+        lab_name
+    }
+
+    /// Sets the name of the label.
+    pub fn label_here(&mut self, label : String){
+        *self.labels.get_mut(&label).unwrap() = Some(self.code.len());
+    }
+
     pub fn emit(&mut self, op : OP){
-        self.code.push(op);
+        self.code.push(UnlinkedInstruction::Op(op));
     }
 
     pub fn emit_chunks(&mut self, mut ops : Vec<OP>){
-        self.code.append(&mut ops);
+        for o in ops{
+            self.emit(o);
+        }
     }
+
+    pub fn emit_goto(&mut self, s : String) {
+        self.code.push(UnlinkedInstruction::Goto(s));
+    }
+
     /// Resolve types if possible
     /// The aim is to traverse the tree and resolve the return type of all expressions.
     pub fn compile(&mut self, program : &HashMap<String, FunctionDecl>) -> Result<Vec<OP>, String>{
@@ -105,7 +138,11 @@ impl Compiler {
         self.functions = program.clone();
         let main = program.get("main").ok_or_else(|| "no main function found")?;
         self.function(main);
-        Ok(self.code.clone())
+        self.emit(OP::End);
+        Ok(self.code.iter().map(|e|match e {
+            &UnlinkedInstruction::Op(ref o) => o.clone(),
+            &UnlinkedInstruction::Goto(ref label) => OP::Goto(self.labels.get(label).unwrap().unwrap())
+        }).collect())
     }
 
     /// Compiles a function.
@@ -123,12 +160,41 @@ impl Compiler {
             &Statement::Declaration(ref  d) => self.declaration(d),
             &Statement::ExprStatement(ref e) => self.expression(e),
             &Statement::Scope(ref  s) => self.scope(s),
-        //    &mut Statement::IfStatement(ref mut i) => self.if_statement(i),
-        //    &mut Statement::WhileStatement(ref mut  i) => self.while_statement(i),
+            &Statement::IfStatement(ref i) => self.if_statement(i),
+            &Statement::WhileStatement(ref  i) => self.while_statement(i),
         //    &mut Statement::BreakStatement => Ok(()),
         //    &mut Statement::ReturnStatement(ref mut e) =>self.expression(e),
             ref a => panic!("other statements are not supported for now"),
         }
+    }
+
+    /// Compiles a while statement by doing so :
+    /// There is a label at the start and a label at the end.
+    /// At the end of a statement a goto -> start.
+    /// at the condition a goto -> end.
+    pub fn while_statement(&mut self, while_statement : &WhileStatement) {
+        let while_start = self.new_empty_label();
+        let while_end = self.new_empty_label();
+        // start of loop.
+        self.label_here(while_start.clone());
+        // condition
+        self.expression(while_statement.condition());
+        self.emit(OP::JMPIf);
+        self.emit_goto(while_end.clone());
+        // statement
+        self.statement(while_statement.statement());
+        self.emit_goto(while_start.clone());
+        // end
+        self.label_here(while_end);
+    }
+
+    pub fn if_statement(&mut self, if_statement : &IfStatement) {
+        self.expression(if_statement.condition());
+        let end_label = self.new_empty_label();
+        self.emit(OP::JMPIf);
+        self.emit_goto(end_label.clone());
+        self.statement(if_statement.statement());
+        self.label_here(end_label);
     }
 
     /// compiles a scope.
@@ -200,6 +266,7 @@ impl Compiler {
         }
     }
 
+    /// We exchange lower than and greater than because the rhs is at the top of the stack.
     pub fn binary(&mut self, exp : &BinaryExpr) {
 
         // puts left hand side at the top
@@ -211,12 +278,13 @@ impl Compiler {
             &TokenType::PLUS => self.emit(OP::Add),
             &TokenType::STAR => self.emit(OP::Mul),
             &TokenType::SLASH => self.emit_chunks(vec![OP::Inv, OP::Mul]),
-            &TokenType::GreaterEqual => self.emit_chunks(vec![OP::GreaterThan, OP::Eq, OP::Add]),
-            &TokenType::GREATER => self.emit(OP::GreaterThan),
-            &TokenType::LessEqual => self.emit_chunks(vec![OP::LowerThan, OP::Eq, OP::Add]),
-            &TokenType::LESS => self.emit(OP::LowerThan),
+            &TokenType::GreaterEqual => self.emit_chunks(vec![OP::LowerThan, OP::Eq, OP::Add]),
+            &TokenType::GREATER => self.emit(OP::LowerThan),
+            &TokenType::LessEqual => self.emit_chunks(vec![OP::GreaterThan, OP::Eq, OP::Add]),
+            &TokenType::LESS => self.emit(OP::GreaterThan),
             &TokenType::EqualEqual => self.emit(OP::Eq),
             &TokenType::BangEqual => self.emit_chunks(vec![OP::Eq, OP::Not]),
+            &TokenType::ANDAND => self.emit_chunks(vec![OP::And]),
             e => panic!(format!("operator {:?} can not be aplied to two value", e))
         }
     }

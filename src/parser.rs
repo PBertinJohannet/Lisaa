@@ -273,9 +273,16 @@ impl Parser {
     pub fn expr_statement(&mut self) -> Result<Statement, String>{
         Ok(Statement::ExprStatement(self.expression()?))
     }
-    /// Parses an expression, the lowest level of precedence is equality.
+    /// Parses an expression, the lowest level of precedence are && and ||.
     pub fn expression(&mut self) -> Result<Expr, String> {
-        self.equality()
+        let mut expr = self.equality()?;
+        while self.match_nexts(&[TokenType::ANDAND, TokenType::OROR]) {
+            let previous = self.previous();
+            let right = self.equality()?;
+            let new_expr = Expr::binary(expr, previous.clone(), right, previous.get_line());
+            expr = new_expr;
+        }
+        Ok(expr)
     }
     /// Parses an equality by searching fot comparisons.
     pub fn equality(&mut self) -> Result<Expr, String> {
@@ -335,7 +342,6 @@ impl Parser {
     pub fn unary(&mut self) -> Result<Expr, String> {
         if self.match_nexts(&[TokenType::MINUS, TokenType::BANG]) {
             let previous = self.previous();
-            println!("prev : {:?} ask unary", previous);
             let right = self.unary()?;
             return Ok(Expr::unary(previous.clone(), right, previous.get_line()));
         }
