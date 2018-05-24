@@ -5,7 +5,6 @@ use statement::{Statement, Assignment, IfStatement, StatementResult, FunctionDec
 use std::collections::HashMap;
 use native::get_native_types;
 
-
 /// Represents a scope with its variables.
 #[derive(Debug)]
 struct Scope {
@@ -307,6 +306,7 @@ impl TypeChecker {
             &TokenType::LESS => Ok(String::from("num")),
             &TokenType::EqualEqual => Ok(String::from("num")),
             &TokenType::BangEqual => Ok(String::from("num")),
+            &TokenType::ANDAND => Ok(String::from("num")),
             e => Err(format!("operator {:?} can not be aplied to two value", e))
         }
     }

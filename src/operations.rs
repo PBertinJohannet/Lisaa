@@ -33,6 +33,8 @@ pub trait BinaryOperations {
     fn minus(&self, other : &Self) -> Result<LiteralExpr, String>;
     /// Add other to self
     fn plus(&self, other : &Self) -> Result<LiteralExpr, String>;
+    /// And other and self
+    fn and(&self, other : &Self) -> Result<LiteralExpr, String>;
     /// Multiply other and self
     fn times(&self, other : &Self) -> Result<LiteralExpr, String>;
     /// Divide self by other.
@@ -134,6 +136,15 @@ impl BinaryOperations for LiteralExpr {
         match self == other {
             true => Ok(LiteralExpr::NUMBER(1.0)),
             false => Ok(LiteralExpr::NUMBER(0.0)),
+        }
+    }
+    fn and(&self, other: &Self) -> Result<LiteralExpr, String> {
+        match self{
+            &LiteralExpr::NUMBER(n) =>  match other {
+                &LiteralExpr::NUMBER(k) => Ok(LiteralExpr::NUMBER((n !=0.0 && k !=0.0) as i32 as f64)),
+                _ => Err("Cannot compare string with int".to_string()),
+            }
+            _ => Err("Cannot compare with string".to_string()),
         }
     }
 }

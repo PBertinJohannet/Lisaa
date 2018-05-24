@@ -1,16 +1,16 @@
 fn main(){
-    num c = !1;
-    {
-    num b = !!!c;
-    num a = -b;
-    num d = a + c + !b;
-    a = c - a + b;
-    // ok
-    c = a;
-    {
-      num a = 22;
-      a = c - d;
-      b = !d  * 6;
+    num toFind = 75202;
+    num a = 0;
+    num b = 0;
+    num found = 0;
+    while !found && a < toFind/2{
+        a = a+1;
+        b = 0;
+        while !found && b < toFind/2{
+            b = b + 1;
+            if a * b == toFind{
+                found = 1;
+            }
+        }
     }
-    c = b + a;
 }

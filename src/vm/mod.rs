@@ -120,12 +120,16 @@ impl Allocator {
 
 #[derive(Debug, Clone)]
 pub enum OP {
+    /// This is the end of the program.
+    End,
+    Goto(usize),
     Pop,
     Inv,
     Mul,
     GreaterThan,
     Eq,
     Not,
+    And,
     LowerThan,
     Swap2,
     Swap(usize),
@@ -144,10 +148,10 @@ pub enum OP {
     SetHeap,
     /// Prints the value at the top of the stack as a char
     PrintStr,
-    /// Jumps to the given number of instructions further if the top of the stack is 0.
-    JMPIf(usize),
-    /// Jumps to the given number of instructions further
-    JMP(usize),
+    /// skip the next instruction if the top of the stack is 0.
+    JMPIf,
+    /// skip the next instruction
+    JMP,
     PushNum(f64),
     ChangeTo(f64),
     PrintNum,
@@ -175,107 +179,109 @@ impl Vm {
     }
 
     pub fn run(&mut self, program : Vec<OP>) {
-        let mut program_iter = program.into_iter();
-        while let Some(op) = program_iter.next(){
-            println!("executing {:?}", op);
+        let mut instruction_pointer = 0;
+        while instruction_pointer < program.len(){
+            let op = &program[instruction_pointer];
+            instruction_pointer+=1;
+            //println!("executing {:?}", op);
             match op {
-                OP::Pop => {
+                &OP::End => println!("program execution terminated"),
+                &OP::Goto(u) => instruction_pointer = u,
+                &OP::Pop => {
                     self.stack.pop();
                 }
-                OP::Not => {
+                &OP::Not => {
                     let val = match self.stack.pop().unwrap()==0.0{
                         false => 0.0,
                         _ => 1.0,
                     };
                     self.stack.push(val)
                 }
-                OP::GreaterThan => {
+                &OP::GreaterThan => {
                     let val = match self.stack.pop().unwrap()>self.stack.pop().unwrap() {
                         false => 0.0,
                         _ => 1.0,
                     };
                     self.stack.push(val)
                 },
-                OP::LowerThan => {
-                    let val = match self.stack.pop().unwrap()<self.stack.pop().unwrap() {
-                        false => 0.0,
-                        _ => 1.0,
-                    };
+                &OP::LowerThan => {
+                    let val =  (self.stack.pop().unwrap()<self.stack.pop().unwrap()) as i32 as f64;
                     self.stack.push(val)
                 },
-                OP::Eq => {
+                &OP::And => {
+                    let val =  (self.stack.pop().unwrap() != 0.0 &&
+                        self.stack.pop().unwrap() != 0.0) as i32 as f64;
+                    self.stack.push(val)
+                },
+                &OP::Eq => {
                     let val = match self.stack.pop().unwrap()==self.stack.pop().unwrap() {
                         false => 0.0,
                         _ => 1.0,
                     };
                     self.stack.push(val)
                 },
-                OP::PushNum(n) => {
+                &OP::PushNum(n) => {
                     self.stack.push(n)
                 },
-                OP::ChangeTo(n) => {
+                &OP::ChangeTo(n) => {
                     *self.stack.last_mut().unwrap() = n;
                 },
-                OP::PrintNum => {
+                &OP::PrintNum => {
                     print!("{}", self.stack.pop().unwrap());
                 },
-                OP::JMPIf(n) => {
-                    if *self.stack.last().unwrap() != 0.0 {
-                        for _ in 0..n{
-                            program_iter.next();
-                        }
+                &OP::JMPIf => {
+                    if self.stack.pop().unwrap() != 0.0 {
+                        instruction_pointer+=1;
                     }
                 },
-                OP::JMP(n) => {
-                    for _ in 0..n{
-                        program_iter.next();
-                    }
+                &OP::JMP => {
+                    instruction_pointer+=1;
                 }
-                OP::Inv => {
+                &OP::Inv => {
                     let val = self.stack.pop().unwrap();
                     self.stack.push(1.0/val)
                 }
-                OP::Mul => {
+                &OP::Mul => {
                     let val = self.stack.pop().unwrap()*self.stack.pop().unwrap();
                     self.stack.push(val)
                 }
-                OP::Neg => {
+                &OP::Neg => {
                     let val = self.stack.pop().unwrap();
                     self.stack.push(-val)
                 }
-                OP::Add => {
+                &OP::Add => {
                     let val = self.stack.pop().unwrap()+self.stack.pop().unwrap();
                     self.stack.push(val)
                 }
-                OP::Swap2 => {
+                &OP::Swap2 => {
                     let (high, low) = (self.stack.pop().unwrap(), self.stack.pop().unwrap());
                     self.stack.push(high);
                     self.stack.push(low);
                 }
-                OP::Swap(id) => {
+                &OP::Swap(id) => {
                     let to_rem = self.stack.len()-id-1;
                     let val = self.stack.swap_remove(to_rem);
                     self.stack.push(val);
                 }
-                OP::Bring(id) => {
+                &OP::Bring(id) => {
                     let val = self.stack[id];
                     self.stack.push(val);
                 }
-                OP::Set(id) => {
+                &OP::Set(id) => {
                     let to_set = self.stack.pop().unwrap();
                     self.stack[id] = to_set;
                 }
-                OP::AllocObj => {
+                &OP::AllocObj => {
                     let size = self.stack.pop().unwrap() as i32 as usize;
                     let val = self.allocator.alloc(size, 1);
                     self.stack.push(val as f64);
                 }
-                OP::GetHeap => {
+                &OP::GetHeap => {
                     let adress : usize= self.stack.pop().unwrap() as usize;
                     let val : f64 = self.allocator.heap[adress] as f64;
                     self.stack.push(val);
                 }
-                OP::SetHeap => {
+                &OP::SetHeap => {
                     let (adress, value) = (self.stack.pop().unwrap() as usize,
                                                 self.stack.pop().unwrap() as usize);
                     println!("val at : {} to {}", adress, value);
@@ -283,6 +289,7 @@ impl Vm {
                 }
                 _ => panic!("unsupported operand"),
             }
+            //println!("stack : {:?}", self.stack);
         }
     }
 }

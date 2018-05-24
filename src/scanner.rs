@@ -73,6 +73,10 @@ impl Scanner {
                 true => self.token(TokenType::EqualEqual, ""),
                 _ => self.token(TokenType::EQUAL, ""),
             }),
+            '&' => Ok(match self.match_next('&') {
+                true => self.token(TokenType::ANDAND, ""),
+                _ => self.token(TokenType::AND, ""),
+            }),
             '<' => Ok(match self.match_next('=') {
                 true => self.token(TokenType::LessEqual, ""),
                 _ => self.token(TokenType::LESS, ""),
