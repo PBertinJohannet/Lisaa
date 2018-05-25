@@ -61,10 +61,11 @@ fn main(){
 
 | Language/interpreter | time  |
 | -------------------- | --------- |
-| ytp (completely interpreted) | 6000 ms |
-| ytp (using the vm) | 500 ms |
+| lisaa (completely interpreted) | 6000 ms |
+| lisaa (using the vm) | 500 ms |
 | rust | 7 ms |
 | python | 1269 ms |
+| java | 60 ms |
 
 The Vm interpreting the bytecode is way faster than the original interpreter.
 

@@ -60,7 +60,8 @@ pub struct Compiler {
     functions : HashMap<String, FunctionDecl>,
     scopes : Vec<Scope>,
     /// associates the labels with the positions in the code.
-    labels : HashMap<String, Option<usize>>
+    labels : HashMap<String, Option<usize>>,
+    
 }
 
 impl Compiler {
