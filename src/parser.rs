@@ -1,10 +1,11 @@
 //! Contains the code for the parser,
 //! currently only contains enough to parse expressions and return parse errors.
-use token::{TokenType, Token};
 use expression::Expr;
-use std::fmt;
-use statement::{Statement, Declaration, Assignment, IfStatement, FunctionDecl, WhileStatement, TypedVar};
+use statement::{Assignment, Declaration, FunctionDecl, IfStatement, Statement, TypedVar,
+                WhileStatement};
 use std::collections::HashMap;
+use std::fmt;
+use token::{Token, TokenType};
 
 #[derive(Debug)]
 /// The struct for a parse error, contains just enough information to show
@@ -23,7 +24,6 @@ impl ParseError {
         }
     }
 }
-
 
 impl fmt::Display for ParseError {
     /// Formats the error to a user readable format.
@@ -69,7 +69,7 @@ impl Parser {
                 Ok(e) => {
                     let name = e.name().to_string();
                     functions.insert(name, e);
-                },
+                }
                 Err(e) => fails.push(ParseError::new(self.previous(), e)),
             }
             if fails.len() > 5 {
@@ -84,11 +84,11 @@ impl Parser {
         }
     }
     /// A new function declaration.
-    pub fn function_decl(&mut self) -> Result<FunctionDecl, String>{
+    pub fn function_decl(&mut self) -> Result<FunctionDecl, String> {
         match self.peek().get_type() {
             &TokenType::FUN => {
                 self.advance(); // skip the func keyword
-                let name = match self.check(&TokenType::IDENTIFIER){
+                let name = match self.check(&TokenType::IDENTIFIER) {
                     true => self.advance().get_lexeme().to_string(),
                     false => return Err("Expected identifier after function".to_string()),
                 };
@@ -102,43 +102,47 @@ impl Parser {
     }
 
     /// Parses the return type of a function.
-    pub fn func_return_type(&mut self) -> Result<String, String>{
-        if self.match_nexts(&[TokenType::ARROW]){
+    pub fn func_return_type(&mut self) -> Result<String, String> {
+        if self.match_nexts(&[TokenType::ARROW]) {
             return Ok(self.advance().get_lexeme().to_string());
         }
-        return Ok(String::from("any"))
+        return Ok(String::from("any"));
     }
 
     /// Parses the declaration of arguments
     /// Should be refactored a little bit tho.
-    pub fn func_args(&mut self) -> Result<Vec<TypedVar>, String>{
+    pub fn func_args(&mut self) -> Result<Vec<TypedVar>, String> {
         let mut args = vec![];
         self.expect(TokenType::LeftParen)?;
         loop {
-            match self.peek().get_type(){
+            match self.peek().get_type() {
                 &TokenType::RightParen => break,
                 &TokenType::IDENTIFIER => {
                     args.push(self.typed_identifier()?);
-                    match self.peek().get_type(){
+                    match self.peek().get_type() {
                         &TokenType::RightParen => break,
-                        &TokenType::COMMA => {self.advance();}
-                        _ => Err("expected right paren or comma".to_string())?
+                        &TokenType::COMMA => {
+                            self.advance();
+                        }
+                        _ => Err("expected right paren or comma".to_string())?,
                     }
                 }
-                _ => Err("Expected closing paren or identifier".to_string())?
+                _ => Err("Expected closing paren or identifier".to_string())?,
             }
         }
         self.advance();
         Ok(args)
     }
 
-    pub fn typed_identifier(&mut self) -> Result<TypedVar, String>{
-        Ok(TypedVar::new(self.advance().get_lexeme().to_string(),
-                         self.advance().get_lexeme().to_string()))
+    pub fn typed_identifier(&mut self) -> Result<TypedVar, String> {
+        Ok(TypedVar::new(
+            self.advance().get_lexeme().to_string(),
+            self.advance().get_lexeme().to_string(),
+        ))
     }
 
     /// Expects a semeicolon after the statement, else break it.
-    pub fn expect_semicolon(&mut self, statement : Statement) -> Result<Statement, String>{
+    pub fn expect_semicolon(&mut self, statement: Statement) -> Result<Statement, String> {
         match self.match_nexts(&[TokenType::SEMICOLON]) {
             true => Ok(statement),
             false => Err("Expected semicolon at the end of statement".to_string()),
@@ -149,27 +153,27 @@ impl Parser {
         self.break_statement()
     }
     /// try to parse a break statement.
-    pub fn break_statement(&mut self)  -> Result<Statement, String> {
-        match self.peek().is_type(&TokenType::BREAK){
+    pub fn break_statement(&mut self) -> Result<Statement, String> {
+        match self.peek().is_type(&TokenType::BREAK) {
             true => {
                 self.advance();
                 self.expect_semicolon(Statement::BreakStatement)
-            },
-            false => self.if_condition()
+            }
+            false => self.if_condition(),
         }
     }
     /// parses an if condition.
     pub fn if_condition(&mut self) -> Result<Statement, String> {
-        match self.peek().is_type(&TokenType::IF){
+        match self.peek().is_type(&TokenType::IF) {
             true => self.parse_if(),
-            false => self.while_loop()
+            false => self.while_loop(),
         }
     }
     /// parses an if condition.
     pub fn while_loop(&mut self) -> Result<Statement, String> {
-        match self.peek().is_type(&TokenType::WHILE){
+        match self.peek().is_type(&TokenType::WHILE) {
             true => self.parse_while(),
-            false => self.scope()
+            false => self.scope(),
         }
     }
 
@@ -181,7 +185,10 @@ impl Parser {
         let condition = self.expression()?;
         let next_statement = self.statement()?;
         // add implicit semicolon.
-        Ok(Statement::IfStatement(IfStatement::new(condition, next_statement)))
+        Ok(Statement::IfStatement(IfStatement::new(
+            condition,
+            next_statement,
+        )))
     }
 
     /// Parses all the statements in a scope.
@@ -192,15 +199,17 @@ impl Parser {
         let condition = self.expression()?;
         let next_statement = self.statement()?;
         // add implicit semicolon.
-        Ok(Statement::WhileStatement(WhileStatement::new(condition, next_statement)))
+        Ok(Statement::WhileStatement(WhileStatement::new(
+            condition,
+            next_statement,
+        )))
     }
 
     /// Parses a scope.
-    pub fn scope(&mut self) -> Result<Statement,
-        String> {
-        match self.peek().is_type(&TokenType::LeftBrace){
+    pub fn scope(&mut self) -> Result<Statement, String> {
+        match self.peek().is_type(&TokenType::LeftBrace) {
             true => self.parse_scope(),
-            false => self.declaration()
+            false => self.declaration(),
         }
     }
     /// Parses all the statements in a scope.
@@ -209,7 +218,7 @@ impl Parser {
     pub fn parse_scope(&mut self) -> Result<Statement, String> {
         self.advance();
         let mut statements = vec![];
-        while !self.peek().is_type(&TokenType::RightBrace ){
+        while !self.peek().is_type(&TokenType::RightBrace) {
             statements.push(self.statement()?);
             if self.is_at_end() {
                 return Err("Expected closing brace at the end of scope".to_string());
@@ -225,19 +234,23 @@ impl Parser {
             &TokenType::VAR => {
                 self.advance();
                 self.parse_declaration("var".to_string())
-            },
+            }
             &TokenType::IDENTIFIER => {
                 let expr = self.expression()?;
                 self.assignment(expr)
-            },
+            }
             _ => self.return_statement(),
         };
         self.expect_semicolon(decl?)
     }
-    pub fn parse_declaration(&mut self, val_type : String) -> Result<Statement, String> {
+    pub fn parse_declaration(&mut self, val_type: String) -> Result<Statement, String> {
         let ident = self.expression()?;
         let ass = self.parse_assignment(&ident)?;
-        Ok(Statement::Declaration(Declaration::new(val_type, ident.get_identifier()?.to_string(), ass)))
+        Ok(Statement::Declaration(Declaration::new(
+            val_type,
+            ident.get_identifier()?.to_string(),
+            ass,
+        )))
     }
 
     /// Parses a return statement
@@ -247,30 +260,31 @@ impl Parser {
                 self.advance(); // skip the return.
                 let expr = self.expression()?; // get what is to return
                 Ok(Statement::ReturnStatement(expr))
-            },
+            }
             _ => self.expr_statement(),
         }
     }
 
     /// Parses an assignment.
     /// should probably parse
-    pub fn assignment(&mut self, ex : Expr) -> Result<Statement, String> {
-        match self.peek().get_type(){
+    pub fn assignment(&mut self, ex: Expr) -> Result<Statement, String> {
+        match self.peek().get_type() {
             &TokenType::EQUAL => Ok(Statement::Assignment(self.parse_assignment(&ex)?)),
             &TokenType::SEMICOLON => Ok(Statement::ExprStatement(ex)),
             &TokenType::IDENTIFIER => self.parse_declaration(ex.get_identifier()?.to_string()),
-            _ => Err("expected Equals or end of declaration after expression declaration".to_string()),
+            _ => Err(
+                "expected Equals or end of declaration after expression declaration".to_string(),
+            ),
         }
     }
     /// Parses an assignment.
-    pub fn parse_assignment(&mut self, id : &Expr) -> Result<Assignment, String>{
+    pub fn parse_assignment(&mut self, id: &Expr) -> Result<Assignment, String> {
         self.advance();
         let lit = id.get_identifier()?;
         Ok(Assignment::new(lit.to_string(), self.expression()?))
-
     }
     /// Matches an expression statement, an expr ending with a semicolon.
-    pub fn expr_statement(&mut self) -> Result<Statement, String>{
+    pub fn expr_statement(&mut self) -> Result<Statement, String> {
         Ok(Statement::ExprStatement(self.expression()?))
     }
     /// Parses an expression, the lowest level of precedence are && and ||.
@@ -298,15 +312,12 @@ impl Parser {
     /// parses a comparison.
     pub fn comparison(&mut self) -> Result<Expr, String> {
         let mut expr = self.addition()?;
-        while self.match_nexts(
-            &[
-                TokenType::GreaterEqual,
-                TokenType::LessEqual,
-                TokenType::GREATER,
-                TokenType::LESS,
-            ],
-        )
-        {
+        while self.match_nexts(&[
+            TokenType::GreaterEqual,
+            TokenType::LessEqual,
+            TokenType::GREATER,
+            TokenType::LESS,
+        ]) {
             let previous = self.previous();
             let right = self.addition()?;
             let new_expr = Expr::binary(expr, previous.clone(), right, previous.get_line());
@@ -357,34 +368,39 @@ impl Parser {
         }
     }
     /// Parse the function call but it is ugly and should be modified.
-    pub fn parse_function_call(&mut self, lit : Expr) -> Result<Expr, String> {
+    pub fn parse_function_call(&mut self, lit: Expr) -> Result<Expr, String> {
         let mut args = vec![];
         self.expect(TokenType::LeftParen)?;
         loop {
-            match self.peek().get_type(){
+            match self.peek().get_type() {
                 &TokenType::RightParen => break,
                 _ => {
                     args.push(self.expression()?);
-                    match self.peek().get_type(){
+                    match self.peek().get_type() {
                         &TokenType::RightParen => break,
-                        &TokenType::COMMA => {self.advance();}
-                        _ => Err("expected right paren or comma".to_string())?
+                        &TokenType::COMMA => {
+                            self.advance();
+                        }
+                        _ => Err("expected right paren or comma".to_string())?,
                     }
                 }
             }
         }
         self.advance();
         let line = args.first().unwrap().get_line();
-        Ok(Expr::function_call(lit.get_identifier()?.to_string(), args, line))
+        Ok(Expr::function_call(
+            lit.get_identifier()?.to_string(),
+            args,
+            line,
+        ))
     }
 
-    pub fn expect(&mut self, token_type : TokenType) -> Result<(), String> {
+    pub fn expect(&mut self, token_type: TokenType) -> Result<(), String> {
         match self.match_nexts(&[token_type]) {
             true => Ok(()),
             false => Err("Expected token".to_string()),
         }
     }
-
 
     /// Parses a litteral expression.
     pub fn literal(&mut self) -> Result<Expr, String> {
@@ -401,14 +417,20 @@ impl Parser {
             let token = self.advance();
             match token.get_type() {
                 &TokenType::NUMBER => Ok(Expr::number(
-                    token.get_lexeme().parse::<f64>().unwrap(), token.get_line()
+                    token.get_lexeme().parse::<f64>().unwrap(),
+                    token.get_line(),
                 )),
-                &TokenType::STRING => Ok(Expr::string(token.get_lexeme().to_string(), token.get_line()
+                &TokenType::STRING => Ok(Expr::string(
+                    token.get_lexeme().to_string(),
+                    token.get_line(),
                 )),
                 &TokenType::NIL => Err("nil no longer supported".to_string()),
                 &TokenType::FALSE => Ok(Expr::number(0.0, token.get_line())),
                 &TokenType::TRUE => Ok(Expr::number(1.0, token.get_line())),
-                &TokenType::IDENTIFIER => Ok(Expr::identifier(token.get_lexeme().to_string(), token.get_line())),
+                &TokenType::IDENTIFIER => Ok(Expr::identifier(
+                    token.get_lexeme().to_string(),
+                    token.get_line(),
+                )),
                 _ => Err("Cant parse literal".to_string()),
             }
         }
@@ -428,7 +450,6 @@ impl Parser {
     /// Checks that the next token is of the given type.
     pub fn check(&mut self, token_type: &TokenType) -> bool {
         !(self.is_at_end() || !self.peek().is_type(token_type))
-
     }
 
     /// Peeks for the next token, without conduming it.

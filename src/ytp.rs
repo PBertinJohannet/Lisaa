@@ -1,13 +1,13 @@
 //! The ytp module, where the interpreter just calls the other modules.
-use scanner::Scanner;
-use parser::Parser;
-use interpreter::Interpreter;
-use typecheck::TypeChecker;
 use compile::Compiler;
-use vm::Vm;
-use time::PreciseTime;
-use std::collections::HashMap;
+use interpreter::Interpreter;
+use parser::Parser;
+use scanner::Scanner;
 use statement::FunctionDecl;
+use std::collections::HashMap;
+use time::PreciseTime;
+use typecheck::TypeChecker;
+use vm::Vm;
 /// The interpreter, contains the code.
 pub struct Ytp {
     source: String,
@@ -23,15 +23,17 @@ impl Ytp {
         //println!("source : {}", self.source);
 
         let tokens = Scanner::new(&self.source).tokens()?;
-        let mut tree = Parser::new(tokens).program().map_err(|e|{
-                for p_err in e.iter(){
-                    eprintln!("{}\n", p_err);
-                }
-                String::from("Compilation aborted because of preceding errors.")
-            })?;
-        if let Err(e) = TypeChecker::new().resolve(&mut tree){
+        let mut tree = Parser::new(tokens).program().map_err(|e| {
+            for p_err in e.iter() {
+                eprintln!("{}\n", p_err);
+            }
+            String::from("Compilation aborted because of preceding errors.")
+        })?;
+        if let Err(e) = TypeChecker::new().resolve(&mut tree) {
             println!("TypeError : {}", e);
-            return Err(String::from("Compilation aborted because of preceding errors."));
+            return Err(String::from(
+                "Compilation aborted because of preceding errors.",
+            ));
         }
 
         self.do_vm(tree.clone())?;
@@ -41,11 +43,12 @@ impl Ytp {
         Ok(())
     }
 
-    pub fn do_vm(&self, tree :  HashMap<String, FunctionDecl>) -> Result<(), String>{
-
-        let code = Compiler::new().compile(&tree).map_err(|e|format!("compilation error : {:?}", e))?;
+    pub fn do_vm(&self, tree: HashMap<String, FunctionDecl>) -> Result<(), String> {
+        let code = Compiler::new()
+            .compile(&tree)
+            .map_err(|e| format!("compilation error : {:?}", e))?;
         println!("code : {:?}", code);
-        for c in code.iter(){
+        for c in code.iter() {
             println!("{:?}", c);
         }
 
@@ -55,16 +58,13 @@ impl Ytp {
         let end = PreciseTime::now();
         let diff = start.to(end).num_milliseconds();
 
-
         println!("vm state : {:?}", vm);
 
         println!("vm time : {:?}ms", diff);
         Ok(())
     }
 
-
-    pub fn do_interpret(&self, tree : HashMap<String, FunctionDecl>){
-
+    pub fn do_interpret(&self, tree: HashMap<String, FunctionDecl>) {
         let mut inter = Interpreter::new(None);
         let start = PreciseTime::now();
         inter.run(tree);
@@ -72,21 +72,18 @@ impl Ytp {
         let diff = start.to(end).num_milliseconds();
 
         println!("interpreter time : {:?}ms", diff);
-
     }
 
-    pub fn do_rust(&self){
-
-
+    pub fn do_rust(&self) {
         let start = PreciseTime::now();
         {
-            let (to_find, mut a, mut b, mut found) = (73987, 0,0,false);
-            while !found && a < to_find/2{
-                a +=1;
+            let (to_find, mut a, mut b, mut found) = (73987, 0, 0, false);
+            while !found && a < to_find / 2 {
+                a += 1;
                 b = 0;
-                while !found && b < to_find/2{
-                    b +=1;
-                    if a*b==to_find{
+                while !found && b < to_find / 2 {
+                    b += 1;
+                    if a * b == to_find {
                         found = true;
                     }
                 }
@@ -100,5 +97,3 @@ impl Ytp {
         println!("rust time : {:?}us", diff);
     }
 }
-
-
