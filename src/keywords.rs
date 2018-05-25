@@ -1,6 +1,6 @@
 //! Contains the association between the keywords and theyre tokens.
-use token::TokenType;
 use std::collections::HashMap;
+use token::TokenType;
 
 lazy_static! {
     /// These are the langage's keywords.

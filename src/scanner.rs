@@ -1,8 +1,7 @@
 //! Scanner here
 //!
 use keywords::KEYWORDS;
-use token::{TokenType, Token};
-
+use token::{Token, TokenType};
 
 /// The scanner, will scan the tokens as expected.
 /// Does not report the position of the tokens in the lines but will soon.

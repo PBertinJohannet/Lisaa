@@ -12,21 +12,21 @@ extern crate time;
 use time::PreciseTime;
 
 mod compile;
-mod keywords;
-mod token;
-mod ytp;
-mod scanner;
 mod expression;
-mod parser;
 mod interpreter;
-mod operations;
-pub mod statement;
-mod typecheck;
+mod keywords;
 mod native;
+mod operations;
+mod parser;
+mod scanner;
+pub mod statement;
+mod token;
+mod typecheck;
 mod vm;
+mod ytp;
 use std::io::Read;
 
-use clap::{Arg, App};
+use clap::{App, Arg};
 use std::fs::File;
 use std::process::exit;
 use ytp::Ytp;
@@ -45,7 +45,6 @@ fn main() {
         )
         .get_matches();
 
-
     let input_file = matches.value_of("INPUT").unwrap();
 
     exit(match run_file(input_file) {
@@ -62,33 +61,25 @@ fn run_file(input_file: &str) -> Result<(), String> {
     let mut file = match File::open(input_file) {
         Ok(file) => file,
         Err(e) => {
-            return Err(
-                format!(
-                    "could not open file : {},\
+            return Err(format!(
+                "could not open file : {},\
                  error : {} ",
-                    input_file,
-                    e
-                ).to_string(),
-            );
+                input_file, e
+            ).to_string());
         }
     };
 
     println!("\nytp : Running {}\n\n", input_file);
 
-
-
     let mut contents = String::new();
     match file.read_to_string(&mut contents) {
         Ok(file) => file,
         Err(e) => {
-            return Err(
-                format!(
-                    "could not read file : {},\
-             error : {} ",
-                    input_file,
-                    e
-                ).to_string(),
-            );
+            return Err(format!(
+                "could not read file : {},\
+                 error : {} ",
+                input_file, e
+            ).to_string());
         }
     };
     return Ytp::new(contents).run();

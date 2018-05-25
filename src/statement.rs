@@ -3,24 +3,24 @@ use expression::{Expr, LiteralExpr};
 
 /// A variable associated with a type.
 #[derive(Debug, Clone)]
-pub struct TypedVar  {
-    type_var : String,
-    name : String,
+pub struct TypedVar {
+    type_var: String,
+    name: String,
 }
 
 impl TypedVar {
     /// Creates a new variable with the type.
-    pub fn new(type_var : String, name : String) -> TypedVar{
+    pub fn new(type_var: String, name: String) -> TypedVar {
         TypedVar {
-            name : name,
-            type_var : type_var,
+            name: name,
+            type_var: type_var,
         }
     }
     /// Matches any type (used in polyvariadic functions)
     pub fn any() -> Self {
         TypedVar {
-            name : "any".to_string(),
-            type_var : "var".to_string(),
+            name: "any".to_string(),
+            type_var: "var".to_string(),
         }
     }
     /// Returns the name of the variable.
@@ -35,21 +35,21 @@ impl TypedVar {
 
 /// A function declaration
 #[derive(Debug, Clone)]
-pub struct FunctionDecl{
-    name : String,
-    args : Vec<TypedVar>,
-    scope : Statement,
-    ret_type : String,
+pub struct FunctionDecl {
+    name: String,
+    args: Vec<TypedVar>,
+    scope: Statement,
+    ret_type: String,
 }
 
 impl FunctionDecl {
     /// Creates a new function declaration.
-    pub fn new(name : String, args : Vec<TypedVar>, scope : Statement, ret_type : String) -> Self {
+    pub fn new(name: String, args: Vec<TypedVar>, scope: Statement, ret_type: String) -> Self {
         FunctionDecl {
-            name : name,
-            args : args,
-            scope : scope,
-            ret_type : ret_type
+            name: name,
+            args: args,
+            scope: scope,
+            ret_type: ret_type,
         }
     }
     /// returns the return type of the function.
@@ -66,7 +66,7 @@ impl FunctionDecl {
     }
     /// Returns the scope of the function.
     /// TODO : this unwrap ?
-    pub fn scope(&self) -> &Vec<Statement >{
+    pub fn scope(&self) -> &Vec<Statement> {
         let val = match &self.scope {
             &Statement::Scope(ref v) => Some(v),
             _ => None,
@@ -75,7 +75,7 @@ impl FunctionDecl {
     }
     /// Returns the scope of the function.
     /// TODO : this unwrap ?
-    pub fn scope_mut(&mut self) -> &mut Vec<Statement >{
+    pub fn scope_mut(&mut self) -> &mut Vec<Statement> {
         let val = match &mut self.scope {
             &mut Statement::Scope(ref mut v) => Some(v),
             _ => None,
@@ -108,16 +108,16 @@ pub enum Statement {
 #[derive(Debug, Clone)]
 /// An assignment is an identifier plus an expression.
 pub struct Assignment {
-    identifier : String,
-    expr : Expr,
+    identifier: String,
+    expr: Expr,
 }
 
 impl Assignment {
     /// Creates a new assignment.
-    pub fn new(identifier : String, expr : Expr) -> Self{
+    pub fn new(identifier: String, expr: Expr) -> Self {
         Assignment {
-            identifier : identifier,
-            expr : expr,
+            identifier: identifier,
+            expr: expr,
         }
     }
     /// Returns the identifier.
@@ -137,18 +137,18 @@ impl Assignment {
 #[derive(Debug, Clone)]
 /// A declaration is an assignment. no null values
 pub struct Declaration {
-    val_name : String,
-    val_type : String,
-    assignment : Assignment,
+    val_name: String,
+    val_type: String,
+    assignment: Assignment,
 }
 
 impl Declaration {
     /// Creates a new declaration.
-    pub fn new(val_type : String, identifier : String, assignment : Assignment) -> Self {
+    pub fn new(val_type: String, identifier: String, assignment: Assignment) -> Self {
         Declaration {
-            val_type : val_type,
-            val_name : identifier,
-            assignment : assignment,
+            val_type: val_type,
+            val_name: identifier,
+            assignment: assignment,
         }
     }
     /// Returns the assignment.
@@ -175,15 +175,15 @@ impl Declaration {
 /// Represents an if statement, its condition and the statement to exeute if it is true.
 #[derive(Debug, Clone)]
 pub struct IfStatement {
-    cond : Expr,
-    statement : Box<Statement>,
+    cond: Expr,
+    statement: Box<Statement>,
 }
 impl IfStatement {
     /// Creates a new if statement with the following condition and statement to execute.
-    pub fn new(cond : Expr, statement : Statement) -> Self {
-        IfStatement{
-            cond : cond,
-            statement : Box::new(statement),
+    pub fn new(cond: Expr, statement: Statement) -> Self {
+        IfStatement {
+            cond: cond,
+            statement: Box::new(statement),
         }
     }
     /// Returns the condition to execute.
@@ -191,7 +191,7 @@ impl IfStatement {
         &self.cond
     }
     /// Returns the statement to execute.
-    pub fn statement(&self) -> &Statement{
+    pub fn statement(&self) -> &Statement {
         &*self.statement
     }
     /// Returns the condition to execute.
@@ -199,7 +199,7 @@ impl IfStatement {
         &mut self.cond
     }
     /// Returns the statement to execute.
-    pub fn statement_mut(&mut self) -> &mut Statement{
+    pub fn statement_mut(&mut self) -> &mut Statement {
         &mut *self.statement
     }
 }
@@ -207,15 +207,15 @@ impl IfStatement {
 /// Represents an while statement, its condition and the statement to exeute if it is true.
 #[derive(Debug, Clone)]
 pub struct WhileStatement {
-    cond : Expr,
-    statement : Box<Statement>,
+    cond: Expr,
+    statement: Box<Statement>,
 }
 impl WhileStatement {
     /// Creates a new while statement with the following condition and statement to execute.
-    pub fn new(cond : Expr, statement : Statement) -> Self {
-        WhileStatement{
-            cond : cond,
-            statement : Box::new(statement),
+    pub fn new(cond: Expr, statement: Statement) -> Self {
+        WhileStatement {
+            cond: cond,
+            statement: Box::new(statement),
         }
     }
     /// Returns the condition to execute.
@@ -223,7 +223,7 @@ impl WhileStatement {
         &self.cond
     }
     /// Returns the statement to execute.
-    pub fn statement(&self) -> &Statement{
+    pub fn statement(&self) -> &Statement {
         &*self.statement
     }
     /// Returns the condition to execute.
@@ -231,7 +231,7 @@ impl WhileStatement {
         &mut self.cond
     }
     /// Returns the statement to execute.
-    pub fn statement_mut(&mut self) -> &mut Statement{
+    pub fn statement_mut(&mut self) -> &mut Statement {
         &mut *self.statement
     }
 }

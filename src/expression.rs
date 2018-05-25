@@ -1,8 +1,8 @@
 //! The module containing the code for the different expressions.
 //!
 
-use token::Token;
 use std::fmt;
+use token::Token;
 
 #[derive(Debug, Clone)]
 /// The base for an expression.
@@ -21,18 +21,17 @@ pub enum ExprEnum {
 
 #[derive(Debug, Clone)]
 pub struct Expr {
-    expr : ExprEnum,
-    return_type : String,
-    line : usize,
+    expr: ExprEnum,
+    return_type: String,
+    line: usize,
 }
 
-
 impl Expr {
-   pub fn binary(lhs: Expr, operator: Operator, rhs: Expr, line : usize) -> Self {
+    pub fn binary(lhs: Expr, operator: Operator, rhs: Expr, line: usize) -> Self {
         Expr {
-            expr : ExprEnum::Binary(BinaryExpr::new(lhs, operator, rhs)),
-            return_type : "var".to_string(),
-            line : line,
+            expr: ExprEnum::Binary(BinaryExpr::new(lhs, operator, rhs)),
+            return_type: "var".to_string(),
+            line: line,
         }
     }
     pub fn expr(&self) -> &ExprEnum {
@@ -41,51 +40,51 @@ impl Expr {
     pub fn expr_mut(&mut self) -> &mut ExprEnum {
         &mut self.expr
     }
-    pub fn set_type(&mut self, ret_type : String){
+    pub fn set_type(&mut self, ret_type: String) {
         self.return_type = ret_type;
     }
     pub fn return_type(&self) -> &String {
         &self.return_type
     }
-    pub fn function_call(name : String, args : Vec<Expr>, line : usize) -> Self {
+    pub fn function_call(name: String, args: Vec<Expr>, line: usize) -> Self {
         Expr {
-            expr : ExprEnum::FunctionCall(FunctionCall::new(name, args)),
-            return_type : "var".to_string(),
-            line : line
+            expr: ExprEnum::FunctionCall(FunctionCall::new(name, args)),
+            return_type: "var".to_string(),
+            line: line,
         }
     }
-    pub fn unary(operator: Operator, expr: Expr, line : usize) -> Self {
+    pub fn unary(operator: Operator, expr: Expr, line: usize) -> Self {
         Expr {
-            expr : ExprEnum::Unary(UnaryExpr::new(operator, expr)),
-            return_type : "var".to_string(),
-            line : line
+            expr: ExprEnum::Unary(UnaryExpr::new(operator, expr)),
+            return_type: "var".to_string(),
+            line: line,
         }
     }
-    pub fn number(num : f64, line : usize) -> Self {
+    pub fn number(num: f64, line: usize) -> Self {
         Expr {
-            expr : ExprEnum::Literal(LiteralExpr::NUMBER(num)),
-            return_type : "num".to_string(),
-            line : line
+            expr: ExprEnum::Literal(LiteralExpr::NUMBER(num)),
+            return_type: "num".to_string(),
+            line: line,
         }
     }
-    pub fn string(string : String, line : usize) -> Self {
+    pub fn string(string: String, line: usize) -> Self {
         Expr {
-            expr : ExprEnum::Literal(LiteralExpr::STRING(string)),
-            return_type : "str".to_string(),
-            line : line
+            expr: ExprEnum::Literal(LiteralExpr::STRING(string)),
+            return_type: "str".to_string(),
+            line: line,
         }
     }
-    pub fn identifier(string : String, line : usize) -> Self {
+    pub fn identifier(string: String, line: usize) -> Self {
         Expr {
-            expr : ExprEnum::Identifier(string),
-            return_type : "var".to_string(),
-            line : line
+            expr: ExprEnum::Identifier(string),
+            return_type: "var".to_string(),
+            line: line,
         }
     }
     pub fn get_identifier(&self) -> Result<&String, String> {
         match self.expr {
-            ExprEnum::Identifier(ref i) =>Ok(i),
-            _ => Err("expected identifier".to_string())
+            ExprEnum::Identifier(ref i) => Ok(i),
+            _ => Err("expected identifier".to_string()),
         }
     }
     pub fn get_line(&self) -> usize {
@@ -96,16 +95,16 @@ impl Expr {
 /// Represents a function call in the code.
 #[derive(Debug, Clone)]
 pub struct FunctionCall {
-    name : String,
-    args : Vec<Expr>
+    name: String,
+    args: Vec<Expr>,
 }
 
 impl FunctionCall {
     /// Creates a new function call expression
-    pub fn new(name : String, args : Vec<Expr>) -> Self {
+    pub fn new(name: String, args: Vec<Expr>) -> Self {
         FunctionCall {
-            name : name,
-            args : args,
+            name: name,
+            args: args,
         }
     }
     /// Returns the name.
@@ -113,11 +112,11 @@ impl FunctionCall {
         &self.name
     }
     /// Returns the list of arguments.
-    pub fn args(&self) -> &Vec<Expr>{
+    pub fn args(&self) -> &Vec<Expr> {
         &self.args
     }
     /// Returns the list of arguments.
-    pub fn args_mut(&mut self) -> &mut Vec<Expr>{
+    pub fn args_mut(&mut self) -> &mut Vec<Expr> {
         &mut self.args
     }
 }
@@ -169,19 +168,19 @@ impl BinaryExpr {
         }
     }
     /// returns the left hand side of the expression.
-    pub fn lhs(&self)  -> &Expr {
+    pub fn lhs(&self) -> &Expr {
         &*self.lhs
     }
     /// Returns the riht hand side of the expression.
-    pub fn rhs(&self)  -> &Expr {
+    pub fn rhs(&self) -> &Expr {
         &*self.rhs
     }
     /// returns the left hand side of the expression as mutable ref.
-    pub fn lhs_mut(&mut self)  -> &mut Expr {
+    pub fn lhs_mut(&mut self) -> &mut Expr {
         &mut *self.lhs
     }
     /// Returns the riht hand side of the expression as mutable ref.
-    pub fn rhs_mut(&mut self)  -> &mut Expr {
+    pub fn rhs_mut(&mut self) -> &mut Expr {
         &mut *self.rhs
     }
     /// Returns the operator.
@@ -198,7 +197,6 @@ pub enum LiteralExpr {
     /// Anything else will be a string.
     STRING(String),
 }
-
 
 impl fmt::Display for LiteralExpr {
     /// Formats the error to a user readable format.

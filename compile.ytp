@@ -1,16 +1,4 @@
 fn main(){
-    num toFind = 73987;
-    num a = 0;
-    num b = 0;
-    num found = 0;
-    while !found && a < toFind/2{
-        a = a+1;
-        b = 0;
-        while !found && b < toFind/2{
-            b = b + 1;
-            if a * b == toFind{
-                found = 1;
-            }
-        }
-    }
+    num a = 2;
+    return a;
 }

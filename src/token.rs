@@ -139,7 +139,7 @@ impl Token {
     }
 
     /// Changes the type of this token.
-    pub fn set_type(&mut self, tp : TokenType) {
+    pub fn set_type(&mut self, tp: TokenType) {
         self.token_type = tp;
     }
 
