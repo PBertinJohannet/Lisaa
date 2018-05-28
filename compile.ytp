@@ -1,4 +1,6 @@
 fn main(){
-    num a = 2;
-    return a;
+    return add(2);
+}
+fn add (num a){
+    return a + 1;
 }
