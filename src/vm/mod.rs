@@ -132,6 +132,8 @@ pub enum OP {
     ZeroOffset,
     /// Pushes the offset of the stack to the stack.
     PushOffset,
+    /// Jumps to the instruction with the same value as the top of the stack
+    GotoTop,
     Inv,
     Mul,
     GreaterThan,
@@ -143,8 +145,6 @@ pub enum OP {
     Swap(usize),
     Bring(usize),
     Set(usize),
-    /// Like set but sets to the value at -2
-    Ret,
     /// Negates the current top of the stack.
     Neg,
     /// Add the top and second value of the stack.
@@ -194,12 +194,16 @@ impl Vm {
         while instruction_pointer < program.len() {
             let op = &program[instruction_pointer];
             instruction_pointer += 1;
-            println!("executing {:?}", op);
+            //println!("executing {:?}", op);
             match op {
-                &OP::End => println!("program execution terminated"),
+                &OP::End => {
+                    println!("program execution terminated");
+                    return;
+                },
                 &OP::Goto(u) => instruction_pointer = u,
+                &OP::GotoTop => instruction_pointer = self.stack.pop().unwrap() as usize,
                 &OP::ZeroOffset => {
-                    self.stack_offset = self.stack.len();
+                    self.stack_offset = self.stack.len()-1;
                 }
                 &OP::PushOffset => {
                     let val = self.stack_offset as f64;
@@ -292,10 +296,6 @@ impl Vm {
                     let val = self.stack[self.stack_offset + id];
                     self.stack.push(val);
                 }
-                &OP::Ret => {
-                    let to_set = self.stack.pop().unwrap();
-                    self.stack[self.stack_offset -2] = to_set;
-                }
                 &OP::Set(id) => {
                     let to_set = self.stack.pop().unwrap();
                     self.stack[self.stack_offset + id] = to_set;
@@ -320,7 +320,7 @@ impl Vm {
                 }
                 //_ => panic!("unsupported operand"),
             }
-            println!("stack : {:?}", self.stack);
+            //println!("stack : {:?}", self.stack);
         }
     }
 }

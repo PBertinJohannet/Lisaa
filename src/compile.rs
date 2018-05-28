@@ -11,10 +11,12 @@ use vm::OP;
 
 /// These are unlinked instructions.
 /// the goto (symbol) will be replaced by goto(usize) when the program is completed.
+/// The Push(symbol) will be replaced by PushNum(float) when the program is completed.
 #[derive(Clone, Debug)]
 enum UnlinkedInstruction {
     Op(OP),
     Goto(String),
+    Push(String),
 }
 
 /// Represents a scope with its variables.
@@ -82,8 +84,6 @@ pub struct Compiler {
     scopes: Vec<Scope>,
     /// associates the labels with the positions in the code.
     labels: HashMap<String, Option<usize>>,
-    /// The name of the currently compiled function.
-    current_function_name: String,
 }
 
 impl Compiler {
@@ -94,7 +94,6 @@ impl Compiler {
             scopes: vec![],
             functions: HashMap::new(),
             labels: HashMap::new(),
-            current_function_name : "main".to_string(),
         }
     }
     /// Returns the current stack's size.
@@ -155,43 +154,56 @@ impl Compiler {
         self.code.push(UnlinkedInstruction::Goto(s));
     }
 
+    pub fn emit_push(&mut self, s: String) {
+        self.code.push(UnlinkedInstruction::Push(s));
+    }
+
     /// Resolve types if possible
     /// The aim is to traverse the tree and resolve the return type of all expressions.
     pub fn compile(&mut self, program: &HashMap<String, FunctionDecl>) -> Result<Vec<OP>, String> {
         //self.add_lib("base");
         self.functions = program.clone();
-        let main = program.get("main").ok_or_else(|| "no main function found")?;
-        self.function(main);
+
+        self.function_call(&FunctionCall::new("main".to_string(), vec!()));
         self.emit(OP::End);
         for f in program.iter(){
-            if f.0 != "main" {
-                self.function(f.1);
-            }
+            self.function(f.1);
         }
+        println!("code : {:?}", self.code);
         Ok(self.code
             .iter()
             .map(|e| match e {
                 &UnlinkedInstruction::Op(ref o) => o.clone(),
                 &UnlinkedInstruction::Goto(ref label) => {
                     OP::Goto(self.labels.get(label).unwrap().unwrap())
+                },
+                &UnlinkedInstruction::Push(ref label) => {
+                    OP::PushNum(self.labels.get(label).unwrap().unwrap() as f64)
                 }
             })
             .collect())
     }
 
     /// Compiles a function.
-    /// makes a new scope.
-    /// the return value is at offset 0
-    ///
+    /// The function assumes the following stack configurations :
+    /// Ret | Ins | Off | Args ...
+    /// Where Ret is the return value, Off is the stack offset of the preceding function,
+    /// Ins is the index of the instruction to execute next and Args the arguments in order.
+    /// The calling convention is emited in the function_calls.
+    /// Puts a label for the begining of the function with the function name.
     pub fn function(&mut self, func: &FunctionDecl) {
+        self.new_label_here(func.name().to_string());
         self.scopes.push(Scope::new(1, 0));
-        let current_name = self.new_empty_label();
-        self.current_function_name = current_name.clone();
-        self.emit_chunks(vec![OP::PushNum(0.0), OP::PushOffset, OP::ZeroOffset]); // pushes the return value.
+        self.create_var("0".to_string()); // return value.
+        self.create_var("1".to_string()); // next instruction.
+        self.create_var("2".to_string()); // offset.
+        for var in func.args(){
+            self.create_var(var.name().to_string());
+        }
         for st in func.scope() {
             self.statement(st);
         }
-        self.label_here(current_name);
+        self.return_statement(&Expr::number(0.0, 1));
     }
 
     /// Compiles a statement. depends on the statement.
@@ -213,15 +225,17 @@ impl Compiler {
     }
 
     /// Compiles a return statement
-    /// Evaluates the return value and put it in the
+    /// since the stack has the following configuration
+    /// Ret | Ins | Off | Args ...
+    /// We need to free everything except the Ret | Off then Sets the offset to the position of Off
+    /// while consuming it.
     pub fn return_statement(&mut self, expression : &Expr){
         self.expression(expression);
-        self.emit(OP::Ret);
-        let to_pop =  self.scopes.last().unwrap().current_size;
-        self.emit(OP::PopN(to_pop));
-        self.emit(OP::SetOffset); // remove everything except the return value.
-        let func_name = self.current_function_name.clone();
-        self.emit_goto(func_name);
+        self.emit(OP::Set(0)); // sets return value.
+        let to_pop =  self.scopes.last().unwrap().current_size-3;
+        self.emit(OP::PopN(to_pop)); // pop the allocated variables.
+        self.emit(OP::SetOffset); // Reset the offset to the last function.
+        self.emit(OP::GotoTop); // goto the next instruction after the function call.
     }
 
     pub fn break_scope(&mut self){
@@ -330,9 +344,27 @@ impl Compiler {
             &ExprEnum::Unary(ref u) => self.unary(u),
             &ExprEnum::Binary(ref b) => self.binary(b),
             &ExprEnum::Identifier(ref i) => self.identifier(i),
-            //&ExprEnum::FunctionCall(ref f) => self.function_call(f),
+            &ExprEnum::FunctionCall(ref f) => self.function_call(f),
             _ => panic!(format!("expression not supported {:?}", expr).to_string()),
         }
+    }
+
+    /// As specified, when a function is called we the stack must be in the following format :
+    /// Ret | Off | Args ...
+    /// So we push the ret, push the offset and go to the function.
+    pub fn function_call(&mut self, call : &FunctionCall){
+        let after_call = self.new_empty_label();
+        self.emit(OP::PushOffset);// stack :  | Offset |
+        self.emit(OP::ZeroOffset);// zero the offset.
+        self.emit(OP::PushNum(0.0)); // pushes the return value.
+        self.emit(OP::Swap2); // swaps to get the return value under the offset.
+        self.emit_push(after_call.to_string()); // push the value of the instructions after the call.
+        self.emit(OP::Swap2); // Swaps the offset with the instruction pointer.
+        for var in call.args(){
+            self.expression(var);
+        }
+        self.emit_goto(call.name().to_string());
+        self.label_here(after_call);
     }
 
     pub fn literal(&mut self, literal: &LiteralExpr) {
