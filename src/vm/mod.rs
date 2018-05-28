@@ -128,8 +128,8 @@ pub enum OP {
     PopN(usize),
     /// Sets the offset of the stack to the value at the top (and consume the value)
     SetOffset,
-    /// Sets the offset of the stack to the end.
-    ZeroOffset,
+    /// Sets the offset of the stack down.
+    OffsetToTop(usize),
     /// Pushes the offset of the stack to the stack.
     PushOffset,
     /// Jumps to the instruction with the same value as the top of the stack
@@ -202,8 +202,8 @@ impl Vm {
                 },
                 &OP::Goto(u) => instruction_pointer = u,
                 &OP::GotoTop => instruction_pointer = self.stack.pop().unwrap() as usize,
-                &OP::ZeroOffset => {
-                    self.stack_offset = self.stack.len()-1;
+                &OP::OffsetToTop(u) => {
+                    self.stack_offset = self.stack.len()-u;
                 }
                 &OP::PushOffset => {
                     let val = self.stack_offset as f64;

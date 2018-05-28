@@ -355,7 +355,6 @@ impl Compiler {
     pub fn function_call(&mut self, call : &FunctionCall){
         let after_call = self.new_empty_label();
         self.emit(OP::PushOffset);// stack :  | Offset |
-        self.emit(OP::ZeroOffset);// zero the offset.
         self.emit(OP::PushNum(0.0)); // pushes the return value.
         self.emit(OP::Swap2); // swaps to get the return value under the offset.
         self.emit_push(after_call.to_string()); // push the value of the instructions after the call.
@@ -363,6 +362,7 @@ impl Compiler {
         for var in call.args(){
             self.expression(var);
         }
+        self.emit(OP::OffsetToTop(call.args().len()+3)); // down the current offset to (num args + 3)
         self.emit_goto(call.name().to_string());
         self.label_here(after_call);
     }
