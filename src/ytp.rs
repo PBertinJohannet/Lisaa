@@ -1,6 +1,6 @@
 //! The ytp module, where the interpreter just calls the other modules.
 use compile::Compiler;
-use interpreter::Interpreter;
+//use interpreter::Interpreter;
 use parser::Parser;
 use scanner::Scanner;
 use statement::FunctionDecl;
@@ -65,14 +65,14 @@ impl Ytp {
     }
 
     pub fn do_interpret(&self, tree: HashMap<String, FunctionDecl>) {
-        let mut inter = Interpreter::new(None);
+  /*      let mut inter = Interpreter::new(None);
         let start = PreciseTime::now();
         inter.run(tree);
         let end = PreciseTime::now();
         let diff = start.to(end).num_milliseconds();
 
         println!("interpreter time : {:?}ms", diff);
-    }
+  */ }
 
     pub fn do_rust(&self) {
         let start = PreciseTime::now();
