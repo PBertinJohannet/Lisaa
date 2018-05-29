@@ -3,7 +3,7 @@
 //! An interpreter for a language,
 //! This is an experiment.
 //!
-
+extern crate rand;
 extern crate clap;
 #[macro_use]
 extern crate lazy_static;

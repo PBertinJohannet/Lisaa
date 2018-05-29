@@ -169,6 +169,7 @@ impl Compiler {
         for f in program.iter(){
             self.function(f.1);
         }
+        self.compile_std();
         println!("code : {:?}", self.code);
         Ok(self.code
             .iter()
@@ -409,4 +410,21 @@ impl Compiler {
             e => panic!(format!("operator {:?} can not be aplied to two value", e)),
         }
     }
+
+    pub fn compile_std(&mut self){
+        self.compiled_print();
+    }
+
+    pub fn compiled_print(&mut self){
+        self.new_label_here("print".to_string());
+        self.emit(OP::PrintNum);
+        self.return_statement(&Expr::number(1.0, 1));
+    }
+
+    pub fn compiled_rand(&mut self){
+        self.new_label_here("print".to_string());
+        self.emit(OP::RandNum);
+        self.return_statement(&Expr::number(1.0, 1));
+    }
 }
+

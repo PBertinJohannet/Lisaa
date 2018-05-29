@@ -20,7 +20,7 @@ impl TypedVar {
     pub fn any() -> Self {
         TypedVar {
             name: "any".to_string(),
-            type_var: "var".to_string(),
+            type_var: "any".to_string(),
         }
     }
     /// Returns the name of the variable.
