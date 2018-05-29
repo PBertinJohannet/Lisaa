@@ -13,7 +13,7 @@ use time::PreciseTime;
 
 mod compile;
 mod expression;
-mod interpreter;
+//mod interpreter;
 mod keywords;
 mod native;
 mod operations;

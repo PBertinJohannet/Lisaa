@@ -20,14 +20,16 @@ currently it supports functions, strings and integers.
 # Example
 
 ```
-fn main(a) {
+fn main() {
+     num a = 0;
      num b = 5;
      while b < 50 {
-        print("fac ", b, " is ", fac(b));
         b=b+1;
+	a = fac(b) + a;
     }
+	return a;
 }
-fn fac(a) -> num{
+fn fac(num a) -> num{
     if a == 1{
         return 1;
     }
