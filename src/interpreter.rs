@@ -1,4 +1,5 @@
 //! The interpreter for the language
+//! deprecated because too slow.
 use expression::{BinaryExpr, Expr, ExprEnum, FunctionCall, LiteralExpr, UnaryExpr};
 use native::get_native;
 use operations::{BinaryOperations, UnaryOperations};

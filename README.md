@@ -21,13 +21,13 @@ currently it supports functions, strings and integers.
 
 ```
 fn main(a) {
-     var b = 5;
+     num b = 5;
      while b < 50 {
         print("fac ", b, " is ", fac(b));
         b=b+1;
     }
 }
-fn fac(a){
+fn fac(a) -> num{
     if a == 1{
         return 1;
     }
@@ -61,7 +61,7 @@ fn main(){
 
 | Language/interpreter | time  |
 | -------------------- | --------- |
-| lisaa (completely interpreted) | 6000 ms |
+| lisaa (ast based interpreter) | 6000 ms |
 | lisaa (using the vm) | 500 ms |
 | rust | 7 ms |
 | python | 1269 ms |
@@ -69,7 +69,10 @@ fn main(){
 
 The Vm interpreting the bytecode is way faster than the original interpreter.
 
+# Original interpreter
 
+The original ast-based interpreter is now deprecated, it was too slow.
+All the codes will now be compiled to be interpreted by the virtual machine
 
 # The virtual machine
 

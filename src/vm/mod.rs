@@ -1,4 +1,4 @@
-use std::mem::transmute;
+use rand::random;
 /// How heap memory/GC works.
 /// Everytime a pointer variable is created, an entry in root_references is created.
 /// Everytime a heap object is created its reference is pushed to the top of the stack.
@@ -163,6 +163,7 @@ pub enum OP {
     PushNum(f64),
     ChangeTo(f64),
     PrintNum,
+    RandNum,
 }
 
 /// no memory safety, everything leaks.
@@ -257,6 +258,9 @@ impl Vm {
                 }
                 &OP::PrintNum => {
                     print!("{}", self.stack.pop().unwrap());
+                }
+                &OP::RandNum => {
+                    self.stack.push(random::<f64>());
                 }
                 &OP::JMPIf => {
                     if self.stack.pop().unwrap() != 0.0 {
