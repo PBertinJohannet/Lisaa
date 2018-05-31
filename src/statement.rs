@@ -1,26 +1,83 @@
 //! The module for statement.
 use expression::{Expr, LiteralExpr};
+use std::fmt;
+#[derive(Debug, Clone, PartialEq, Eq)]
+/// This represents a class
+/// Classes are not supported yet so it is useless.
+pub struct Class {
+    name: String,
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+/// Represents the possible types of the language.
+pub enum LisaaType {
+    /// Represents a pointer to a heap allocated ressource.
+    Pointer(Box<LisaaType>),
+    /// Represents a Class
+    Class(Class),
+    /// A simple number (can be heap/stack)
+    Num,
+    /// A Char (heap/stack too)
+    Char,
+    /// An array of the given type allocated on the heap.
+    Slice(Box<LisaaType>),
+    /// Nothing.
+    Void,
+}
+
+impl LisaaType {
+    /// Creates a pointer pointing to the given type
+    pub fn pointer(inner: LisaaType) -> Self {
+        LisaaType::Pointer(Box::new(inner))
+    }
+    /// Creates a slice of the given type.
+    pub fn slice(inner: LisaaType) -> Self {
+        LisaaType::Slice(Box::new(inner))
+    }
+    /// Dereferences if it is a pointer until it is not a pointer anymore
+    pub fn max_deref(&self) -> Self {
+        let mut a = self.clone();
+        while let LisaaType::Pointer(box val) = a{
+            a = val;
+        }
+        a
+    }
+}
+
+
+impl fmt::Display for LisaaType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &LisaaType::Char => write!(f, "char"),
+            &LisaaType::Num => write!(f, "num"),
+            &LisaaType::Slice(ref u) => write!(f, "slice<{}>", u),
+            &LisaaType::Void => write!(f, "void"),
+            &LisaaType::Pointer(ref p) => write!(f, "&{}", p),
+            _ => write!(f, "unknown type")
+        }
+    }
+}
+
 
 /// A variable associated with a type.
 #[derive(Debug, Clone)]
 pub struct TypedVar {
-    type_var: String,
+    type_var: Option<LisaaType>,
     name: String,
 }
 
 impl TypedVar {
     /// Creates a new variable with the type.
-    pub fn new(type_var: String, name: String) -> TypedVar {
+    pub fn new(type_var: LisaaType, name: String) -> TypedVar {
         TypedVar {
             name: name,
-            type_var: type_var,
+            type_var: Some(type_var),
         }
     }
-    /// Matches any type (used in polyvariadic functions)
-    pub fn any() -> Self {
+    /// This is a num
+    pub fn num(name: String) -> Self {
         TypedVar {
-            name: "any".to_string(),
-            type_var: "any".to_string(),
+            type_var: Some(LisaaType::Num),
+            name: name,
         }
     }
     /// Returns the name of the variable.
@@ -28,7 +85,7 @@ impl TypedVar {
         &self.name
     }
     /// Returns the type of the variable.
-    pub fn type_var(&self) -> &String {
+    pub fn type_var(&self) -> &Option<LisaaType> {
         &self.type_var
     }
 }
@@ -39,12 +96,12 @@ pub struct FunctionDecl {
     name: String,
     args: Vec<TypedVar>,
     scope: Statement,
-    ret_type: String,
+    ret_type: LisaaType,
 }
 
 impl FunctionDecl {
     /// Creates a new function declaration.
-    pub fn new(name: String, args: Vec<TypedVar>, scope: Statement, ret_type: String) -> Self {
+    pub fn new(name: String, args: Vec<TypedVar>, scope: Statement, ret_type: LisaaType) -> Self {
         FunctionDecl {
             name: name,
             args: args,
@@ -53,7 +110,7 @@ impl FunctionDecl {
         }
     }
     /// returns the return type of the function.
-    pub fn ret_type(&self) -> &String {
+    pub fn ret_type(&self) -> &LisaaType {
         &self.ret_type
     }
     /// Returns the name of the function.
@@ -143,13 +200,13 @@ impl Assignment {
 /// A declaration is an assignment. no null values
 pub struct Declaration {
     val_name: String,
-    val_type: String,
+    val_type: LisaaType,
     assignment: Assignment,
 }
 
 impl Declaration {
     /// Creates a new declaration.
-    pub fn new(val_type: String, identifier: String, assignment: Assignment) -> Self {
+    pub fn new(val_type: LisaaType, identifier: String, assignment: Assignment) -> Self {
         Declaration {
             val_type: val_type,
             val_name: identifier,
@@ -173,7 +230,7 @@ impl Declaration {
         self.assignment.expr()
     }
     /// Returns the expression assigned to the value.
-    pub fn val_type(&self) -> &String {
+    pub fn val_type(&self) -> &LisaaType {
         &self.val_type
     }
 }

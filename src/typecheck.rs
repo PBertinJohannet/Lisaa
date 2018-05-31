@@ -1,7 +1,7 @@
-use expression::{BinaryExpr, Expr, ExprEnum, FunctionCall, LiteralExpr, UnaryExpr, Operator};
+use expression::{BinaryExpr, Expr, ExprEnum, FunctionCall, LiteralExpr, Operator, UnaryExpr};
 use native::get_native_types;
-use statement::{Assignment, Declaration, FunctionDecl, IfStatement, Statement, StatementResult,
-                TypedVar, WhileStatement};
+use statement::{Assignment, Declaration, FunctionDecl, IfStatement, LisaaType, Statement,
+                StatementResult, TypedVar, WhileStatement};
 use std::collections::HashMap;
 use token::TokenType;
 
@@ -42,7 +42,7 @@ impl Scope {
 /// Contains a programm and functions to resolve types/verify consistency.
 /// Also check for lvalues and assignment.
 pub struct TypeChecker {
-    native_functions: HashMap<String, (String, Vec<TypedVar>)>,
+    native_functions: HashMap<String, (LisaaType, Vec<TypedVar>)>,
     functions: HashMap<String, FunctionDecl>,
     scopes: Vec<Scope>,
 }
@@ -59,7 +59,7 @@ impl TypeChecker {
     /// Add a lib to the program.
     pub fn add_lib(&mut self, lib: &str) {
         for f in get_native_types(lib) {
-            self.native_functions.insert(f.name(), (f.ret(), f.args()));
+            self.native_functions.insert(f.name(), (f.ret().clone(), f.args()));
         }
     }
     /// Creates a variable in the current scope.
@@ -92,10 +92,10 @@ impl TypeChecker {
         None
     }
     /// Checks if the type of the given expression matches with the given type.
-    pub fn check_type(&self, expr: &Expr, expected: &String) -> Result<(), String> {
-        if expr.return_type() != expected && expected != "any" {
+    pub fn check_type(&self, expr: &Expr, expected: &LisaaType) -> Result<(), String> {
+        while expr.return_type().max_deref() != expected.max_deref(){
             return Err(
-                format!("Expected : {}, got : {}", expected, expr.return_type()).to_string(),
+                format!("Expected : {}, got : {}", expected, expr.return_type()),
             );
         }
         Ok(())
@@ -178,10 +178,10 @@ impl TypeChecker {
     /// checks that types match.
     /// creates a new variable with the given type in the scope.
     pub fn declaration(&mut self, decl: &mut Declaration) -> Result<(), String> {
-        let val_type = decl.val_type().to_string();
+        let val_type = decl.val_type().clone();
         self.expression(decl.expr_mut())?;
         self.check_type(decl.expr(), &val_type)?;
-        self.create_var(TypedVar::new(val_type, decl.name().to_string()));
+        self.create_var(TypedVar::new(val_type.clone(), decl.name().to_string()));
         Ok(())
     }
 
@@ -195,7 +195,7 @@ impl TypeChecker {
         if !self.is_assignee(assignment.assignee()) {
             return Err(format!("can only assign to pointer or local variables "));
         }
-        self.check_type(assignment.expr(), assignment.assignee().return_type())?;
+        self.check_type(assignment.expr(), &assignment.assignee().return_type())?;
         Ok(())
     }
 
@@ -206,9 +206,9 @@ impl TypeChecker {
     /// Sets the expression's return type.
     /// Sets the type of incoming and outcoming variables so the compiler will know what it needs to.
     pub fn expression(&mut self, expr: &mut Expr) -> Result<(), String> {
-        let current_type = expr.return_type().to_string();
+        let ret_type = expr.return_type_uncheck().clone();
         let tp = match expr.expr_mut() {
-            &mut ExprEnum::Literal(_) => Ok(current_type),
+            &mut ExprEnum::Literal(_) => Ok(ret_type.unwrap()),
             &mut ExprEnum::Unary(ref mut u) => self.unary(u),
             &mut ExprEnum::Binary(ref mut b) => self.binary(b),
             &mut ExprEnum::Identifier(ref mut i) => self.identifier(i),
@@ -220,16 +220,16 @@ impl TypeChecker {
     }
 
     /// Returns the type of the given identifier if it exists in scope.
-    pub fn identifier(&mut self, id: &String) -> Result<String, String> {
-        match self.has_var(id) {
-            true => Ok(self.get_var(id).unwrap().type_var().to_string()),
-            false => Err(String::from(format!("Unknown variable : {}", id))),
+    pub fn identifier(&mut self, id: &String) -> Result<LisaaType, String> {
+        match self.get_var(id) {
+            Some(ref var) => Ok(var.type_var().clone().unwrap()),
+            None => Err(String::from(format!("Unknown variable : {}", id))),
         }
     }
 
-    pub fn get_function(&self, name: &str) -> Result<(String, &Vec<TypedVar>), String> {
+    pub fn get_function(&self, name: &str) -> Result<(LisaaType, &Vec<TypedVar>), String> {
         match self.functions.get(name) {
-            Some(f) => Ok((f.ret_type().to_string(), &f.args())),
+            Some(f) => Ok((f.ret_type().clone(), f.args())),
             None => match self.native_functions.get(name) {
                 Some((ret, f)) => Ok((ret.clone(), f)),
                 None => Err(String::from(format!("Unknown function : {:?}", name))),
@@ -242,16 +242,11 @@ impl TypeChecker {
     /// Checks for arguments given to the function.
     /// And well... This is a bit embarassing...
     /// The ugly hack with the closure feels a little bit odd.
-    pub fn function_call(&mut self, exp: &mut FunctionCall) -> Result<String, String> {
+    pub fn function_call(&mut self, exp: &mut FunctionCall) -> Result<LisaaType, String> {
         let (ret, args) = {
             let (r, a) = self.get_function(exp.name())?;
             (r.clone(), a.clone())
         };
-        if let Some(t) = args.first() {
-            if t.type_var() == "any" {
-                return Ok(ret.to_string());
-            }
-        }
         let (args_count_given, args_count_expected) = (exp.args().len(), args.len());
         if args_count_expected != args_count_given {
             return Err(String::from(format!(
@@ -261,24 +256,22 @@ impl TypeChecker {
         }
         for i in 0..args_count_given {
             self.expression(&mut exp.args_mut()[i])?;
-            self.check_type(&exp.args_mut()[i], args[i].type_var())?;
+            self.check_type(&exp.args_mut()[i], &args[i].type_var().clone().unwrap())?;
         }
-        Ok(ret.to_string())
+        Ok(ret)
     }
 
     /// Find the return type of a unary expression and returns it.
-    pub fn unary(&mut self, exp: &mut UnaryExpr) -> Result<String, String> {
+    pub fn unary(&mut self, exp: &mut UnaryExpr) -> Result<LisaaType, String> {
         self.expression(exp.expression_mut())?;
         let exp_res = exp.expression().return_type();
         match exp.operator() {
-            Operator::MINUS => match exp_res.as_ref() {
-                "num" => Ok(String::from("num")),
-                "str" => Err(String::from("Cant apply operator '-' to String")),
+            Operator::MINUS => match exp_res {
+                LisaaType::Num => Ok(LisaaType::Num),
                 _ => Err(String::from("Operator '-' supported only for primitives")),
             },
-            Operator::Not => match exp_res.as_ref() {
-                "num" => Ok(String::from("num")),
-                "str" => Ok(String::from("str")),
+            Operator::Not => match exp_res {
+                LisaaType::Num => Ok(LisaaType::Num),
                 _ => Err(String::from("Operator '!' supported only for primitives")),
             },
             e => Err(format!("operator {:?} can not be aplied to one value", e)),
@@ -286,56 +279,41 @@ impl TypeChecker {
     }
 
     /// Find the return type of a binary expression and returns it.
-    pub fn binary(&mut self, exp: &mut BinaryExpr) -> Result<String, String> {
+    pub fn binary(&mut self, exp: &mut BinaryExpr) -> Result<LisaaType, String> {
         self.expression(exp.lhs_mut())?;
         self.expression(exp.rhs_mut())?;
         let exp_res = (
-            exp.lhs().return_type().as_ref(),
-            exp.rhs().return_type().as_ref(),
+            exp.lhs().return_type(),
+            exp.rhs().return_type(),
         );
         match exp.operator() {
             Operator::MINUS => match exp_res {
-                ("num", "num") => Ok(String::from("num")),
-                ("str", _) => Err(String::from("Cant apply operator '-' to String")),
-                (_, "str") => Err(String::from("Cant apply operator '-' to String")),
-                _ => Err(String::from("Operator '-' supported only for primitives")),
+                (LisaaType::Num, LisaaType::Num) => Ok(LisaaType::Num),
+                _ => Err(String::from("Operator '-' supported only for num")),
             },
             Operator::PLUS => match exp_res {
-                ("num", "num") => Ok(String::from("num")),
-                ("str", _) => Ok(String::from("str")),
-                (_, "str") => Err(String::from("str")),
-                _ => Err(String::from("Operator '+' supported only for primitives")),
+                (LisaaType::Num, LisaaType::Num) => Ok(LisaaType::Num),
+                _ => Err(String::from("Operator '+' supported only for num")),
             },
             Operator::STAR => match exp_res {
-                ("num", "num") => Ok(String::from("num")),
-                ("str", "num") => Ok(String::from("str")),
-                ("num", "str") => Ok(String::from("str")),
-                ("str", "str") => Err(String::from("Cannot multiply String by String")),
-                _ => Err(String::from("Operator '*' supported only for primitives")),
+                (LisaaType::Num, LisaaType::Num) => Ok(LisaaType::Num),
+                _ => Err(String::from("Operator '*' supported only for num")),
             },
             Operator::SLASH => match exp_res {
-                ("num", "num") => Ok(String::from("num")),
-                ("str", _) => Err(String::from("Cant apply operator '/' to String")),
-                (_, "str") => Err(String::from("Cant apply operator '/' to String")),
-                _ => Err(String::from("Operator '/' supported only for primitives")),
+                (LisaaType::Num, LisaaType::Num) => Ok(LisaaType::Num),
+                _ => Err(String::from("Operator '*' supported only for num")),
             },
-            Operator::GreaterEqual => Ok(String::from("num")),
-            Operator::GREATER => Ok(String::from("num")),
-            Operator::LessEqual => Ok(String::from("num")),
-            Operator::LESS => Ok(String::from("num")),
-            Operator::EqualEqual => Ok(String::from("num")),
-            Operator::NotEqual => Ok(String::from("num")),
-            Operator::AndAnd => Ok(String::from("num")),
-            Operator::INDEX => {
-                println!("exp res is : {:?}", exp_res);
-                if exp_res == ("slice", "num"){
-                    Ok(String::from("num"))
-                } else if exp_res.0 == "slice"{
-                    Err(format!("can not use {} to index slice", exp_res.1))
-                } else {
-                    Err(format!("can not index {}", exp_res.0))
-                }
-            }
+            Operator::GreaterEqual => Ok(LisaaType::Num),
+            Operator::GREATER => Ok(LisaaType::Num),
+            Operator::LessEqual => Ok(LisaaType::Num),
+            Operator::LESS => Ok(LisaaType::Num),
+            Operator::EqualEqual => Ok(LisaaType::Num),
+            Operator::NotEqual => Ok(LisaaType::Num),
+            Operator::AndAnd => Ok(LisaaType::Num),
+            Operator::INDEX => match exp_res {
+                (LisaaType::Slice(inner), LisaaType::Num) => Ok(LisaaType::Pointer(inner.clone())),
+                _ => Err(String::from("Can only index slice using num")),
+            },
             e => Err(format!("operator {:?} can not be aplied to two value", e)),
         }
     }
@@ -344,14 +322,10 @@ impl TypeChecker {
     /// This can happen if :
     /// The type is a number/char from a slice (indexed)
     /// The type is a number/char from an object (with . operator) // not yet implemented.
-    pub fn is_pointer(&self, expr : &Expr) -> bool {
-        if expr.return_type() == "num"{
-            if let ExprEnum::Binary(BinaryExpr{operator: Operator::INDEX, ..}) = expr.expr(){
-                return true;
-            } else {
-                return false;
-            }
+    pub fn is_pointer(&self, expr: &Expr) -> bool {
+        if let LisaaType::Pointer(_) = expr.return_type(){
+            return true;
         }
-        return true;
+        return false;
     }
 }

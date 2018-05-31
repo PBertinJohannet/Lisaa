@@ -3,6 +3,7 @@
 
 use std::fmt;
 use token::{Token, TokenType};
+use statement::LisaaType;
 
 #[derive(Debug, Clone)]
 /// The base for an expression.
@@ -26,7 +27,7 @@ pub enum ExprEnum {
 #[derive(Debug, Clone)]
 pub struct Expr {
     expr: ExprEnum,
-    return_type: String,
+    return_type: Option<LisaaType>,
     line: usize,
 }
 
@@ -34,14 +35,14 @@ impl Expr {
     pub fn binary(lhs: Expr, operator: Operator, rhs: Expr, line: usize) -> Self {
         Expr {
             expr: ExprEnum::Binary(BinaryExpr::new(lhs, operator, rhs)),
-            return_type: "var".to_string(),
+            return_type: None,
             line: line,
         }
     }
     pub fn indexing(indexed: Expr, index: Expr, line: usize) -> Self {
         Expr {
             expr: ExprEnum::Binary(BinaryExpr::new(indexed, Operator::INDEX, index)),
-            return_type: "var".to_string(),
+            return_type: None,
             line: line,
         }
     }
@@ -57,44 +58,47 @@ impl Expr {
     pub fn expr_mut(&mut self) -> &mut ExprEnum {
         &mut self.expr
     }
-    pub fn set_type(&mut self, ret_type: String) {
-        self.return_type = ret_type;
+    pub fn set_type(&mut self, ret_type: LisaaType) {
+        self.return_type = Some(ret_type);
     }
-    pub fn return_type(&self) -> &String {
+    pub fn return_type(&self) -> LisaaType {
+        self.return_type.clone().unwrap()
+    }
+    pub fn return_type_uncheck(&self) -> &Option<LisaaType >{
         &self.return_type
     }
     pub fn function_call(name: String, args: Vec<Expr>, line: usize) -> Self {
         Expr {
             expr: ExprEnum::FunctionCall(FunctionCall::new(name, args)),
-            return_type: "var".to_string(),
+            return_type: None,
             line: line,
         }
     }
     pub fn unary(operator: Operator, expr: Expr, line: usize) -> Self {
         Expr {
             expr: ExprEnum::Unary(UnaryExpr::new(operator, expr)),
-            return_type: "var".to_string(),
+            return_type: None,
             line: line,
         }
     }
     pub fn number(num: f64, line: usize) -> Self {
         Expr {
             expr: ExprEnum::Literal(LiteralExpr::NUMBER(num)),
-            return_type: "num".to_string(),
+            return_type: Some(LisaaType::Num),
             line: line,
         }
     }
     pub fn string(string: String, line: usize) -> Self {
         Expr {
             expr: ExprEnum::Literal(LiteralExpr::STRING(string)),
-            return_type: "str".to_string(),
+            return_type: Some(LisaaType::slice(LisaaType::Char)),
             line: line,
         }
     }
     pub fn identifier(string: String, line: usize) -> Self {
         Expr {
             expr: ExprEnum::Identifier(string),
-            return_type: "var".to_string(),
+            return_type: None,
             line: line,
         }
     }
