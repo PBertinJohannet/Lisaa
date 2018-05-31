@@ -2,7 +2,7 @@
 //!
 
 use std::fmt;
-use token::Token;
+use token::{Token, TokenType};
 
 #[derive(Debug, Clone)]
 /// The base for an expression.
@@ -18,7 +18,11 @@ pub enum ExprEnum {
     /// A function call
     FunctionCall(FunctionCall),
 }
-
+/// Expressions that are lvalues :
+/// Identifier
+/// Expressions that are not lvalues
+/// Literal
+/// For other expressions Lvalues are completed in the typecheck for the binary/identifier
 #[derive(Debug, Clone)]
 pub struct Expr {
     expr: ExprEnum,
@@ -32,6 +36,19 @@ impl Expr {
             expr: ExprEnum::Binary(BinaryExpr::new(lhs, operator, rhs)),
             return_type: "var".to_string(),
             line: line,
+        }
+    }
+    pub fn indexing(indexed: Expr, index: Expr, line: usize) -> Self {
+        Expr {
+            expr: ExprEnum::Binary(BinaryExpr::new(indexed, Operator::INDEX, index)),
+            return_type: "var".to_string(),
+            line: line,
+        }
+    }
+    pub fn is_identifier(&self) -> bool {
+        match self.expr {
+            ExprEnum::Identifier(_) => true,
+            _ => false,
         }
     }
     pub fn expr(&self) -> &ExprEnum {
@@ -121,8 +138,46 @@ impl FunctionCall {
     }
 }
 
-/// Operators are represented by tokens for now.
-pub type Operator = Token;
+/// These are the operators
+#[derive(Debug, Clone)]
+pub enum Operator {
+    Not,
+    PLUS,
+    MINUS,
+    STAR,
+    SLASH,
+    GreaterEqual,
+    GREATER,
+    LessEqual,
+    LESS,
+    EqualEqual,
+    NotEqual,
+    AndAnd,
+    INDEX,
+}
+
+impl Operator {
+    pub fn from_token(token: &Token) -> Result<Self, String> {
+        match token.get_type() {
+            &TokenType::BANG => Ok(Operator::Not),
+            &TokenType::PLUS => Ok(Operator::PLUS),
+            &TokenType::MINUS => Ok(Operator::MINUS),
+            &TokenType::STAR => Ok(Operator::STAR),
+            &TokenType::SLASH => Ok(Operator::SLASH),
+            &TokenType::GreaterEqual => Ok(Operator::GreaterEqual),
+            &TokenType::GREATER => Ok(Operator::GREATER),
+            &TokenType::LessEqual => Ok(Operator::LessEqual),
+            &TokenType::LESS => Ok(Operator::LESS),
+            &TokenType::EqualEqual => Ok(Operator::EqualEqual),
+            &TokenType::BangEqual => Ok(Operator::NotEqual),
+            &TokenType::ANDAND => Ok(Operator::AndAnd),
+            _ => Err(format!(
+                "can not convert token : {:?} to operator",
+                token.get_type()
+            )),
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 /// An unary expression contains only an operator and the expression.
@@ -155,7 +210,7 @@ impl UnaryExpr {
 /// An unary expression contains an operator and two expressions.
 pub struct BinaryExpr {
     lhs: Box<Expr>,
-    operator: Operator,
+    pub operator: Operator,
     rhs: Box<Expr>,
 }
 impl BinaryExpr {

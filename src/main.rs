@@ -3,8 +3,8 @@
 //! An interpreter for a language,
 //! This is an experiment.
 //!
-extern crate rand;
 extern crate clap;
+extern crate rand;
 #[macro_use]
 extern crate lazy_static;
 
@@ -16,7 +16,7 @@ mod expression;
 //mod interpreter;
 mod keywords;
 mod native;
-mod operations;
+mod operator;
 mod parser;
 mod scanner;
 pub mod statement;
@@ -40,7 +40,7 @@ fn main() {
             Arg::with_name("INPUT")
                 .index(1)
                 .help("the file to run")
-                .default_value("slicetest.lisaa")
+                .default_value("lvalue.lisaa")
                 .required(true),
         )
         .get_matches();

@@ -1,6 +1,5 @@
-use expression::{BinaryExpr, Expr, ExprEnum, FunctionCall, LiteralExpr, UnaryExpr};
+use expression::{BinaryExpr, Expr, ExprEnum, FunctionCall, LiteralExpr, UnaryExpr, Operator};
 use native::get_native_types;
-use operations::{BinaryOperations, UnaryOperations};
 use statement::{Assignment, Declaration, FunctionDecl, IfStatement, Statement, StatementResult,
                 TypedVar, WhileStatement};
 use std::collections::HashMap;
@@ -41,6 +40,7 @@ impl Scope {
 
 /// The type checker
 /// Contains a programm and functions to resolve types/verify consistency.
+/// Also check for lvalues and assignment.
 pub struct TypeChecker {
     native_functions: HashMap<String, (String, Vec<TypedVar>)>,
     functions: HashMap<String, FunctionDecl>,
@@ -93,7 +93,7 @@ impl TypeChecker {
     }
     /// Checks if the type of the given expression matches with the given type.
     pub fn check_type(&self, expr: &Expr, expected: &String) -> Result<(), String> {
-        if expr.return_type() != expected && expected!= "any"{
+        if expr.return_type() != expected && expected != "any" {
             return Err(
                 format!("Expected : {}, got : {}", expected, expr.return_type()).to_string(),
             );
@@ -187,13 +187,20 @@ impl TypeChecker {
 
     /// Checks the assignment :
     /// First checks the expression assigned.
-    /// then what it is assigned to.
+    /// then what it is assigned to (must be a lvalue).
     /// then if they match.
     pub fn assignment(&mut self, assignment: &mut Assignment) -> Result<(), String> {
         self.expression(assignment.expr_mut())?;
-        let res = self.identifier(assignment.identifier())?;
-        self.check_type(assignment.expr(), &res)?;
+        self.expression(assignment.assignee_mut())?;
+        if !self.is_assignee(assignment.assignee()) {
+            return Err(format!("can only assign to pointer or local variables "));
+        }
+        self.check_type(assignment.expr(), assignment.assignee().return_type())?;
         Ok(())
+    }
+
+    pub fn is_assignee(&self, expression: &Expr) -> bool {
+        expression.is_identifier() || self.is_pointer(expression)
     }
 
     /// Sets the expression's return type.
@@ -220,7 +227,7 @@ impl TypeChecker {
         }
     }
 
-    pub fn get_function(&self, name : &str ) -> Result<(String, &Vec<TypedVar>), String>{
+    pub fn get_function(&self, name: &str) -> Result<(String, &Vec<TypedVar>), String> {
         match self.functions.get(name) {
             Some(f) => Ok((f.ret_type().to_string(), &f.args())),
             None => match self.native_functions.get(name) {
@@ -263,13 +270,13 @@ impl TypeChecker {
     pub fn unary(&mut self, exp: &mut UnaryExpr) -> Result<String, String> {
         self.expression(exp.expression_mut())?;
         let exp_res = exp.expression().return_type();
-        match exp.operator().get_type() {
-            &TokenType::MINUS => match exp_res.as_ref() {
+        match exp.operator() {
+            Operator::MINUS => match exp_res.as_ref() {
                 "num" => Ok(String::from("num")),
                 "str" => Err(String::from("Cant apply operator '-' to String")),
                 _ => Err(String::from("Operator '-' supported only for primitives")),
             },
-            &TokenType::BANG => match exp_res.as_ref() {
+            Operator::Not => match exp_res.as_ref() {
                 "num" => Ok(String::from("num")),
                 "str" => Ok(String::from("str")),
                 _ => Err(String::from("Operator '!' supported only for primitives")),
@@ -286,40 +293,65 @@ impl TypeChecker {
             exp.lhs().return_type().as_ref(),
             exp.rhs().return_type().as_ref(),
         );
-        match exp.operator().get_type() {
-            &TokenType::MINUS => match exp_res {
+        match exp.operator() {
+            Operator::MINUS => match exp_res {
                 ("num", "num") => Ok(String::from("num")),
                 ("str", _) => Err(String::from("Cant apply operator '-' to String")),
                 (_, "str") => Err(String::from("Cant apply operator '-' to String")),
                 _ => Err(String::from("Operator '-' supported only for primitives")),
             },
-            &TokenType::PLUS => match exp_res {
+            Operator::PLUS => match exp_res {
                 ("num", "num") => Ok(String::from("num")),
                 ("str", _) => Ok(String::from("str")),
                 (_, "str") => Err(String::from("str")),
                 _ => Err(String::from("Operator '+' supported only for primitives")),
             },
-            &TokenType::STAR => match exp_res {
+            Operator::STAR => match exp_res {
                 ("num", "num") => Ok(String::from("num")),
                 ("str", "num") => Ok(String::from("str")),
                 ("num", "str") => Ok(String::from("str")),
                 ("str", "str") => Err(String::from("Cannot multiply String by String")),
                 _ => Err(String::from("Operator '*' supported only for primitives")),
             },
-            &TokenType::SLASH => match exp_res {
+            Operator::SLASH => match exp_res {
                 ("num", "num") => Ok(String::from("num")),
                 ("str", _) => Err(String::from("Cant apply operator '/' to String")),
                 (_, "str") => Err(String::from("Cant apply operator '/' to String")),
                 _ => Err(String::from("Operator '/' supported only for primitives")),
             },
-            &TokenType::GreaterEqual => Ok(String::from("num")),
-            &TokenType::GREATER => Ok(String::from("num")),
-            &TokenType::LessEqual => Ok(String::from("num")),
-            &TokenType::LESS => Ok(String::from("num")),
-            &TokenType::EqualEqual => Ok(String::from("num")),
-            &TokenType::BangEqual => Ok(String::from("num")),
-            &TokenType::ANDAND => Ok(String::from("num")),
+            Operator::GreaterEqual => Ok(String::from("num")),
+            Operator::GREATER => Ok(String::from("num")),
+            Operator::LessEqual => Ok(String::from("num")),
+            Operator::LESS => Ok(String::from("num")),
+            Operator::EqualEqual => Ok(String::from("num")),
+            Operator::NotEqual => Ok(String::from("num")),
+            Operator::AndAnd => Ok(String::from("num")),
+            Operator::INDEX => {
+                println!("exp res is : {:?}", exp_res);
+                if exp_res == ("slice", "num"){
+                    Ok(String::from("num"))
+                } else if exp_res.0 == "slice"{
+                    Err(format!("can not use {} to index slice", exp_res.1))
+                } else {
+                    Err(format!("can not index {}", exp_res.0))
+                }
+            }
             e => Err(format!("operator {:?} can not be aplied to two value", e)),
         }
+    }
+
+    /// Checks if the type is a pointer.
+    /// This can happen if :
+    /// The type is a number/char from a slice (indexed)
+    /// The type is a number/char from an object (with . operator) // not yet implemented.
+    pub fn is_pointer(&self, expr : &Expr) -> bool {
+        if expr.return_type() == "num"{
+            if let ExprEnum::Binary(BinaryExpr{operator: Operator::INDEX, ..}) = expr.expr(){
+                return true;
+            } else {
+                return false;
+            }
+        }
+        return true;
     }
 }
