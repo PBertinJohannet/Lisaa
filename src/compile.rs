@@ -427,7 +427,6 @@ impl Compiler {
         }
     }
 
-
     pub fn compile_std(&mut self) {
         self.compiled_print();
         self.compiled_rand();

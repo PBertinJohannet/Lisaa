@@ -1,8 +1,8 @@
 //! Contains the code for the parser,
 //! currently only contains enough to parse expressions and return parse errors.
 use expression::{Expr, Operator};
-use statement::{Assignment, Declaration, FunctionDecl, IfStatement, Statement, TypedVar,
-                WhileStatement};
+use statement::{Assignment, Declaration, FunctionDecl, IfStatement, LisaaType, Statement,
+                TypedVar, WhileStatement};
 use std::collections::HashMap;
 use std::fmt;
 use token::{Token, TokenType};
@@ -102,11 +102,11 @@ impl Parser {
     }
 
     /// Parses the return type of a function.
-    pub fn func_return_type(&mut self) -> Result<String, String> {
+    pub fn func_return_type(&mut self) -> Result<LisaaType, String> {
         if self.match_nexts(&[TokenType::ARROW]) {
-            return Ok(self.advance().get_lexeme().to_string());
+            return Ok(self.parse_type()?);
         }
-        return Ok(String::from("any"));
+        return Ok(LisaaType::Void);
     }
 
     /// Parses the declaration of arguments
@@ -136,9 +136,23 @@ impl Parser {
 
     pub fn typed_identifier(&mut self) -> Result<TypedVar, String> {
         Ok(TypedVar::new(
-            self.advance().get_lexeme().to_string(),
+            self.parse_type()?,
             self.advance().get_lexeme().to_string(),
         ))
+    }
+
+    pub fn parse_type(&mut self) -> Result<LisaaType, String> {
+        let ident = self.advance().get_lexeme().to_string();
+        match ident.as_ref() {
+            "slice" => {
+                self.expect(TokenType::LESS)?;
+                let inner = self.parse_type()?;
+                self.expect(TokenType::GREATER)?;
+                Ok(LisaaType::slice(inner))
+            }
+            "num" => Ok(LisaaType::Num),
+            _ => Err(format!("unsupported type at the moment : {:?}", ident)),
+        }
     }
 
     /// Expects a semicolon after the statement, else break it.
@@ -229,9 +243,21 @@ impl Parser {
     }
 
     /// Matches a declaration or an assignment.
+    /// When it arrives at an identifier it checks for the next element :
+    /// If it is a < we have a type.
+    /// If it is an identifier we also have a type.
+    /// In the two cases we parse an assignment.
+    /// Else we go to the assignment part.
     pub fn declaration(&mut self) -> Result<Statement, String> {
         let decl = match self.peek().get_type() {
             &TokenType::IDENTIFIER => {
+
+                if self.peek_twice().get_type() == &TokenType::LESS
+                    || self.peek_twice().get_type() == &TokenType::IDENTIFIER
+                {
+                    let tp = self.parse_type()?;
+                    return self.parse_declaration(tp)
+                }
                 let expr = self.expression()?;
                 self.assignment(expr)
             }
@@ -241,14 +267,16 @@ impl Parser {
     }
     /// Parses a declaration
     /// When this function is called we know that we have a type and the next val is an identifier.
-    pub fn parse_declaration(&mut self, val_type: String) -> Result<Statement, String> {
+    pub fn parse_declaration(&mut self, val_type: LisaaType) -> Result<Statement, String> {
         let ident = self.expression()?;
         let ass = self.parse_assignment(ident.clone())?; // no problem in cloning a small string.
-        Ok(Statement::Declaration(Declaration::new(
+        let decl = Ok(Statement::Declaration(Declaration::new(
             val_type,
             ident.get_identifier()?.to_string(),
             ass,
-        )))
+        )));
+        self.expect(TokenType::SEMICOLON);
+        decl
     }
 
     /// Parses a return statement
@@ -266,12 +294,11 @@ impl Parser {
     /// Parses an assignment.
     /// An identifier followed by an identifier is a declaration.
     /// Followed by a equal is an assignment.
-    /// Followed by a semicolon it is an expression.s
+    /// Followed by a semicolon it is an expression.
     pub fn assignment(&mut self, ex: Expr) -> Result<Statement, String> {
         match self.peek().get_type() {
             &TokenType::EQUAL => Ok(Statement::Assignment(self.parse_assignment(ex)?)),
             &TokenType::SEMICOLON => Ok(Statement::ExprStatement(ex)),
-            &TokenType::IDENTIFIER => self.parse_declaration(ex.get_identifier()?.to_string()),
             _ => Err(
                 "expected Equals or end of declaration after expression declaration".to_string(),
             ),
@@ -309,7 +336,12 @@ impl Parser {
         while self.match_nexts(&[TokenType::EqualEqual, TokenType::BangEqual]) {
             let previous = self.previous();
             let right = self.comparison()?;
-            let new_expr = Expr::binary(expr, Operator::from_token(&previous)?, right, previous.get_line());
+            let new_expr = Expr::binary(
+                expr,
+                Operator::from_token(&previous)?,
+                right,
+                previous.get_line(),
+            );
             expr = new_expr;
         }
         Ok(expr)
@@ -325,7 +357,12 @@ impl Parser {
         ]) {
             let previous = self.previous();
             let right = self.addition()?;
-            let new_expr = Expr::binary(expr, Operator::from_token(&previous)?, right, previous.get_line());
+            let new_expr = Expr::binary(
+                expr,
+                Operator::from_token(&previous)?,
+                right,
+                previous.get_line(),
+            );
             expr = new_expr;
         }
         Ok(expr)
@@ -336,7 +373,12 @@ impl Parser {
         while self.match_nexts(&[TokenType::MINUS, TokenType::PLUS]) {
             let previous = self.previous();
             let right = self.multiplication()?;
-            let new_expr = Expr::binary(expr, Operator::from_token(&previous)?, right, previous.get_line());
+            let new_expr = Expr::binary(
+                expr,
+                Operator::from_token(&previous)?,
+                right,
+                previous.get_line(),
+            );
             expr = new_expr;
         }
         Ok(expr)
@@ -348,7 +390,12 @@ impl Parser {
         while self.match_nexts(&[TokenType::STAR, TokenType::SLASH]) {
             let previous = self.previous();
             let right = self.unary()?;
-            let new_expr = Expr::binary(expr, Operator::from_token(&previous)?, right, previous.get_line());
+            let new_expr = Expr::binary(
+                expr,
+                Operator::from_token(&previous)?,
+                right,
+                previous.get_line(),
+            );
             expr = new_expr;
         }
         Ok(expr)
@@ -359,7 +406,11 @@ impl Parser {
         if self.match_nexts(&[TokenType::MINUS, TokenType::BANG]) {
             let previous = self.previous();
             let right = self.unary()?;
-            return Ok(Expr::unary(Operator::from_token(&previous)?, right, previous.get_line()));
+            return Ok(Expr::unary(
+                Operator::from_token(&previous)?,
+                right,
+                previous.get_line(),
+            ));
         }
         return self.function_call();
     }
@@ -470,6 +521,11 @@ impl Parser {
     /// Checks that the next token is of the given type.
     pub fn check(&mut self, token_type: &TokenType) -> bool {
         !(self.is_at_end() || !self.peek().is_type(token_type))
+    }
+
+    /// Peeks for the next token, without conduming it.
+    pub fn peek_twice(&self) -> &Token {
+        &self.tokens[self.current + 1]
     }
 
     /// Peeks for the next token, without conduming it.

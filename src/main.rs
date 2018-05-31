@@ -1,5 +1,5 @@
+#![feature(box_patterns)]
 #![deny(missing_docs)]
-
 //! An interpreter for a language,
 //! This is an experiment.
 //!

@@ -1,33 +1,33 @@
 use expression::LiteralExpr;
-use statement::TypedVar;
+use statement::{LisaaType, TypedVar};
 use vm::OP;
 
 #[derive(Debug)]
 pub struct NativeFunc {
     name: String,
     args: Vec<TypedVar>,
-    ret: String,
+    ret: LisaaType,
 }
 impl NativeFunc {
     pub fn print() -> Self {
         NativeFunc {
             name: "print".to_string(),
-            args: vec![TypedVar::new("num".to_string(), "a".to_string())],
-            ret: "".to_string(),
+            args: vec![TypedVar::new(LisaaType::Num, "a".to_string())],
+            ret: LisaaType::Void,
         }
     }
     pub fn rand() -> Self {
         NativeFunc {
             name: "rand".to_string(),
             args: vec![],
-            ret: "num".to_string(),
+            ret: LisaaType::Num,
         }
     }
     pub fn newslice() -> Self {
         NativeFunc {
             name: "newslice".to_string(),
-            args: vec![TypedVar::new("num".to_string(), "n".to_string())],
-            ret: "slice".to_string(),
+            args: vec![TypedVar::new(LisaaType::Num, "n".to_string())],
+            ret: LisaaType::slice(LisaaType::Num),
         }
     }
     pub fn name(&self) -> String {
@@ -36,8 +36,8 @@ impl NativeFunc {
     pub fn args(&self) -> Vec<TypedVar> {
         self.args.clone()
     }
-    pub fn ret(&self) -> String {
-        self.ret.to_string()
+    pub fn ret(&self) -> &LisaaType {
+        &self.ret
     }
 }
 
