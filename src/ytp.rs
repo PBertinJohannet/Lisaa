@@ -47,7 +47,6 @@ impl Ytp {
         let code = Compiler::new()
             .compile(&tree)
             .map_err(|e| format!("compilation error : {:?}", e))?;
-        println!("code : {:?}", code);
         for c in code.iter() {
             println!("{:?}", c);
         }

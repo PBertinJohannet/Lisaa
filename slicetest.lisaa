@@ -1,0 +1,4 @@
+fn main(){
+	slice a = newslice(2);
+	return a;
+}

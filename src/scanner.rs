@@ -51,10 +51,12 @@ impl Scanner {
     /// Scan the tokens, basically match everything known and returns an error if we can't
     fn scan_token(&mut self) -> Result<Token, String> {
         return match self.advance() {
+            '[' => Ok(self.token(TokenType::LeftBrace, "")),
+            ']' => Ok(self.token(TokenType::RightBrace, "")),
             '(' => Ok(self.token(TokenType::LeftParen, "")),
             ')' => Ok(self.token(TokenType::RightParen, "")),
-            '{' => Ok(self.token(TokenType::LeftBrace, "")),
-            '}' => Ok(self.token(TokenType::RightBrace, "")),
+            '{' => Ok(self.token(TokenType::LeftCurlyBrace, "")),
+            '}' => Ok(self.token(TokenType::RightCurlyBrace, "")),
             ',' => Ok(self.token(TokenType::COMMA, "")),
             '.' => Ok(self.token(TokenType::DOT, "")),
             '+' => Ok(self.token(TokenType::PLUS, "")),
