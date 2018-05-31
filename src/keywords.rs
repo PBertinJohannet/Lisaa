@@ -20,10 +20,10 @@ lazy_static! {
         m.insert("super",  TokenType::SUPER);
         m.insert("this",   TokenType::THIS);
         m.insert("true",   TokenType::TRUE);
-        m.insert("var",    TokenType::VAR);
+        //m.insert("var",    TokenType::VAR);
         m.insert("while",  TokenType::WHILE);
         //m.insert("num",  TokenType::NUM);
-        m.insert("string",  TokenType::StringDecl);
+        //m.insert("string",  TokenType::StringDecl);
         m
     };
 }

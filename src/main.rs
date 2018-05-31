@@ -40,7 +40,7 @@ fn main() {
             Arg::with_name("INPUT")
                 .index(1)
                 .help("the file to run")
-                .default_value("pi.lisaa")
+                .default_value("slicetest.lisaa")
                 .required(true),
         )
         .get_matches();
@@ -69,7 +69,7 @@ fn run_file(input_file: &str) -> Result<(), String> {
         }
     };
 
-    println!("\nytp : Running {}\n\n", input_file);
+    println!("\nlisaa : Running {}\n\n", input_file);
 
     let mut contents = String::new();
     match file.read_to_string(&mut contents) {

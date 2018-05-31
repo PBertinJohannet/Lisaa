@@ -23,6 +23,13 @@ impl NativeFunc {
             ret : "num".to_string(),
         }
     }
+    pub fn newslice() -> Self {
+        NativeFunc {
+            name: "newslice".to_string(),
+            args: vec![TypedVar::new("num".to_string(), "n".to_string())],
+            ret : "slice".to_string(),
+        }
+    }
     pub fn name(&self) -> String {
         self.name.clone()
     }
@@ -36,14 +43,11 @@ impl NativeFunc {
 
 pub fn get_native_types(library: &str) -> Vec<NativeFunc> {
     match library {
-        "base" => vec![NativeFunc::print(), NativeFunc::rand()], //, time, rand],
+        "base" => vec![NativeFunc::print(),
+                       NativeFunc::rand(),
+                       NativeFunc::newslice()], //, time, rand],
         _ => vec![],
     }
 }
 
-pub fn get_compiled_native(library: &str) -> Vec<(String, Vec<OP>)>{
-    vec![("print".to_string(), vec![OP::PrintNum]),
-         ("rand".to_string(), vec![OP::RandNum])
-        ]
-}
 

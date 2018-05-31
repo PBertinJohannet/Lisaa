@@ -414,6 +414,7 @@ impl Compiler {
     pub fn compile_std(&mut self){
         self.compiled_print();
         self.compiled_rand();
+        self.compiled_newslice();
     }
 
     pub fn compiled_print(&mut self){
@@ -424,6 +425,11 @@ impl Compiler {
     pub fn compiled_rand(&mut self){
         self.new_label_here("rand".to_string());
         self.emit_chunks(vec![OP::RandNum, OP::Set(0), OP::SetOffset, OP::GotoTop]);
+    }
+    /// The slice takes a number and creates a slice in the heap.
+    pub fn compiled_newslice(&mut self){
+        self.new_label_here("newslice".to_string());
+        self.emit_chunks(vec![OP::AllocObj, OP::Set(0), OP::SetOffset, OP::GotoTop]);
     }
 }
 

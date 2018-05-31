@@ -9,9 +9,13 @@ pub enum TokenType {
     LeftParen,
     /// A right parenthesis.
     RightParen,
-    /// A left brace.
+    /// A left curly brace.
+    LeftCurlyBrace,
+    /// A right curly brace.
+    RightCurlyBrace,
+    /// left brace (arrays)
     LeftBrace,
-    /// A right brace.
+    /// right brace
     RightBrace,
     /// A comma.
     COMMA,

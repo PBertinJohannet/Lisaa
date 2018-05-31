@@ -141,7 +141,7 @@ impl Parser {
         ))
     }
 
-    /// Expects a semeicolon after the statement, else break it.
+    /// Expects a semicolon after the statement, else break it.
     pub fn expect_semicolon(&mut self, statement: Statement) -> Result<Statement, String> {
         match self.match_nexts(&[TokenType::SEMICOLON]) {
             true => Ok(statement),
@@ -207,7 +207,7 @@ impl Parser {
 
     /// Parses a scope.
     pub fn scope(&mut self) -> Result<Statement, String> {
-        match self.peek().is_type(&TokenType::LeftBrace) {
+        match self.peek().is_type(&TokenType::LeftCurlyBrace) {
             true => self.parse_scope(),
             false => self.declaration(),
         }
@@ -218,7 +218,7 @@ impl Parser {
     pub fn parse_scope(&mut self) -> Result<Statement, String> {
         self.advance();
         let mut statements = vec![];
-        while !self.peek().is_type(&TokenType::RightBrace) {
+        while !self.peek().is_type(&TokenType::RightCurlyBrace) {
             statements.push(self.statement()?);
             if self.is_at_end() {
                 return Err("Expected closing brace at the end of scope".to_string());
