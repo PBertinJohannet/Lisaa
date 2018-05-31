@@ -176,7 +176,7 @@ pub struct Vm {
     /// The stack contains ints/references in 64bit format.
     stack: Vec<f64>,
     /// The current offset of the stack
-    stack_offset : usize,
+    stack_offset: usize,
     allocator: Allocator,
 }
 
@@ -185,7 +185,7 @@ impl Vm {
         Vm {
             root_references: vec![],
             stack: vec![],
-            stack_offset : 0,
+            stack_offset: 0,
             allocator: Allocator::new(),
         }
     }

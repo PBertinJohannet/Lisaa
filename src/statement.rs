@@ -107,22 +107,27 @@ pub enum Statement {
 
 #[derive(Debug, Clone)]
 /// An assignment is an identifier plus an expression.
+/// The assignee cannot be a literal or the result of a literal value.
 pub struct Assignment {
-    identifier: String,
+    assignee: Expr,
     expr: Expr,
 }
 
 impl Assignment {
     /// Creates a new assignment.
-    pub fn new(identifier: String, expr: Expr) -> Self {
+    pub fn new(assignee: Expr, expr: Expr) -> Self {
         Assignment {
-            identifier: identifier,
+            assignee: assignee,
             expr: expr,
         }
     }
-    /// Returns the identifier.
-    pub fn identifier(&self) -> &String {
-        &self.identifier
+    /// Returns the value assigned to.
+    pub fn assignee(&self) -> &Expr {
+        &self.assignee
+    }
+    /// Returns the value assigned to.
+    pub fn assignee_mut(&mut self) -> &mut Expr {
+        &mut self.assignee
     }
     /// Returns the expression.
     pub fn expr(&self) -> &Expr {
@@ -133,10 +138,6 @@ impl Assignment {
         &mut self.expr
     }
 }
-
-
-
-
 
 #[derive(Debug, Clone)]
 /// A declaration is an assignment. no null values

@@ -102,6 +102,8 @@ pub enum TokenType {
     VAR,
     /// The class keyword, not used yet
     WHILE,
+    /// The index of an array.
+    INDEX,
     /// The ignore keyword, tells that this keyword may be ignored.
     IGNORE,
 

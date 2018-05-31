@@ -1,8 +1,7 @@
 //! Module for emiting bytecode readable by the vm.
 
-use expression::{BinaryExpr, Expr, ExprEnum, FunctionCall, LiteralExpr, UnaryExpr};
+use expression::{BinaryExpr, Expr, ExprEnum, FunctionCall, LiteralExpr, Operator, UnaryExpr};
 use native::get_native_types;
-use operations::{BinaryOperations, UnaryOperations};
 use statement::{Assignment, Declaration, FunctionDecl, IfStatement, Statement, StatementResult,
                 TypedVar, WhileStatement};
 use std::collections::HashMap;
@@ -164,9 +163,9 @@ impl Compiler {
         //self.add_lib("base");
         self.functions = program.clone();
 
-        self.function_call(&FunctionCall::new("main".to_string(), vec!()));
+        self.function_call(&FunctionCall::new("main".to_string(), vec![]));
         self.emit(OP::End);
-        for f in program.iter(){
+        for f in program.iter() {
             self.function(f.1);
         }
         self.compile_std();
@@ -177,7 +176,7 @@ impl Compiler {
                 &UnlinkedInstruction::Op(ref o) => o.clone(),
                 &UnlinkedInstruction::Goto(ref label) => {
                     OP::Goto(self.labels.get(label).unwrap().unwrap())
-                },
+                }
                 &UnlinkedInstruction::Push(ref label) => {
                     OP::PushNum(self.labels.get(label).unwrap().unwrap() as f64)
                 }
@@ -198,7 +197,7 @@ impl Compiler {
         self.create_var("0".to_string()); // return value.
         self.create_var("1".to_string()); // next instruction.
         self.create_var("2".to_string()); // offset.
-        for var in func.args(){
+        for var in func.args() {
             self.create_var(var.name().to_string());
         }
         for st in func.scope() {
@@ -215,7 +214,7 @@ impl Compiler {
             &Statement::ExprStatement(ref e) => {
                 self.expression(e);
                 self.emit(OP::Pop);
-            },
+            }
             &Statement::Scope(ref s) => self.scope(s),
             &Statement::IfStatement(ref i) => self.if_statement(i),
             &Statement::WhileStatement(ref i) => self.while_statement(i),
@@ -230,18 +229,18 @@ impl Compiler {
     /// Ret | Ins | Off | Args ...
     /// We need to free everything except the Ret | Off then Sets the offset to the position of Off
     /// while consuming it.
-    pub fn return_statement(&mut self, expression : &Expr){
+    pub fn return_statement(&mut self, expression: &Expr) {
         self.expression(expression);
         self.emit(OP::Set(0)); // sets return value.
-        let to_pop =  self.scopes.last().unwrap().current_size-3;
+        let to_pop = self.scopes.last().unwrap().current_size - 3;
         self.emit(OP::PopN(to_pop)); // pop the allocated variables.
         self.emit(OP::SetOffset); // Reset the offset to the last function.
         self.emit(OP::GotoTop); // goto the next instruction after the function call.
     }
 
-    pub fn break_scope(&mut self){
+    pub fn break_scope(&mut self) {
         let id_last = self.get_last_breakable_scope_id();
-        let to_pop =  self.scopes.last().unwrap().current_size - self.scopes[id_last].starting_size;
+        let to_pop = self.scopes.last().unwrap().current_size - self.scopes[id_last].starting_size;
         let label_end = self.scopes[id_last].get_label();
         self.emit(OP::PopN(to_pop));
         self.emit_goto(label_end);
@@ -330,11 +329,27 @@ impl Compiler {
     }
 
     /// Compiles assignment.
-    ///
+    /// first compiles the assigned value.
+    /// then assign to the lvalue.
     pub fn assignment(&mut self, assignement: &Assignment) {
-        self.expression(assignement.expr());
-        let var = self.get_var(assignement.identifier()).unwrap();
-        self.emit(OP::Set(var));
+        self.expression(assignement.expr()); // the assigned value.
+        self.assign_to(assignement.assignee());
+    }
+
+    /// checks for assignment
+    /// If it is a variable then assign it in scope.
+    /// Else it must be a pointer so assign it in the heap.
+    pub fn assign_to(&mut self, expression: &Expr) {
+        match expression.expr() {
+            &ExprEnum::Identifier(ref s) => {
+                let var = self.get_var(s).unwrap();
+                self.emit(OP::Set(var));
+            }
+            _ => {
+                self.expression(expression); // puts the value of the assignee at the top of the stack
+                self.emit(OP::SetHeap)
+            }
+        }
     }
 
     /// Compiles an expression.
@@ -353,17 +368,17 @@ impl Compiler {
     /// As specified, when a function is called we the stack must be in the following format :
     /// Ret | Off | Args ...
     /// So we push the ret, push the offset and go to the function.
-    pub fn function_call(&mut self, call : &FunctionCall){
+    pub fn function_call(&mut self, call: &FunctionCall) {
         let after_call = self.new_empty_label();
-        self.emit(OP::PushOffset);// stack :  | Offset |
+        self.emit(OP::PushOffset); // stack :  | Offset |
         self.emit(OP::PushNum(0.0)); // pushes the return value.
         self.emit(OP::Swap2); // swaps to get the return value under the offset.
         self.emit_push(after_call.to_string()); // push the value of the instructions after the call.
         self.emit(OP::Swap2); // Swaps the offset with the instruction pointer.
-        for var in call.args(){
+        for var in call.args() {
             self.expression(var);
         }
-        self.emit(OP::OffsetToTop(call.args().len()+3)); // down the current offset to (num args + 3)
+        self.emit(OP::OffsetToTop(call.args().len() + 3)); // down the current offset to (num args + 3)
         self.emit_goto(call.name().to_string());
         self.label_here(after_call);
     }
@@ -382,9 +397,9 @@ impl Compiler {
 
     pub fn unary(&mut self, unary: &UnaryExpr) {
         self.expression(unary.expression());
-        match unary.operator().get_type() {
-            &TokenType::MINUS => self.emit(OP::Neg),
-            &TokenType::BANG => self.emit_chunks(vec![OP::Not]),
+        match unary.operator() {
+            Operator::MINUS => self.emit(OP::Neg),
+            Operator::Not => self.emit_chunks(vec![OP::Not]),
             _ => panic!("unexpected this"),
         }
     }
@@ -395,41 +410,42 @@ impl Compiler {
         self.expression(exp.lhs());
         // puts rhs at the top.
         self.expression(exp.rhs());
-        match exp.operator().get_type() {
-            &TokenType::MINUS => self.emit_chunks(vec![OP::Neg, OP::Add]),
-            &TokenType::PLUS => self.emit(OP::Add),
-            &TokenType::STAR => self.emit(OP::Mul),
-            &TokenType::SLASH => self.emit_chunks(vec![OP::Inv, OP::Mul]),
-            &TokenType::GreaterEqual => self.emit_chunks(vec![OP::LowerThan, OP::Eq, OP::Add]),
-            &TokenType::GREATER => self.emit(OP::LowerThan),
-            &TokenType::LessEqual => self.emit_chunks(vec![OP::GreaterThan, OP::Eq, OP::Add]),
-            &TokenType::LESS => self.emit(OP::GreaterThan),
-            &TokenType::EqualEqual => self.emit(OP::Eq),
-            &TokenType::BangEqual => self.emit_chunks(vec![OP::Eq, OP::Not]),
-            &TokenType::ANDAND => self.emit_chunks(vec![OP::And]),
+        match exp.operator() {
+            Operator::MINUS => self.emit_chunks(vec![OP::Neg, OP::Add]),
+            Operator::PLUS => self.emit(OP::Add),
+            Operator::STAR => self.emit(OP::Mul),
+            Operator::SLASH => self.emit_chunks(vec![OP::Inv, OP::Mul]),
+            Operator::GreaterEqual => self.emit_chunks(vec![OP::LowerThan, OP::Eq, OP::Add]),
+            Operator::GREATER => self.emit(OP::LowerThan),
+            Operator::LessEqual => self.emit_chunks(vec![OP::GreaterThan, OP::Eq, OP::Add]),
+            Operator::LESS => self.emit(OP::GreaterThan),
+            Operator::EqualEqual => self.emit(OP::Eq),
+            Operator::NotEqual => self.emit_chunks(vec![OP::Eq, OP::Not]),
+            Operator::AndAnd => self.emit_chunks(vec![OP::And]),
+            Operator::INDEX => self.emit_chunks(vec![OP::Add]),
             e => panic!(format!("operator {:?} can not be aplied to two value", e)),
         }
     }
 
-    pub fn compile_std(&mut self){
+
+    pub fn compile_std(&mut self) {
         self.compiled_print();
         self.compiled_rand();
         self.compiled_newslice();
     }
 
-    pub fn compiled_print(&mut self){
+    pub fn compiled_print(&mut self) {
         self.new_label_here("print".to_string());
         self.emit_chunks(vec![OP::PrintNum, OP::SetOffset, OP::GotoTop]);
     }
 
-    pub fn compiled_rand(&mut self){
+    pub fn compiled_rand(&mut self) {
         self.new_label_here("rand".to_string());
         self.emit_chunks(vec![OP::RandNum, OP::Set(0), OP::SetOffset, OP::GotoTop]);
     }
     /// The slice takes a number and creates a slice in the heap.
-    pub fn compiled_newslice(&mut self){
+    pub fn compiled_newslice(&mut self) {
         self.new_label_here("newslice".to_string());
         self.emit_chunks(vec![OP::AllocObj, OP::Set(0), OP::SetOffset, OP::GotoTop]);
     }
 }
-
