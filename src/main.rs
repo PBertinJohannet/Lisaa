@@ -32,15 +32,15 @@ use std::process::exit;
 use ytp::Ytp;
 
 fn main() {
-    let matches = App::new("ytp")
+    let matches = App::new("Lisaa")
         .version("0.0.0")
         .author("Pierre Bertin-Johannet")
-        .about("Interpreter for the ytp lang")
+        .about("Interpreter for the Lisaa lang")
         .arg(
             Arg::with_name("INPUT")
                 .index(1)
                 .help("the file to run")
-                .default_value("compile.ytp")
+                .default_value("pi.lisaa")
                 .required(true),
         )
         .get_matches();

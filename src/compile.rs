@@ -413,18 +413,17 @@ impl Compiler {
 
     pub fn compile_std(&mut self){
         self.compiled_print();
+        self.compiled_rand();
     }
 
     pub fn compiled_print(&mut self){
         self.new_label_here("print".to_string());
-        self.emit(OP::PrintNum);
-        self.return_statement(&Expr::number(1.0, 1));
+        self.emit_chunks(vec![OP::PrintNum, OP::SetOffset, OP::GotoTop]);
     }
 
     pub fn compiled_rand(&mut self){
-        self.new_label_here("print".to_string());
-        self.emit(OP::RandNum);
-        self.return_statement(&Expr::number(1.0, 1));
+        self.new_label_here("rand".to_string());
+        self.emit_chunks(vec![OP::RandNum, OP::Set(0), OP::SetOffset, OP::GotoTop]);
     }
 }
 

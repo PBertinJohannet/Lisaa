@@ -387,7 +387,7 @@ impl Parser {
             }
         }
         self.advance();
-        let line = args.first().unwrap().get_line();
+        let line = lit.get_line();
         Ok(Expr::function_call(
             lit.get_identifier()?.to_string(),
             args,
