@@ -42,7 +42,7 @@ impl Scope {
 /// The type checker
 /// Contains a programm and functions to resolve types/verify consistency.
 pub struct TypeChecker {
-    native_functions: HashMap<String, Vec<TypedVar>>,
+    native_functions: HashMap<String, (String, Vec<TypedVar>)>,
     functions: HashMap<String, FunctionDecl>,
     scopes: Vec<Scope>,
 }
@@ -59,7 +59,7 @@ impl TypeChecker {
     /// Add a lib to the program.
     pub fn add_lib(&mut self, lib: &str) {
         for f in get_native_types(lib) {
-            self.native_functions.insert(f.name(), f.args());
+            self.native_functions.insert(f.name(), (f.ret(), f.args()));
         }
     }
     /// Creates a variable in the current scope.
@@ -220,6 +220,16 @@ impl TypeChecker {
         }
     }
 
+    pub fn get_function(&self, name : &str ) -> Result<(String, &Vec<TypedVar>), String>{
+        match self.functions.get(name) {
+            Some(f) => Ok((f.ret_type().to_string(), &f.args())),
+            None => match self.native_functions.get(name) {
+                Some((ret, f)) => Ok((ret.clone(), f)),
+                None => Err(String::from(format!("Unknown function : {:?}", name))),
+            },
+        }
+    }
+
     /// Find the return type of a function call expression and returns it.
     /// Checks that arguments lists are the same size.
     /// Checks for arguments given to the function.
@@ -227,13 +237,7 @@ impl TypeChecker {
     /// The ugly hack with the closure feels a little bit odd.
     pub fn function_call(&mut self, exp: &mut FunctionCall) -> Result<String, String> {
         let (ret, args) = {
-            let (r, a) = match self.functions.get(exp.name()) {
-                Some(f) => Ok((f.ret_type().to_string(), f.args())),
-                None => match self.native_functions.get(exp.name()) {
-                    Some(f) => Ok((String::from(""), f)),
-                    None => Err(String::from(format!("Unknown function : {:?}", exp.name()))),
-                },
-            }?;
+            let (r, a) = self.get_function(exp.name())?;
             (r.clone(), a.clone())
         };
         if let Some(t) = args.first() {
