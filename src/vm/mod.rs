@@ -59,7 +59,7 @@ impl Allocator {
             self.connect_first(next_hole, size);
         }
         self.fill_hole(next_hole, type_obj);
-        return next_hole+1;
+        return next_hole + 1;
     }
     /// Frees an object in the heap.
     /// Creates a hole and link it.

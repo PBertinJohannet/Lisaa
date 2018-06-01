@@ -1,6 +1,8 @@
 //! Module for emiting bytecode readable by the vm.
 
-use expression::{BinaryExpr, Expr, ExprEnum, FunctionCall, LiteralExpr, Operator, UnaryExpr, Deref};
+use expression::{
+    BinaryExpr, Deref, Expr, ExprEnum, FunctionCall, LiteralExpr, Operator, UnaryExpr,
+};
 use statement::{Assignment, Declaration, FunctionDecl, IfStatement, Statement, WhileStatement};
 use std::collections::HashMap;
 use vm::OP;
@@ -168,8 +170,9 @@ impl Compiler {
         self.compile_std();
         println!("code : {:?}", self.code);
 
-        println!("compiled {:#?}",self.scopes);
-        Ok(self.code
+        println!("compiled {:#?}", self.scopes);
+        Ok(self
+            .code
             .iter()
             .map(|e| match e {
                 &UnlinkedInstruction::Op(ref o) => o.clone(),
@@ -363,9 +366,9 @@ impl Compiler {
 
     /// If the expression is assigned to we keep the pointer.
     /// Else we take the value.
-    pub fn deref(&mut self, expr : &Deref){
+    pub fn deref(&mut self, expr: &Deref) {
         self.expression(expr.inner());
-        if !expr.is_assigned(){
+        if !expr.is_assigned() {
             self.emit(OP::GetHeap);
         }
     }

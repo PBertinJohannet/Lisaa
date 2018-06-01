@@ -22,6 +22,8 @@ pub enum LisaaType {
     Slice(Box<LisaaType>),
     /// Nothing.
     Void,
+    /// Any type the legendary void*
+    Any,
 }
 
 impl LisaaType {
@@ -35,16 +37,27 @@ impl LisaaType {
     }
     /// Dereferences if it is a pointer until it is not a pointer anymore
     /// Returns its type + the number of derefs
-    pub fn max_deref(&self) -> (Self , usize){
+    pub fn max_deref(&self) -> (Self, usize) {
         let (mut a, mut i) = (self.clone(), 0);
-        while let LisaaType::Pointer(box val) = a{
+        while let LisaaType::Pointer(box val) = a {
             a = val;
-            i+=1;
+            i += 1;
         }
         (a, i)
     }
+    /// Tells if a type is equivalent to another
+    pub fn is_equivalent(&self, other : &Self) -> bool {
+        if let (&LisaaType::Slice(ref lhs), &LisaaType::Slice(ref rhs)) = (self, other){
+            return lhs.is_equivalent(rhs)
+        } else if let (&LisaaType::Any, _) = (self, other){
+            return true
+        } else if let (_, &LisaaType::Any) = (self, other){
+            return true
+        } else {
+            return self == other;
+        }
+    }
 }
-
 
 impl fmt::Display for LisaaType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -54,11 +67,11 @@ impl fmt::Display for LisaaType {
             &LisaaType::Slice(ref u) => write!(f, "slice<{}>", u),
             &LisaaType::Void => write!(f, "void"),
             &LisaaType::Pointer(ref p) => write!(f, "&{}", p),
-            _ => write!(f, "unknown type")
+            &LisaaType::Any => write!(f, "any"),
+            &LisaaType::Class(ref c) => write!(f, "class"),
         }
     }
 }
-
 
 /// A variable associated with a type.
 #[derive(Debug, Clone)]

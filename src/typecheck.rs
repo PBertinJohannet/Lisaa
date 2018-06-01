@@ -1,7 +1,9 @@
 use expression::{BinaryExpr, Expr, ExprEnum, FunctionCall, Operator, UnaryExpr};
 use native::get_native_types;
-use statement::{Assignment, Declaration, FunctionDecl, IfStatement, LisaaType, Statement,
-                TypedVar, WhileStatement};
+use statement::{
+    Assignment, Declaration, FunctionDecl, IfStatement, LisaaType, Statement, TypedVar,
+    WhileStatement,
+};
 use std::collections::HashMap;
 
 /// Represents a scope with its variables.
@@ -58,7 +60,8 @@ impl TypeChecker {
     /// Add a lib to the program.
     pub fn add_lib(&mut self, lib: &str) {
         for f in get_native_types(lib) {
-            self.native_functions.insert(f.name(), (f.ret().clone(), f.args()));
+            self.native_functions
+                .insert(f.name(), (f.ret().clone(), f.args()));
         }
     }
     /// Creates a variable in the current scope.
@@ -91,14 +94,15 @@ impl TypeChecker {
     /// Checks if the type of the given expression matches with the given type.
     pub fn check_type(&self, expr: &Expr, expected: &LisaaType) -> Result<(), String> {
         let (lhs, rhs) = (expr.return_type().max_deref(), expected.max_deref());
-        if lhs.0 != lhs.0{
-            return Err(
-                format!("Expected : {}, got : {}", expected, expr.return_type()),
-            );
+        if !lhs.0.is_equivalent(&rhs.0) {
+            return Err(format!(
+                "Expected : {}, got : {}",
+                expected,
+                expr.return_type()
+            ));
         }
         Ok(())
     }
-
 
     /// Resolve types if possible
     /// The aim is to traverse the tree and resolve the return type of all expressions.
@@ -116,7 +120,7 @@ impl TypeChecker {
     ///     Checks statements inside.
     ///     Checks the return type
     pub fn function(&mut self, func: &mut FunctionDecl) -> Result<(), String> {
-        let ret_type = func.ret_type().clone();
+        let (ret_type, name) = (func.ret_type().clone(), func.name().to_string());
         let depth = self.scopes.len();
         self.scopes.push(Scope::new(depth));
         for arg in func.args() {
@@ -125,7 +129,16 @@ impl TypeChecker {
         for st in func.scope_mut() {
             self.statement(st)?;
             if let &mut Statement::ReturnStatement(ref mut expr) = st {
-                self.check_type(&expr, &ret_type)?;
+                self.check_type(&expr, &ret_type).map_err(|_| {
+                    println!("called function fail \n");
+                    format!(
+                        "line : {}\n\tFunction {} returns {} but value is of type {}",
+                        &expr.get_line(),
+                        name,
+                        &ret_type,
+                        &expr.return_type()
+                    )
+                })?;
             }
         }
         self.scopes.pop();
@@ -197,9 +210,9 @@ impl TypeChecker {
         Ok(())
     }
 
-    pub fn deref_assignment(&mut self, assignement : &mut Expr){
+    pub fn deref_assignment(&mut self, assignement: &mut Expr) {
         let mut a = assignement;
-        if let &mut ExprEnum::Deref(ref mut d) = a.expr_mut(){
+        if let &mut ExprEnum::Deref(ref mut d) = a.expr_mut() {
             d.set_assigned();
             self.deref_assignment(d.inner_mut());
         }
@@ -291,10 +304,7 @@ impl TypeChecker {
     pub fn binary(&mut self, exp: &mut BinaryExpr) -> Result<LisaaType, String> {
         self.expression(exp.lhs_mut())?;
         self.expression(exp.rhs_mut())?;
-        let exp_res = (
-            exp.lhs().return_type(),
-            exp.rhs().return_type(),
-        );
+        let exp_res = (exp.lhs().return_type(), exp.rhs().return_type());
         match exp.operator() {
             Operator::MINUS => match exp_res {
                 (LisaaType::Num, LisaaType::Num) => Ok(LisaaType::Num),
@@ -332,7 +342,7 @@ impl TypeChecker {
     /// The type is a number/char from a slice (indexed)
     /// The type is a number/char from an object (with . operator) // not yet implemented.
     pub fn is_pointer(&self, expr: &Expr) -> bool {
-        if let LisaaType::Pointer(_) = expr.return_type(){
+        if let LisaaType::Pointer(_) = expr.return_type() {
             return true;
         }
         return false;

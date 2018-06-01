@@ -1,9 +1,9 @@
 //! The module containing the code for the different expressions.
 //!
 
+use statement::LisaaType;
 use std::fmt;
 use token::{Token, TokenType};
-use statement::LisaaType;
 
 #[derive(Debug, Clone)]
 /// The base for an expression.
@@ -34,10 +34,10 @@ pub struct Expr {
 }
 
 impl Expr {
-    pub fn deref(inner : Expr) -> Self {
+    pub fn deref(inner: Expr) -> Self {
         let line = inner.get_line();
         Expr {
-            expr : ExprEnum::Deref(Deref::new(inner)),
+            expr: ExprEnum::Deref(Deref::new(inner)),
             return_type: None,
             line: line,
         }
@@ -63,9 +63,10 @@ impl Expr {
         }
     }
     pub fn is_deref(&self) -> bool {
-        if let ExprEnum::Deref(_) = self.expr(){
-            return true
-        } return false
+        if let ExprEnum::Deref(_) = self.expr() {
+            return true;
+        }
+        return false;
     }
     pub fn expr(&self) -> &ExprEnum {
         &self.expr
@@ -79,7 +80,7 @@ impl Expr {
     pub fn return_type(&self) -> LisaaType {
         self.return_type.clone().unwrap()
     }
-    pub fn return_type_uncheck(&self) -> &Option<LisaaType >{
+    pub fn return_type_uncheck(&self) -> &Option<LisaaType> {
         &self.return_type
     }
     pub fn function_call(name: String, args: Vec<Expr>, line: usize) -> Self {
@@ -128,26 +129,25 @@ impl Expr {
     }
 }
 
-
 /// Represents a dereference
 /// needs to know if it is assigned something to.
 #[derive(Debug, Clone)]
 pub struct Deref {
-    expr : Box<Expr>,
-    assigned : bool,
+    expr: Box<Expr>,
+    assigned: bool,
 }
 impl Deref {
-    pub fn new(expr : Expr) -> Self{
-        Deref{
-            expr : Box::new(expr),
-            assigned : false,
+    pub fn new(expr: Expr) -> Self {
+        Deref {
+            expr: Box::new(expr),
+            assigned: false,
         }
     }
-    pub fn inner_mut(&mut self) -> &mut Expr{
+    pub fn inner_mut(&mut self) -> &mut Expr {
         &mut self.expr
     }
-    pub fn inner(& self) -> & Expr{
-        & self.expr
+    pub fn inner(&self) -> &Expr {
+        &self.expr
     }
     pub fn is_assigned(&self) -> bool {
         self.assigned
@@ -156,7 +156,6 @@ impl Deref {
         self.assigned = true;
     }
 }
-
 
 /// Represents a function call in the code.
 #[derive(Debug, Clone)]

@@ -10,4 +10,5 @@ fn main() -> num{
 	        i = i+ 1;
 	    }
 	}
+	return a[9][0];
 }

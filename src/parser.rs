@@ -1,8 +1,10 @@
 //! Contains the code for the parser,
 //! currently only contains enough to parse expressions and return parse errors.
 use expression::{Expr, Operator};
-use statement::{Assignment, Declaration, FunctionDecl, IfStatement, LisaaType, Statement,
-                TypedVar, WhileStatement};
+use statement::{
+    Assignment, Declaration, FunctionDecl, IfStatement, LisaaType, Statement, TypedVar,
+    WhileStatement,
+};
 use std::collections::HashMap;
 use std::fmt;
 use token::{Token, TokenType};
@@ -251,12 +253,11 @@ impl Parser {
     pub fn declaration(&mut self) -> Result<Statement, String> {
         let decl = match self.peek().get_type() {
             &TokenType::IDENTIFIER => {
-
                 if self.peek_twice().get_type() == &TokenType::LESS
                     || self.peek_twice().get_type() == &TokenType::IDENTIFIER
                 {
                     let tp = self.parse_type()?;
-                    return self.parse_declaration(tp)
+                    return self.parse_declaration(tp);
                 }
                 let expr = self.expression()?;
                 self.assignment(expr)
@@ -464,7 +465,11 @@ impl Parser {
         self.expect(TokenType::LeftBrace)?;
         let index = self.expression()?;
         self.expect(TokenType::RightBrace)?;
-        Ok(Expr::deref(Expr::indexing(lit, index, self.previous().get_line())))
+        Ok(Expr::deref(Expr::indexing(
+            lit,
+            index,
+            self.previous().get_line(),
+        )))
     }
 
     pub fn expect(&mut self, token_type: TokenType) -> Result<(), String> {
