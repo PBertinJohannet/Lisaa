@@ -25,7 +25,7 @@ impl NativeFunc {
         NativeFunc {
             name: "newslice".to_string(),
             args: vec![TypedVar::new(LisaaType::Num, "n".to_string())],
-            ret: LisaaType::slice(LisaaType::Num),
+            ret: LisaaType::slice(LisaaType::Any),
         }
     }
     pub fn name(&self) -> String {
