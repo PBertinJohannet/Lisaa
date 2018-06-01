@@ -1,9 +1,8 @@
-use expression::{BinaryExpr, Expr, ExprEnum, FunctionCall, LiteralExpr, Operator, UnaryExpr};
+use expression::{BinaryExpr, Expr, ExprEnum, FunctionCall, Operator, UnaryExpr};
 use native::get_native_types;
 use statement::{Assignment, Declaration, FunctionDecl, IfStatement, LisaaType, Statement,
-                StatementResult, TypedVar, WhileStatement};
+                TypedVar, WhileStatement};
 use std::collections::HashMap;
-use token::TokenType;
 
 /// Represents a scope with its variables.
 #[derive(Debug)]
@@ -82,10 +81,8 @@ impl TypeChecker {
     pub fn get_var(&self, var_name: &str) -> Option<TypedVar> {
         let current_scope = self.scopes.last().unwrap().depth;
         let len = self.scopes.len();
-        let mut found = false;
         for sc in 0..current_scope {
             if self.scopes[len - sc - 1].has_var(var_name) {
-                found = true;
                 return self.scopes[len - sc - 1].get_var(var_name);
             }
         }
@@ -93,7 +90,8 @@ impl TypeChecker {
     }
     /// Checks if the type of the given expression matches with the given type.
     pub fn check_type(&self, expr: &Expr, expected: &LisaaType) -> Result<(), String> {
-        while expr.return_type().max_deref() != expected.max_deref(){
+        let (lhs, rhs) = (expr.return_type().max_deref(), expected.max_deref());
+        if lhs.0 != lhs.0{
             return Err(
                 format!("Expected : {}, got : {}", expected, expr.return_type()),
             );
@@ -101,12 +99,13 @@ impl TypeChecker {
         Ok(())
     }
 
+
     /// Resolve types if possible
     /// The aim is to traverse the tree and resolve the return type of all expressions.
     pub fn resolve(&mut self, program: &mut HashMap<String, FunctionDecl>) -> Result<(), String> {
         self.add_lib("base");
         self.functions = program.clone();
-        for (name, mut func) in program {
+        for (_, mut func) in program {
             self.function(&mut func)?;
         }
         Ok(())
@@ -143,9 +142,6 @@ impl TypeChecker {
             &mut Statement::WhileStatement(ref mut i) => self.while_statement(i),
             &mut Statement::BreakStatement => Ok(()),
             &mut Statement::ReturnStatement(ref mut e) => self.expression(e),
-            ref a => {
-                Err(format!("other statements are not supported for now : {:?}", a).to_string())
-            }
         }
     }
 
@@ -189,6 +185,7 @@ impl TypeChecker {
     /// First checks the expression assigned.
     /// then what it is assigned to (must be a lvalue).
     /// then if they match.
+    /// If we assign to a dereferenced value we need to asign behind the pointer.
     pub fn assignment(&mut self, assignment: &mut Assignment) -> Result<(), String> {
         self.expression(assignment.expr_mut())?;
         self.expression(assignment.assignee_mut())?;
@@ -196,11 +193,20 @@ impl TypeChecker {
             return Err(format!("can only assign to pointer or local variables "));
         }
         self.check_type(assignment.expr(), &assignment.assignee().return_type())?;
+        self.deref_assignment(assignment.assignee_mut());
         Ok(())
     }
 
+    pub fn deref_assignment(&mut self, assignement : &mut Expr){
+        let mut a = assignement;
+        if let &mut ExprEnum::Deref(ref mut d) = a.expr_mut(){
+            d.set_assigned();
+            self.deref_assignment(d.inner_mut());
+        }
+    }
+
     pub fn is_assignee(&self, expression: &Expr) -> bool {
-        expression.is_identifier() || self.is_pointer(expression)
+        expression.is_identifier() || self.is_pointer(expression) || expression.is_deref()
     }
 
     /// Sets the expression's return type.
@@ -213,7 +219,10 @@ impl TypeChecker {
             &mut ExprEnum::Binary(ref mut b) => self.binary(b),
             &mut ExprEnum::Identifier(ref mut i) => self.identifier(i),
             &mut ExprEnum::FunctionCall(ref mut f) => self.function_call(f),
-            _ => Err("fail".to_string()),
+            &mut ExprEnum::Deref(ref mut d) => {
+                self.expression(d.inner_mut())?;
+                Ok(d.inner().return_type())
+            }
         }?;
         expr.set_type(tp);
         Ok(())
@@ -311,7 +320,7 @@ impl TypeChecker {
             Operator::NotEqual => Ok(LisaaType::Num),
             Operator::AndAnd => Ok(LisaaType::Num),
             Operator::INDEX => match exp_res {
-                (LisaaType::Slice(inner), LisaaType::Num) => Ok(LisaaType::Pointer(inner.clone())),
+                (LisaaType::Slice(box inner), LisaaType::Num) => Ok(inner.clone()),
                 _ => Err(String::from("Can only index slice using num")),
             },
             e => Err(format!("operator {:?} can not be aplied to two value", e)),

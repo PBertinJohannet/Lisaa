@@ -1,6 +1,4 @@
-use expression::LiteralExpr;
 use statement::{LisaaType, TypedVar};
-use vm::OP;
 
 #[derive(Debug)]
 pub struct NativeFunc {

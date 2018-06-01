@@ -1,6 +1,0 @@
-fn main(){
-	slice<num> a= newslice(1);
-	a[1] = 2;
-	a[0] = 4;
-	num b = 2;
-}

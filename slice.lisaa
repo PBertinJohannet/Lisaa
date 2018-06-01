@@ -1,0 +1,13 @@
+fn main() -> num{
+	slice<slice<num>> a= newslice(10);
+	num b = 0;
+	while b < 10{
+	    b = b+1;
+	    a[b-1] = newslice(b);
+	    num i = 0;
+	    while i < b{
+	        a[b-1][i] = i+1;
+	        i = i+ 1;
+	    }
+	}
+}

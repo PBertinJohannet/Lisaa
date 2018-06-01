@@ -37,8 +37,6 @@ impl Ytp {
         }
 
         self.do_vm(tree.clone())?;
-        //self.do_interpret(tree);
-        //self.do_rust();
 
         Ok(())
     }
@@ -61,39 +59,5 @@ impl Ytp {
 
         println!("vm time : {:?}ms", diff);
         Ok(())
-    }
-
-    pub fn do_interpret(&self, tree: HashMap<String, FunctionDecl>) {
-        /*      let mut inter = Interpreter::new(None);
-        let start = PreciseTime::now();
-        inter.run(tree);
-        let end = PreciseTime::now();
-        let diff = start.to(end).num_milliseconds();
-
-        println!("interpreter time : {:?}ms", diff);
-  */
-    }
-
-    pub fn do_rust(&self) {
-        let start = PreciseTime::now();
-        {
-            let (to_find, mut a, mut b, mut found) = (73987, 0, 0, false);
-            while !found && a < to_find / 2 {
-                a += 1;
-                b = 0;
-                while !found && b < to_find / 2 {
-                    b += 1;
-                    if a * b == to_find {
-                        found = true;
-                    }
-                }
-            }
-            println!("{}, {}", a, b);
-        }
-
-        let end = PreciseTime::now();
-        let diff = start.to(end).num_microseconds();
-
-        println!("rust time : {:?}us", diff);
     }
 }

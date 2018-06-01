@@ -34,12 +34,14 @@ impl LisaaType {
         LisaaType::Slice(Box::new(inner))
     }
     /// Dereferences if it is a pointer until it is not a pointer anymore
-    pub fn max_deref(&self) -> Self {
-        let mut a = self.clone();
+    /// Returns its type + the number of derefs
+    pub fn max_deref(&self) -> (Self , usize){
+        let (mut a, mut i) = (self.clone(), 0);
         while let LisaaType::Pointer(box val) = a{
             a = val;
+            i+=1;
         }
-        a
+        (a, i)
     }
 }
 

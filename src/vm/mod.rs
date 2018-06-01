@@ -37,6 +37,7 @@ impl Allocator {
     /// Allocate some memory of the required size.
     /// Returns the pointer to the allocated memory.
     /// The type must reference an actual type in the "struct_types" table.
+    /// Returns the reference to the start of the object's value (not its type).
     pub fn alloc(&mut self, size: usize, type_obj: usize) -> usize {
         let mut prev_hole = None;
         let mut next_hole = self.first_hole;
@@ -57,8 +58,8 @@ impl Allocator {
         } else {
             self.connect_first(next_hole, size);
         }
-        self.fill_hole(next_hole, size, type_obj);
-        return next_hole;
+        self.fill_hole(next_hole, type_obj);
+        return next_hole+1;
     }
     /// Frees an object in the heap.
     /// Creates a hole and link it.
@@ -71,7 +72,7 @@ impl Allocator {
 
     /// Fills a hole and update the remaining memory by creating a hole if necessary.
     /// No memory will remain.
-    pub fn fill_hole(&mut self, hole: usize, size: usize, type_obj: usize) {
+    pub fn fill_hole(&mut self, hole: usize, type_obj: usize) {
         self.heap[hole] = type_obj;
     }
 
@@ -105,7 +106,7 @@ impl Allocator {
     }
     /// Sets the given pointer at the given adress
     pub fn extend_heap(&mut self, size: usize) {
-        for i in 0..size {
+        for _ in 0..size {
             self.heap.push(0);
         }
         let len = self.heap.len() - 1;
@@ -195,7 +196,7 @@ impl Vm {
         while instruction_pointer < program.len() {
             let op = &program[instruction_pointer];
             instruction_pointer += 1;
-            println!("executing {:?}", op);
+            //println!("executing {:?}", op);
             match op {
                 &OP::End => {
                     println!("program execution terminated");
@@ -319,12 +320,12 @@ impl Vm {
                         self.stack.pop().unwrap() as usize,
                         self.stack.pop().unwrap() as usize,
                     );
-                    println!("val at : {} to {}", adress, value);
+                    //println!("val at : {} to {}", adress, value);
                     self.allocator.set_ptr(adress, value);
                 }
                 //_ => panic!("unsupported operand"),
             }
-            println!("stack : {:?}", self.stack);
+            //println!("stack : {:?}", self.stack);
         }
     }
 }

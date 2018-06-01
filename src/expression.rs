@@ -18,6 +18,8 @@ pub enum ExprEnum {
     Identifier(String),
     /// A function call
     FunctionCall(FunctionCall),
+    /// A dereferenced value contains a
+    Deref(Deref),
 }
 /// Expressions that are lvalues :
 /// Identifier
@@ -32,6 +34,14 @@ pub struct Expr {
 }
 
 impl Expr {
+    pub fn deref(inner : Expr) -> Self {
+        let line = inner.get_line();
+        Expr {
+            expr : ExprEnum::Deref(Deref::new(inner)),
+            return_type: None,
+            line: line,
+        }
+    }
     pub fn binary(lhs: Expr, operator: Operator, rhs: Expr, line: usize) -> Self {
         Expr {
             expr: ExprEnum::Binary(BinaryExpr::new(lhs, operator, rhs)),
@@ -51,6 +61,11 @@ impl Expr {
             ExprEnum::Identifier(_) => true,
             _ => false,
         }
+    }
+    pub fn is_deref(&self) -> bool {
+        if let ExprEnum::Deref(_) = self.expr(){
+            return true
+        } return false
     }
     pub fn expr(&self) -> &ExprEnum {
         &self.expr
@@ -112,6 +127,36 @@ impl Expr {
         self.line
     }
 }
+
+
+/// Represents a dereference
+/// needs to know if it is assigned something to.
+#[derive(Debug, Clone)]
+pub struct Deref {
+    expr : Box<Expr>,
+    assigned : bool,
+}
+impl Deref {
+    pub fn new(expr : Expr) -> Self{
+        Deref{
+            expr : Box::new(expr),
+            assigned : false,
+        }
+    }
+    pub fn inner_mut(&mut self) -> &mut Expr{
+        &mut self.expr
+    }
+    pub fn inner(& self) -> & Expr{
+        & self.expr
+    }
+    pub fn is_assigned(&self) -> bool {
+        self.assigned
+    }
+    pub fn set_assigned(&mut self) {
+        self.assigned = true;
+    }
+}
+
 
 /// Represents a function call in the code.
 #[derive(Debug, Clone)]

@@ -275,7 +275,7 @@ impl Parser {
             ident.get_identifier()?.to_string(),
             ass,
         )));
-        self.expect(TokenType::SEMICOLON);
+        self.expect(TokenType::SEMICOLON)?;
         decl
     }
 
@@ -453,17 +453,18 @@ impl Parser {
 
     /// Represents an indexing in a slice.
     pub fn indexing(&mut self, lit: Expr) -> Result<Expr, String> {
-        match self.peek().is_type(&TokenType::LeftBrace) {
-            false => Ok(lit),
-            true => self.parse_indexing(lit),
+        let mut expr = lit;
+        while self.peek().is_type(&TokenType::LeftBrace) {
+            expr = self.parse_indexing(expr)?;
         }
+        Ok(expr)
     }
 
     pub fn parse_indexing(&mut self, lit: Expr) -> Result<Expr, String> {
         self.expect(TokenType::LeftBrace)?;
         let index = self.expression()?;
         self.expect(TokenType::RightBrace)?;
-        Ok(Expr::indexing(lit, index, self.previous().get_line()))
+        Ok(Expr::deref(Expr::indexing(lit, index, self.previous().get_line())))
     }
 
     pub fn expect(&mut self, token_type: TokenType) -> Result<(), String> {
