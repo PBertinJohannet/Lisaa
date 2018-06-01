@@ -9,7 +9,6 @@ extern crate rand;
 extern crate lazy_static;
 
 extern crate time;
-use time::PreciseTime;
 
 mod compile;
 mod expression;
@@ -40,7 +39,7 @@ fn main() {
             Arg::with_name("INPUT")
                 .index(1)
                 .help("the file to run")
-                .default_value("lvalue.lisaa")
+                .default_value("slice.lisaa")
                 .required(true),
         )
         .get_matches();

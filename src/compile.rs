@@ -1,11 +1,8 @@
 //! Module for emiting bytecode readable by the vm.
 
-use expression::{BinaryExpr, Expr, ExprEnum, FunctionCall, LiteralExpr, Operator, UnaryExpr};
-use native::get_native_types;
-use statement::{Assignment, Declaration, FunctionDecl, IfStatement, Statement, StatementResult,
-                TypedVar, WhileStatement};
+use expression::{BinaryExpr, Expr, ExprEnum, FunctionCall, LiteralExpr, Operator, UnaryExpr, Deref};
+use statement::{Assignment, Declaration, FunctionDecl, IfStatement, Statement, WhileStatement};
 use std::collections::HashMap;
-use token::TokenType;
 use vm::OP;
 
 /// These are unlinked instructions.
@@ -100,7 +97,7 @@ impl Compiler {
         self.scopes.last().unwrap().current_size
     }
     /// Add a lib to the program.
-    pub fn add_lib(&mut self, lib: &str) {
+    pub fn add_lib(&mut self, _lib: &str) {
         unimplemented!()
         /*for f in get_native_types(lib) {
             self.native_functions.insert(f.name(), f.args());
@@ -143,7 +140,7 @@ impl Compiler {
         self.code.push(UnlinkedInstruction::Op(op));
     }
 
-    pub fn emit_chunks(&mut self, mut ops: Vec<OP>) {
+    pub fn emit_chunks(&mut self, ops: Vec<OP>) {
         for o in ops {
             self.emit(o);
         }
@@ -170,6 +167,8 @@ impl Compiler {
         }
         self.compile_std();
         println!("code : {:?}", self.code);
+
+        println!("compiled {:#?}",self.scopes);
         Ok(self.code
             .iter()
             .map(|e| match e {
@@ -220,7 +219,6 @@ impl Compiler {
             &Statement::WhileStatement(ref i) => self.while_statement(i),
             &Statement::BreakStatement => self.break_scope(),
             &Statement::ReturnStatement(ref e) => self.return_statement(e),
-            ref a => panic!("other statements are not supported for now"),
         }
     }
 
@@ -251,7 +249,7 @@ impl Compiler {
             .iter()
             .enumerate()
             .rev()
-            .filter(|&(i, a)| a.is_breakable())
+            .filter(|&(_, a)| a.is_breakable())
             .next()
             .unwrap()
             .0
@@ -278,7 +276,6 @@ impl Compiler {
         self.emit(OP::JMPIf);
         self.emit_goto(while_end.clone());
         // inner breakable scope
-        let inner_loop_end = self.new_empty_label();
         let (depth, starting_size) = self.get_next_loop_start_and_depth();
         self.scopes.push(Scope::new_breakable(
             depth,
@@ -290,6 +287,7 @@ impl Compiler {
         self.emit_goto(while_start.clone());
         // end
         self.label_here(while_end);
+        self.exit_scope();
     }
 
     pub fn if_statement(&mut self, if_statement: &IfStatement) {
@@ -315,9 +313,7 @@ impl Compiler {
     /// Exits the scope and destroys all allocated variables in the stack.
     pub fn exit_scope(&mut self) {
         let last_scope = self.scopes.pop().unwrap();
-        for i in 0..(last_scope.current_size - last_scope.starting_size) {
-            self.emit(OP::Pop)
-        }
+        self.emit(OP::PopN(last_scope.current_size - last_scope.starting_size));
     }
 
     /// Compiles a declaration.
@@ -361,7 +357,16 @@ impl Compiler {
             &ExprEnum::Binary(ref b) => self.binary(b),
             &ExprEnum::Identifier(ref i) => self.identifier(i),
             &ExprEnum::FunctionCall(ref f) => self.function_call(f),
-            _ => panic!(format!("expression not supported {:?}", expr).to_string()),
+            &ExprEnum::Deref(ref d) => self.deref(d),
+        }
+    }
+
+    /// If the expression is assigned to we keep the pointer.
+    /// Else we take the value.
+    pub fn deref(&mut self, expr : &Deref){
+        self.expression(expr.inner());
+        if !expr.is_assigned(){
+            self.emit(OP::GetHeap);
         }
     }
 
