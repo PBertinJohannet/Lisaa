@@ -2,9 +2,10 @@
 //! currently only contains enough to parse expressions and return parse errors.
 use expression::{Expr, Operator};
 use statement::{
-    Assignment, Declaration, FunctionDecl, IfStatement, LisaaType, Statement, TypedVar,
+    Assignment, Declaration, FunctionDecl, IfStatement, Statement,
     WhileStatement,
 };
+use types::{TypedVar, LisaaType};
 use std::collections::HashMap;
 use std::fmt;
 use token::{Token, TokenType};
@@ -94,12 +95,41 @@ impl Parser {
                     true => self.advance().get_lexeme().to_string(),
                     false => return Err("Expected identifier after function".to_string()),
                 };
+                let type_parameters = self.parse_type_list()?;
                 let arguments = self.func_args()?;
                 let return_type = self.func_return_type()?;
                 let scope = self.scope()?;
-                Ok(FunctionDecl::new(name, arguments, scope, return_type))
+                Ok(FunctionDecl::new(name, type_parameters, arguments, scope, return_type))
             }
             _ => Err("error : expected function declaration there".to_string()),
+        }
+    }
+
+    pub fn parse_type_list(&mut self, ) -> Result<Vec<LisaaType>, String>{
+        let mut args = vec![];
+        match self.peek().is_type(&TokenType::LESS){
+            true => {
+                self.advance();
+                loop {
+                    match self.peek().get_type().clone() {
+                        TokenType::GREATER => break,
+                        TokenType::IDENTIFIER => {
+                            args.push(self.parse_type()?);
+                            match self.peek().get_type() {
+                                TokenType::GREATER => break,
+                                TokenType::COMMA => {
+                                    self.advance();
+                                }
+                                _ => Err("expected > or comma".to_string())?,
+                            }
+                        }
+                        other => Err(format!("Expected > or type parameter got {:?}", other))?,
+                    }
+                }
+                self.expect(TokenType::GREATER)?;
+                Ok(args)
+            }
+            false => Ok(vec![]),
         }
     }
 
@@ -110,6 +140,7 @@ impl Parser {
         }
         return Ok(LisaaType::Void);
     }
+
 
     /// Parses the declaration of arguments
     /// Should be refactored a little bit tho.
@@ -153,7 +184,8 @@ impl Parser {
                 Ok(LisaaType::slice(inner))
             }
             "num" => Ok(LisaaType::Num),
-            _ => Err(format!("unsupported type at the moment : {:?}", ident)),
+            "char" => Ok(LisaaType::Char),
+            i => Ok(LisaaType::Unresolved(i.to_string())),
         }
     }
 
@@ -473,9 +505,9 @@ impl Parser {
     }
 
     pub fn expect(&mut self, token_type: TokenType) -> Result<(), String> {
-        match self.match_nexts(&[token_type]) {
+        match self.match_nexts(&[token_type.clone()]) {
             true => Ok(()),
-            false => Err("Expected token".to_string()),
+            false => Err(format!("Expected token {:?}", token_type)),
         }
     }
 
@@ -508,6 +540,7 @@ impl Parser {
                     token.get_lexeme().to_string(),
                     token.get_line(),
                 )),
+                &TokenType::CHAR => Ok(Expr::char(token.get_lexeme().chars().next().unwrap(), token.get_line())),
                 _ => Err("Cant parse literal".to_string()),
             }
         }

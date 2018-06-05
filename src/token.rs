@@ -60,8 +60,8 @@ pub enum TokenType {
     /// A number.
     NUMBER,
 
-    /// The type of a num variable removed .
-    //NUM,
+    /// a char literal.
+    CHAR,
     /// The type string before an assignment.
     StringDecl,
 
@@ -126,6 +126,14 @@ impl Token {
             line: line,
             token_type: token_type,
             lexeme: lexeme,
+        }
+    }
+
+    pub fn char(line : usize, ch : char) -> Self {
+        Token {
+            line : line,
+            token_type: TokenType::CHAR,
+            lexeme: ch.to_string(),
         }
     }
 

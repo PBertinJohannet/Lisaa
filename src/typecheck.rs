@@ -1,9 +1,10 @@
 use expression::{BinaryExpr, Expr, ExprEnum, FunctionCall, Operator, UnaryExpr};
 use native::get_native_types;
 use statement::{
-    Assignment, Declaration, FunctionDecl, IfStatement, LisaaType, Statement, TypedVar,
+    Assignment, Declaration, FunctionDecl, IfStatement, Statement,
     WhileStatement,
 };
+use types::{LisaaType, TypedVar};
 use std::collections::HashMap;
 
 /// Represents a scope with its variables.
@@ -40,7 +41,7 @@ impl Scope {
 }
 
 /// The type checker
-/// Contains a programm and functions to resolve types/verify consistency.
+/// Contains a program and functions to resolve types/verify consistency.
 /// Also check for lvalues and assignment.
 pub struct TypeChecker {
     native_functions: HashMap<String, (LisaaType, Vec<TypedVar>)>,
@@ -130,7 +131,6 @@ impl TypeChecker {
             self.statement(st)?;
             if let &mut Statement::ReturnStatement(ref mut expr) = st {
                 self.check_type(&expr, &ret_type).map_err(|_| {
-                    println!("called function fail \n");
                     format!(
                         "line : {}\n\tFunction {} returns {} but value is of type {}",
                         &expr.get_line(),

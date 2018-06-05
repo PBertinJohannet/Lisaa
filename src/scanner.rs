@@ -105,6 +105,7 @@ impl Scanner {
             '\r' => Ok(self.token(TokenType::IGNORE, "")),
             '\t' => Ok(self.token(TokenType::IGNORE, "")),
             '"' => self.string(),
+            '\'' => self.scan_char(),
             '0'...'9' => self.number(),
             'a'...'z' => self.identifier(),
             'A'...'Z' => self.identifier(),
@@ -122,6 +123,17 @@ impl Scanner {
         match KEYWORDS.get::<str>(&sub_string) {
             Some(k) => Ok(self.token(k.clone(), &sub_string)),
             None => Ok(self.token(TokenType::IDENTIFIER, &sub_string)),
+        }
+    }
+
+    fn scan_char(&mut self) -> Result<Token, String> {
+        if self.is_at_end() {
+            return self.error("Unterminated char declaration".to_string())
+        }
+        let val = self.advance();
+        match self.match_next('\''){
+            false => self.error("char must be only 1 character long".to_string()),
+            true => Ok(Token::char(self.line, val))
         }
     }
 

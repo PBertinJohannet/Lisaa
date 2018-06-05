@@ -1,4 +1,4 @@
-use statement::{LisaaType, TypedVar};
+use types::{LisaaType, TypedVar};
 
 #[derive(Debug)]
 pub struct NativeFunc {
