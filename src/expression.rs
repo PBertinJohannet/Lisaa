@@ -11,12 +11,17 @@ pub enum ExprEnum {
     /// The unary expressions, see below.
     Unary(UnaryExpr),
     /// The binary expressions, see below.
+    GetAttr(BinaryExpr),
+    /// The binary expressions, see below.
     Binary(BinaryExpr),
     /// The literals, see below.
     Literal(LiteralExpr),
     /// an identifier
     Identifier(String),
     /// A function call
+    /// Dynamic calls are not allowed so we have either function call either method calls.
+    /// This represents a call for a method from an expression :
+    /// (1+1).add(2) for example.
     FunctionCall(FunctionCall),
     /// A dereferenced value contains a
     Deref(Deref),
@@ -38,6 +43,13 @@ impl Expr {
         let line = inner.get_line();
         Expr {
             expr: ExprEnum::Deref(Deref::new(inner)),
+            return_type: None,
+            line: line,
+        }
+    }
+    pub fn getattr(lhs: Expr, rhs: Expr, line: usize) -> Self {
+        Expr {
+            expr: ExprEnum::GetAttr(BinaryExpr::new(lhs, Operator::Get, rhs)),
             return_type: None,
             line: line,
         }
@@ -83,9 +95,16 @@ impl Expr {
     pub fn return_type_uncheck(&self) -> &Option<LisaaType> {
         &self.return_type
     }
+    pub fn method_call(expr : Expr, args: Vec<Expr>, line: usize) -> Self {
+        Expr {
+            expr: ExprEnum::FunctionCall(FunctionCall::method(expr, args)),
+            return_type: None,
+            line: line,
+        }
+    }
     pub fn function_call(name: String, args: Vec<Expr>, line: usize) -> Self {
         Expr {
-            expr: ExprEnum::FunctionCall(FunctionCall::new(name, args)),
+            expr: ExprEnum::FunctionCall(FunctionCall::function(name, args)),
             return_type: None,
             line: line,
         }
@@ -164,24 +183,54 @@ impl Deref {
     }
 }
 
+
+/// Represents a function call in the code.
+#[derive(Debug, Clone)]
+pub enum Callee{
+    StaticFunc(String),
+    Method(Box<Expr>),
+}
+
 /// Represents a function call in the code.
 #[derive(Debug, Clone)]
 pub struct FunctionCall {
-    name: String,
+    callee: Callee,
     args: Vec<Expr>,
 }
 
 impl FunctionCall {
-    /// Creates a new function call expression
-    pub fn new(name: String, args: Vec<Expr>) -> Self {
+    pub fn method(lhs : Expr, args: Vec<Expr>) -> Self {
         FunctionCall {
-            name: name,
+            callee: Callee::Method(Box::new(lhs)),
             args: args,
         }
     }
+    /// Creates a new function call expression
+    pub fn function(name: String, args: Vec<Expr>) -> Self {
+        FunctionCall {
+            callee: Callee::StaticFunc(name),
+            args: args,
+        }
+    }
+    pub fn is_method(&self) -> bool {
+        match self.callee {
+            Callee::StaticFunc(_) => false,
+            _ => true,
+        }
+    }
+    pub fn callee(&self) -> &Callee {
+        &self.callee
+    }
+    pub fn callee_mut(&mut self) -> &mut Callee {
+        &mut self.callee
+    }
+
     /// Returns the name.
     pub fn name(&self) -> &String {
-        &self.name
+        match self.callee {
+            Callee::StaticFunc(ref n) => n,
+            _ => panic!("methods not implemented yet")
+        }
     }
     /// Returns the list of arguments.
     pub fn args(&self) -> &Vec<Expr> {
@@ -194,7 +243,7 @@ impl FunctionCall {
 }
 
 /// These are the operators
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Operator {
     Not,
     PLUS,
@@ -209,6 +258,7 @@ pub enum Operator {
     NotEqual,
     AndAnd,
     INDEX,
+    Get,
 }
 
 impl Operator {

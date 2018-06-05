@@ -1,5 +1,7 @@
 
 use std::fmt;
+
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// This represents a class
 /// Classes are not supported yet so it is useless.
@@ -25,9 +27,15 @@ pub enum LisaaType {
     Any,
     /// An unresolved type found in the wild -> must be expanded to a class or type parameter.
     Unresolved(String),
+    /// A method, represented by the type :: the name.
+    Function(String),
 }
 
 impl LisaaType {
+    /// Creates a pointer pointing to the given type
+    pub fn method(inner: LisaaType, name : String) -> Self {
+        LisaaType::Function(format!("{}::{}", inner, name))
+    }
     /// Creates a pointer pointing to the given type
     pub fn pointer(inner: LisaaType) -> Self {
         LisaaType::Pointer(Box::new(inner))
@@ -35,6 +43,13 @@ impl LisaaType {
     /// Creates a slice of the given type.
     pub fn slice(inner: LisaaType) -> Self {
         LisaaType::Slice(Box::new(inner))
+    }
+
+    pub fn function_name(&self) -> Result<String, ()>{
+        match self {
+            &LisaaType::Function(ref s) => Ok(s.to_owned()),
+            _ => Err(()),
+        }
     }
     /// Dereferences if it is a pointer until it is not a pointer anymore
     /// Returns its type + the number of derefs
@@ -58,6 +73,14 @@ impl LisaaType {
             return self == other;
         }
     }
+    /// Returns the attribute's type if it exists
+    pub fn get_attr(&self, name : &String) -> Result<LisaaType, String>{
+        match self {
+            &LisaaType::Num => Ok(LisaaType::Function(format!("num::{}", name))),
+            &LisaaType::Char => Ok(LisaaType::Function(format!("num::{}", name))),
+            _ => Err(format!("can not get attr {}of {}", name, self))
+        }
+    }
 }
 
 impl fmt::Display for LisaaType {
@@ -71,6 +94,7 @@ impl fmt::Display for LisaaType {
             &LisaaType::Any => write!(f, "any"),
             &LisaaType::Class(ref c) => write!(f, "class"),
             &LisaaType::Unresolved(ref str) => write!(f, "{}", str),
+            &LisaaType::Function(ref str) => write!(f, "{}", str),
         }
     }
 }

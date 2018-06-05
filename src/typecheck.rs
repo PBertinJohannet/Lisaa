@@ -1,4 +1,4 @@
-use expression::{BinaryExpr, Expr, ExprEnum, FunctionCall, Operator, UnaryExpr};
+use expression::{BinaryExpr, Expr, ExprEnum, FunctionCall, Operator, UnaryExpr, Callee};
 use native::get_native_types;
 use statement::{
     Assignment, Declaration, FunctionDecl, IfStatement, Statement,
@@ -230,6 +230,7 @@ impl TypeChecker {
             &mut ExprEnum::Literal(_) => Ok(ret_type.unwrap()),
             &mut ExprEnum::Unary(ref mut u) => self.unary(u),
             &mut ExprEnum::Binary(ref mut b) => self.binary(b),
+            &mut ExprEnum::GetAttr(ref mut b) => self.getattr(b),
             &mut ExprEnum::Identifier(ref mut i) => self.identifier(i),
             &mut ExprEnum::FunctionCall(ref mut f) => self.function_call(f),
             &mut ExprEnum::Deref(ref mut d) => {
@@ -241,6 +242,17 @@ impl TypeChecker {
         Ok(())
     }
 
+    /// Parses a ___.___
+    pub fn getattr(&mut self, expr : &mut BinaryExpr) -> Result<LisaaType, String> {
+        if expr.operator() != Operator::Get {
+            return Err(format!("Not a . operator"))
+        } else {
+            self.expression(expr.lhs_mut())?;
+            let rhs = expr.rhs().get_identifier()?;
+            expr.lhs().return_type().get_attr(rhs)
+        }
+    }
+
     /// Returns the type of the given identifier if it exists in scope.
     pub fn identifier(&mut self, id: &String) -> Result<LisaaType, String> {
         match self.get_var(id) {
@@ -249,10 +261,23 @@ impl TypeChecker {
         }
     }
 
-    pub fn get_function(&self, name: &str) -> Result<(LisaaType, &Vec<TypedVar>), String> {
-        match self.functions.get(name) {
+    pub fn get_function_name(&mut self, func : &mut FunctionCall) -> Result<String, String>{
+        match func.callee_mut(){
+            &mut Callee::StaticFunc(ref mut s) => Ok(s.to_owned()),
+            &mut Callee::Method(ref mut e) => {
+                let line = e.get_line();
+                self.expression(e)?;
+                e.return_type().function_name()
+                    .map_err(|()|format!("Line : {}\tNot a method\n", line))
+            }
+        }
+    }
+
+    pub fn get_function(&mut self, func : &mut FunctionCall) -> Result<(LisaaType, &Vec<TypedVar>), String> {
+        let name = self.get_function_name(func)?;
+        match self.functions.get(&name) {
             Some(f) => Ok((f.ret_type().clone(), f.args())),
-            None => match self.native_functions.get(name) {
+            None => match self.native_functions.get(&name) {
                 Some((ret, f)) => Ok((ret.clone(), f)),
                 None => Err(String::from(format!("Unknown function : {:?}", name))),
             },
@@ -266,7 +291,7 @@ impl TypeChecker {
     /// The ugly hack with the closure feels a little bit odd.
     pub fn function_call(&mut self, exp: &mut FunctionCall) -> Result<LisaaType, String> {
         let (ret, args) = {
-            let (r, a) = self.get_function(exp.name())?;
+            let (r, a) = self.get_function(exp)?;
             (r.clone(), a.clone())
         };
         let (args_count_given, args_count_expected) = (exp.args().len(), args.len());
