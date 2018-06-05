@@ -1,4 +1,5 @@
 use rand::random;
+use std::char;
 /// How heap memory/GC works.
 /// Everytime a pointer variable is created, an entry in root_references is created.
 /// Everytime a heap object is created its reference is pushed to the top of the stack.
@@ -164,6 +165,7 @@ pub enum OP {
     PushNum(f64),
     ChangeTo(f64),
     PrintNum,
+    PrintChar,
     RandNum,
 }
 
@@ -259,6 +261,9 @@ impl Vm {
                 }
                 &OP::PrintNum => {
                     print!("{}", self.stack.pop().unwrap());
+                }
+                &OP::PrintChar => {
+                    print!("{}", char::from_u32(self.stack.pop().unwrap() as u32).unwrap());
                 }
                 &OP::RandNum => {
                     self.stack.push(random::<f64>());

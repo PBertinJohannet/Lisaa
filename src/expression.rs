@@ -1,7 +1,7 @@
 //! The module containing the code for the different expressions.
 //!
 
-use statement::LisaaType;
+use types::LisaaType;
 use std::fmt;
 use token::{Token, TokenType};
 
@@ -94,6 +94,13 @@ impl Expr {
         Expr {
             expr: ExprEnum::Unary(UnaryExpr::new(operator, expr)),
             return_type: None,
+            line: line,
+        }
+    }
+    pub fn char(ch : char, line : usize) -> Self {
+        Expr {
+            expr: ExprEnum::Literal(LiteralExpr::CHAR(ch)),
+            return_type: Some(LisaaType::Char),
             line: line,
         }
     }
@@ -297,8 +304,10 @@ impl BinaryExpr {
 pub enum LiteralExpr {
     /// Anything from bool to null will be a number
     NUMBER(f64),
-    /// Anything else will be a string.
+    /// A slice of chars is a string.
     STRING(String),
+    /// A char
+    CHAR(char),
 }
 
 impl fmt::Display for LiteralExpr {
@@ -307,6 +316,7 @@ impl fmt::Display for LiteralExpr {
         match self {
             &LiteralExpr::NUMBER(n) => write!(f, "{}", n),
             &LiteralExpr::STRING(ref s) => write!(f, "{}", s),
+            &LiteralExpr::CHAR(ref c) => write!(f, "{}", c),
         }
     }
 }

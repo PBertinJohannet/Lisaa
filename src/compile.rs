@@ -394,6 +394,7 @@ impl Compiler {
     pub fn literal(&mut self, literal: &LiteralExpr) {
         match literal {
             &LiteralExpr::NUMBER(n) => self.emit(OP::PushNum(n)),
+            &LiteralExpr::CHAR(c) => self.emit(OP::PushNum(c as u32 as f64)),
             _ => panic!("strings not supported yet"),
         }
     }
