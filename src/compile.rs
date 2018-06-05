@@ -162,7 +162,7 @@ impl Compiler {
         //self.add_lib("base");
         self.functions = program.clone();
 
-        self.function_call(&FunctionCall::new("main".to_string(), vec![]));
+        self.function_call(&FunctionCall::function("main".to_string(), vec![]));
         self.emit(OP::End);
         for f in program.iter() {
             self.function(f.1);
@@ -358,6 +358,7 @@ impl Compiler {
             &ExprEnum::Literal(ref l) => self.literal(l),
             &ExprEnum::Unary(ref u) => self.unary(u),
             &ExprEnum::Binary(ref b) => self.binary(b),
+            &ExprEnum::GetAttr(ref a) => panic!("can not get attr"),
             &ExprEnum::Identifier(ref i) => self.identifier(i),
             &ExprEnum::FunctionCall(ref f) => self.function_call(f),
             &ExprEnum::Deref(ref d) => self.deref(d),

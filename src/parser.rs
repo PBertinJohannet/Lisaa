@@ -445,17 +445,23 @@ impl Parser {
                 previous.get_line(),
             ));
         }
-        return self.function_call();
+        let lit = self.literal()?;
+        return self.post_notation(lit);
     }
 
-    /// Represents a function call.
-    pub fn function_call(&mut self) -> Result<Expr, String> {
-        let lit = self.literal()?;
-        match self.peek().is_type(&TokenType::LeftParen) {
-            false => self.indexing(lit),
-            true => self.parse_function_call(lit),
+    pub fn post_notation(&mut self, lit : Expr) -> Result<Expr, String>{
+        let mut expr = lit;
+        loop {
+            expr = match self.peek().get_type() {
+                &TokenType::LeftParen => self.parse_function_call(expr)?,
+                &TokenType::LeftBrace => self.parse_indexing(expr)?,
+                &TokenType::DOT => self.parse_getattr(expr)?,
+                _ => {break;},
+            }
         }
+        Ok(expr)
     }
+
     /// Parse the function call but it is ugly and should be modified.
     pub fn parse_function_call(&mut self, lit: Expr) -> Result<Expr, String> {
         let mut args = vec![];
@@ -476,22 +482,23 @@ impl Parser {
             }
         }
         self.advance();
-        let line = lit.get_line();
-        Ok(Expr::function_call(
-            lit.get_identifier()?.to_string(),
-            args,
-            line,
-        ))
+        self.callable(args, lit)
     }
 
-    /// Represents an indexing in a slice.
-    pub fn indexing(&mut self, lit: Expr) -> Result<Expr, String> {
-        let mut expr = lit;
-        while self.peek().is_type(&TokenType::LeftBrace) {
-            expr = self.parse_indexing(expr)?;
+    /// Returns a call with the given arguments, the call must be a method or a fucntion.
+    pub fn callable(&mut self, args : Vec<Expr>, lit : Expr) -> Result<Expr, String>{
+        let line = lit.get_line();
+        if let Ok(id) = lit.get_identifier() {
+            return Ok(Expr::function_call(
+                lit.get_identifier().map_err(|_| "function calls only allowed on identifier")?
+                    .to_string(),
+                args,
+                line,
+            ))
         }
-        Ok(expr)
+        Ok(Expr::method_call(lit, args, line))
     }
+
 
     pub fn parse_indexing(&mut self, lit: Expr) -> Result<Expr, String> {
         self.expect(TokenType::LeftBrace)?;
@@ -502,6 +509,13 @@ impl Parser {
             index,
             self.previous().get_line(),
         )))
+    }
+
+    pub fn parse_getattr(&mut self, lit : Expr) -> Result<Expr, String>{
+        self.expect(TokenType::DOT)?;
+        let next = self.advance();
+        let name = Expr::identifier(next.get_lexeme().to_owned(), next.get_line());
+        Ok(Expr::getattr(lit, name, next.get_line()))
     }
 
     pub fn expect(&mut self, token_type: TokenType) -> Result<(), String> {

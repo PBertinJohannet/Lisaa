@@ -1,5 +1,6 @@
 #![feature(box_patterns)]
 #![deny(missing_docs)]
+#![deny(unused_must_use)]
 //! An interpreter for a language,
 //! This is an experiment.
 //!
@@ -38,7 +39,7 @@ fn main() {
             Arg::with_name("INPUT")
                 .index(1)
                 .help("the file to run")
-                .default_value("char.lisaa")
+                .default_value("inline.lisaa")
                 .required(true),
         )
         .get_matches();
