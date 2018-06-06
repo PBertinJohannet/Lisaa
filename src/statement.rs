@@ -1,22 +1,38 @@
 //! The module for statement.
 use expression::{Expr, LiteralExpr};
-use types::{LisaaType, Class, TypedVar};
+use types::{Class, LisaaType, TypedVar};
+use vm::OP;
 /// A function declaration
 #[derive(Debug, Clone)]
 pub struct FunctionDecl {
-    name: String,
-    type_args : Vec<LisaaType>,
-    args: Vec<TypedVar>,
-    scope: Statement,
-    ret_type: LisaaType,
+    /// Tells is the function is inline, if it is there are no return and goto instruction,
+    /// The return value will simply be put on the top of the stack.
+    pub inline: bool,
+    /// The name of the function.
+    pub name: String,
+    /// The type parameters of the function <Y, U, T>
+    pub type_args: Vec<LisaaType>,
+    /// The arguments taken by the function
+    pub args: Vec<TypedVar>,
+    /// The scope of the function, the statement inside it.
+    pub scope: Statement,
+    /// The return type of the function.
+    pub ret_type: LisaaType,
 }
 
 impl FunctionDecl {
     /// Creates a new function declaration.
-    pub fn new(name: String, type_args : Vec<LisaaType>, args: Vec<TypedVar>, scope: Statement, ret_type: LisaaType) -> Self {
+    pub fn new(
+        name: String,
+        type_args: Vec<LisaaType>,
+        args: Vec<TypedVar>,
+        scope: Statement,
+        ret_type: LisaaType,
+    ) -> Self {
         FunctionDecl {
+            inline: false,
             name: name,
-            type_args : type_args,
+            type_args: type_args,
             args: args,
             scope: scope,
             ret_type: ret_type,
@@ -56,6 +72,10 @@ impl FunctionDecl {
         };
         val.unwrap()
     }
+    /// Checks if the function must be inlined.
+    pub fn is_inline(&self) -> bool{
+        self.inline
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -77,6 +97,8 @@ pub enum Statement {
     BreakStatement,
     /// A return statement,
     ReturnStatement(Expr),
+    /// Some bytecode, used in native expressions.
+    Native(Vec<OP>),
 }
 
 #[derive(Debug, Clone)]

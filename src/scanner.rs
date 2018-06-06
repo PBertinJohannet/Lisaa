@@ -128,12 +128,12 @@ impl Scanner {
 
     fn scan_char(&mut self) -> Result<Token, String> {
         if self.is_at_end() {
-            return self.error("Unterminated char declaration".to_string())
+            return self.error("Unterminated char declaration".to_string());
         }
         let val = self.advance();
-        match self.match_next('\''){
+        match self.match_next('\'') {
             false => self.error("char must be only 1 character long".to_string()),
-            true => Ok(Token::char(self.line, val))
+            true => Ok(Token::char(self.line, val)),
         }
     }
 

@@ -129,9 +129,9 @@ impl Token {
         }
     }
 
-    pub fn char(line : usize, ch : char) -> Self {
+    pub fn char(line: usize, ch: char) -> Self {
         Token {
-            line : line,
+            line: line,
             token_type: TokenType::CHAR,
             lexeme: ch.to_string(),
         }

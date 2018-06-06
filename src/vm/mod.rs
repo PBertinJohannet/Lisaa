@@ -139,10 +139,12 @@ pub enum OP {
     Inv,
     Mul,
     GreaterThan,
+    GreaterEq,
     Eq,
     Not,
     And,
     LowerThan,
+    LowerEq,
     Swap2,
     Swap(usize),
     Bring(usize),
@@ -236,6 +238,14 @@ impl Vm {
                         false => 0.0,
                         _ => 1.0,
                     };
+                    self.stack.push(val)
+                }
+                &OP::GreaterEq => {
+                    let val = (self.stack.pop().unwrap() >= self.stack.pop().unwrap()) as i32 as f64;
+                    self.stack.push(val)
+                }
+                &OP::LowerEq => {
+                    let val = (self.stack.pop().unwrap() <= self.stack.pop().unwrap()) as i32 as f64;
                     self.stack.push(val)
                 }
                 &OP::LowerThan => {

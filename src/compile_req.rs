@@ -1,4 +1,4 @@
-use statement::{FunctionDecl};
+use statement::FunctionDecl;
 use types::{LisaaType, TypedVar};
 
 /// sinon

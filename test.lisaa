@@ -1,0 +1,5 @@
+fn main()-> num{
+    num a = rand();
+    print(a);
+    return a;
+}
