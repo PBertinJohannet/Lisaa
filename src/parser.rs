@@ -1,14 +1,11 @@
 //! Contains the code for the parser,
 //! currently only contains enough to parse expressions and return parse errors.
 use expression::{Expr, Operator};
-use statement::{
-    Assignment, Declaration, FunctionDecl, IfStatement, Statement,
-    WhileStatement,
-};
-use types::{TypedVar, LisaaType};
+use statement::{Assignment, Declaration, FunctionDecl, IfStatement, Statement, WhileStatement};
 use std::collections::HashMap;
 use std::fmt;
 use token::{Token, TokenType};
+use types::{LisaaType, TypedVar};
 
 #[derive(Debug)]
 /// The struct for a parse error, contains just enough information to show
@@ -99,15 +96,21 @@ impl Parser {
                 let arguments = self.func_args()?;
                 let return_type = self.func_return_type()?;
                 let scope = self.scope()?;
-                Ok(FunctionDecl::new(name, type_parameters, arguments, scope, return_type))
+                Ok(FunctionDecl::new(
+                    name,
+                    type_parameters,
+                    arguments,
+                    scope,
+                    return_type,
+                ))
             }
             _ => Err("error : expected function declaration there".to_string()),
         }
     }
 
-    pub fn parse_type_list(&mut self, ) -> Result<Vec<LisaaType>, String>{
+    pub fn parse_type_list(&mut self) -> Result<Vec<LisaaType>, String> {
         let mut args = vec![];
-        match self.peek().is_type(&TokenType::LESS){
+        match self.peek().is_type(&TokenType::LESS) {
             true => {
                 self.advance();
                 loop {
@@ -140,7 +143,6 @@ impl Parser {
         }
         return Ok(LisaaType::Void);
     }
-
 
     /// Parses the declaration of arguments
     /// Should be refactored a little bit tho.
@@ -449,14 +451,16 @@ impl Parser {
         return self.post_notation(lit);
     }
 
-    pub fn post_notation(&mut self, lit : Expr) -> Result<Expr, String>{
+    pub fn post_notation(&mut self, lit: Expr) -> Result<Expr, String> {
         let mut expr = lit;
         loop {
             expr = match self.peek().get_type() {
                 &TokenType::LeftParen => self.parse_function_call(expr)?,
                 &TokenType::LeftBrace => self.parse_indexing(expr)?,
                 &TokenType::DOT => self.parse_getattr(expr)?,
-                _ => {break;},
+                _ => {
+                    break;
+                }
             }
         }
         Ok(expr)
@@ -486,19 +490,19 @@ impl Parser {
     }
 
     /// Returns a call with the given arguments, the call must be a method or a fucntion.
-    pub fn callable(&mut self, args : Vec<Expr>, lit : Expr) -> Result<Expr, String>{
+    pub fn callable(&mut self, args: Vec<Expr>, lit: Expr) -> Result<Expr, String> {
         let line = lit.get_line();
         if let Ok(id) = lit.get_identifier() {
             return Ok(Expr::function_call(
-                lit.get_identifier().map_err(|_| "function calls only allowed on identifier")?
+                lit.get_identifier()
+                    .map_err(|_| "function calls only allowed on identifier")?
                     .to_string(),
                 args,
                 line,
-            ))
+            ));
         }
         Ok(Expr::method_call(lit, args, line))
     }
-
 
     pub fn parse_indexing(&mut self, lit: Expr) -> Result<Expr, String> {
         self.expect(TokenType::LeftBrace)?;
@@ -511,7 +515,7 @@ impl Parser {
         )))
     }
 
-    pub fn parse_getattr(&mut self, lit : Expr) -> Result<Expr, String>{
+    pub fn parse_getattr(&mut self, lit: Expr) -> Result<Expr, String> {
         self.expect(TokenType::DOT)?;
         let next = self.advance();
         let name = Expr::identifier(next.get_lexeme().to_owned(), next.get_line());
@@ -554,7 +558,10 @@ impl Parser {
                     token.get_lexeme().to_string(),
                     token.get_line(),
                 )),
-                &TokenType::CHAR => Ok(Expr::char(token.get_lexeme().chars().next().unwrap(), token.get_line())),
+                &TokenType::CHAR => Ok(Expr::char(
+                    token.get_lexeme().chars().next().unwrap(),
+                    token.get_line(),
+                )),
                 _ => Err("Cant parse literal".to_string()),
             }
         }

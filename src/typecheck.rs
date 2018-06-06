@@ -1,11 +1,8 @@
-use expression::{BinaryExpr, Expr, ExprEnum, FunctionCall, Operator, UnaryExpr, Callee};
+use expression::{BinaryExpr, Callee, Expr, ExprEnum, FunctionCall, Operator, UnaryExpr};
 use native::get_native_types;
-use statement::{
-    Assignment, Declaration, FunctionDecl, IfStatement, Statement,
-    WhileStatement,
-};
-use types::{LisaaType, TypedVar};
+use statement::{Assignment, Declaration, FunctionDecl, IfStatement, Statement, WhileStatement};
 use std::collections::HashMap;
+use types::{LisaaType, TypedVar};
 
 /// Represents a scope with its variables.
 #[derive(Debug)]
@@ -44,7 +41,6 @@ impl Scope {
 /// Contains a program and functions to resolve types/verify consistency.
 /// Also check for lvalues and assignment.
 pub struct TypeChecker {
-    native_functions: HashMap<String, (LisaaType, Vec<TypedVar>)>,
     functions: HashMap<String, FunctionDecl>,
     scopes: Vec<Scope>,
 }
@@ -55,14 +51,12 @@ impl TypeChecker {
         TypeChecker {
             scopes: vec![Scope::new(1)],
             functions: HashMap::new(),
-            native_functions: HashMap::new(),
         }
     }
     /// Add a lib to the program.
     pub fn add_lib(&mut self, lib: &str) {
         for f in get_native_types(lib) {
-            self.native_functions
-                .insert(f.name(), (f.ret().clone(), f.args()));
+            self.functions.insert(f.name().to_owned(), f);
         }
     }
     /// Creates a variable in the current scope.
@@ -108,8 +102,8 @@ impl TypeChecker {
     /// Resolve types if possible
     /// The aim is to traverse the tree and resolve the return type of all expressions.
     pub fn resolve(&mut self, program: &mut HashMap<String, FunctionDecl>) -> Result<(), String> {
-        self.add_lib("base");
         self.functions = program.clone();
+        self.add_lib("base");
         for (_, mut func) in program {
             self.function(&mut func)?;
         }
@@ -155,6 +149,7 @@ impl TypeChecker {
             &mut Statement::WhileStatement(ref mut i) => self.while_statement(i),
             &mut Statement::BreakStatement => Ok(()),
             &mut Statement::ReturnStatement(ref mut e) => self.expression(e),
+            &mut Statement::Native(_) => Ok(()),
         }
     }
 
@@ -243,9 +238,9 @@ impl TypeChecker {
     }
 
     /// Parses a ___.___
-    pub fn getattr(&mut self, expr : &mut BinaryExpr) -> Result<LisaaType, String> {
+    pub fn getattr(&mut self, expr: &mut BinaryExpr) -> Result<LisaaType, String> {
         if expr.operator() != Operator::Get {
-            return Err(format!("Not a . operator"))
+            return Err(format!("Not a . operator"));
         } else {
             self.expression(expr.lhs_mut())?;
             let rhs = expr.rhs().get_identifier()?;
@@ -261,26 +256,28 @@ impl TypeChecker {
         }
     }
 
-    pub fn get_function_name(&mut self, func : &mut FunctionCall) -> Result<String, String>{
-        match func.callee_mut(){
+    pub fn get_function_name(&mut self, func: &mut FunctionCall) -> Result<String, String> {
+        match func.callee_mut() {
             &mut Callee::StaticFunc(ref mut s) => Ok(s.to_owned()),
             &mut Callee::Method(ref mut e) => {
                 let line = e.get_line();
                 self.expression(e)?;
-                e.return_type().function_name()
-                    .map_err(|()|format!("Line : {}\tNot a method\n", line))
+                e.return_type()
+                    .function_name()
+                    .map_err(|()| format!("Line : {}\tNot a method\n", line))
             }
         }
     }
 
-    pub fn get_function(&mut self, func : &mut FunctionCall) -> Result<(LisaaType, &Vec<TypedVar>), String> {
+    pub fn get_function(
+        &mut self,
+        func: &mut FunctionCall,
+    ) -> Result<(LisaaType, &Vec<TypedVar>), String> {
         let name = self.get_function_name(func)?;
+        func.set_name(&name);
         match self.functions.get(&name) {
             Some(f) => Ok((f.ret_type().clone(), f.args())),
-            None => match self.native_functions.get(&name) {
-                Some((ret, f)) => Ok((ret.clone(), f)),
-                None => Err(String::from(format!("Unknown function : {:?}", name))),
-            },
+            None => Err(String::from(format!("Unknown function : {:?}", name))),
         }
     }
 

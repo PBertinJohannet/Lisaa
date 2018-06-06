@@ -1,6 +1,4 @@
-
 use std::fmt;
-
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// This represents a class
@@ -33,7 +31,7 @@ pub enum LisaaType {
 
 impl LisaaType {
     /// Creates a pointer pointing to the given type
-    pub fn method(inner: LisaaType, name : String) -> Self {
+    pub fn method(inner: LisaaType, name: String) -> Self {
         LisaaType::Function(format!("{}::{}", inner, name))
     }
     /// Creates a pointer pointing to the given type
@@ -45,7 +43,7 @@ impl LisaaType {
         LisaaType::Slice(Box::new(inner))
     }
 
-    pub fn function_name(&self) -> Result<String, ()>{
+    pub fn function_name(&self) -> Result<String, ()> {
         match self {
             &LisaaType::Function(ref s) => Ok(s.to_owned()),
             _ => Err(()),
@@ -62,23 +60,23 @@ impl LisaaType {
         (a, i)
     }
     /// Tells if a type is equivalent to another
-    pub fn is_equivalent(&self, other : &Self) -> bool {
-        if let (&LisaaType::Slice(ref lhs), &LisaaType::Slice(ref rhs)) = (self, other){
-            return lhs.is_equivalent(rhs)
-        } else if let (&LisaaType::Any, _) = (self, other){
-            return true
-        } else if let (_, &LisaaType::Any) = (self, other){
-            return true
+    pub fn is_equivalent(&self, other: &Self) -> bool {
+        if let (&LisaaType::Slice(ref lhs), &LisaaType::Slice(ref rhs)) = (self, other) {
+            return lhs.is_equivalent(rhs);
+        } else if let (&LisaaType::Any, _) = (self, other) {
+            return true;
+        } else if let (_, &LisaaType::Any) = (self, other) {
+            return true;
         } else {
             return self == other;
         }
     }
     /// Returns the attribute's type if it exists
-    pub fn get_attr(&self, name : &String) -> Result<LisaaType, String>{
+    pub fn get_attr(&self, name: &String) -> Result<LisaaType, String> {
         match self {
             &LisaaType::Num => Ok(LisaaType::Function(format!("num::{}", name))),
             &LisaaType::Char => Ok(LisaaType::Function(format!("num::{}", name))),
-            _ => Err(format!("can not get attr {}of {}", name, self))
+            _ => Err(format!("can not get attr {}of {}", name, self)),
         }
     }
 }

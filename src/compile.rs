@@ -6,6 +6,7 @@ use expression::{
 use statement::{Assignment, Declaration, FunctionDecl, IfStatement, Statement, WhileStatement};
 use std::collections::HashMap;
 use vm::OP;
+use native::get_native_types;
 
 /// These are unlinked instructions.
 /// the goto (symbol) will be replaced by goto(usize) when the program is completed.
@@ -99,11 +100,10 @@ impl Compiler {
         self.scopes.last().unwrap().current_size
     }
     /// Add a lib to the program.
-    pub fn add_lib(&mut self, _lib: &str) {
-        unimplemented!()
-        /*for f in get_native_types(lib) {
-            self.native_functions.insert(f.name(), f.args());
-        }*/
+    pub fn add_lib(&mut self, lib: &str) {
+        for f in get_native_types(lib) {
+            self.functions.insert(f.name().to_owned(), f);
+        }
     }
     /// Creates a variable in the current scope.
     pub fn create_var(&mut self, var: String) {
@@ -113,7 +113,7 @@ impl Compiler {
     pub fn get_var(&self, var_name: &str) -> Option<usize> {
         let current_scope = self.scopes.last().unwrap().depth;
         let len = self.scopes.len();
-        for sc in 0..current_scope + 1 {
+        for sc in 0..current_scope +1{
             if self.scopes[len - sc - 1].get_var(var_name).is_some() {
                 return self.scopes[len - sc - 1].get_var(var_name);
             }
@@ -159,18 +159,15 @@ impl Compiler {
     /// Resolve types if possible
     /// The aim is to traverse the tree and resolve the return type of all expressions.
     pub fn compile(&mut self, program: &HashMap<String, FunctionDecl>) -> Result<Vec<OP>, String> {
-        //self.add_lib("base");
         self.functions = program.clone();
+        self.add_lib("base");
 
         self.function_call(&FunctionCall::function("main".to_string(), vec![]));
         self.emit(OP::End);
         for f in program.iter() {
             self.function(f.1);
         }
-        self.compile_std();
-        println!("code : {:?}", self.code);
 
-        println!("compiled {:#?}", self.scopes);
         Ok(self
             .code
             .iter()
@@ -222,6 +219,7 @@ impl Compiler {
             &Statement::WhileStatement(ref i) => self.while_statement(i),
             &Statement::BreakStatement => self.break_scope(),
             &Statement::ReturnStatement(ref e) => self.return_statement(e),
+            &Statement::Native(ref ops) => self.emit_chunks(ops.clone()),
         }
     }
 
@@ -360,7 +358,7 @@ impl Compiler {
             &ExprEnum::Binary(ref b) => self.binary(b),
             &ExprEnum::GetAttr(ref a) => panic!("can not get attr"),
             &ExprEnum::Identifier(ref i) => self.identifier(i),
-            &ExprEnum::FunctionCall(ref f) => self.function_call(f),
+            &ExprEnum::FunctionCall(ref f) => self.generic_call(f),
             &ExprEnum::Deref(ref d) => self.deref(d),
         }
     }
@@ -374,9 +372,39 @@ impl Compiler {
         }
     }
 
+
+    /// A generic call, can be a method a function or anything callable.
+    /// checks for method first.
+    /// If it is a method, brings the callee then call the method.
+    pub fn generic_call(&mut self, call : &FunctionCall){
+        let func = self.functions.get(call.name()).unwrap().clone();
+        if func.is_inline(){
+            self.inline_call(call);
+        } else {
+            self.function_call(call);
+        }
+    }
+
+    pub fn inline_call(&mut self, call : &FunctionCall){
+        let func = self.functions.get(call.name()).unwrap().clone();
+        self.push_arguments(call);
+        self.statement(&func.scope);
+
+    }
+
+    pub fn push_arguments(&mut self, call : &FunctionCall){
+        if let Some(e) = call.callee().get_method(){
+            self.expression(e);
+        }
+        for var in call.args() {
+            self.expression(var);
+        }
+    }
+
     /// As specified, when a function is called we the stack must be in the following format :
     /// Ret | Off | Args ...
     /// So we push the ret, push the offset and go to the function.
+    ///
     pub fn function_call(&mut self, call: &FunctionCall) {
         let after_call = self.new_empty_label();
         self.emit(OP::PushOffset); // stack :  | Offset |
@@ -384,9 +412,7 @@ impl Compiler {
         self.emit(OP::Swap2); // swaps to get the return value under the offset.
         self.emit_push(after_call.to_string()); // push the value of the instructions after the call.
         self.emit(OP::Swap2); // Swaps the offset with the instruction pointer.
-        for var in call.args() {
-            self.expression(var);
-        }
+        self.push_arguments(call);
         self.emit(OP::OffsetToTop(call.args().len() + 3)); // down the current offset to (num args + 3)
         self.emit_goto(call.name().to_string());
         self.label_here(after_call);
@@ -401,6 +427,7 @@ impl Compiler {
     }
 
     pub fn identifier(&mut self, ident: &String) {
+        println!("get var : {}", ident);
         let val = self.get_var(ident).unwrap();
         self.emit(OP::Bring(val));
     }
@@ -435,26 +462,5 @@ impl Compiler {
             Operator::INDEX => self.emit_chunks(vec![OP::Add]),
             e => panic!(format!("operator {:?} can not be aplied to two value", e)),
         }
-    }
-
-    pub fn compile_std(&mut self) {
-        self.compiled_print();
-        self.compiled_rand();
-        self.compiled_newslice();
-    }
-
-    pub fn compiled_print(&mut self) {
-        self.new_label_here("print".to_string());
-        self.emit_chunks(vec![OP::PrintNum, OP::SetOffset, OP::GotoTop]);
-    }
-
-    pub fn compiled_rand(&mut self) {
-        self.new_label_here("rand".to_string());
-        self.emit_chunks(vec![OP::RandNum, OP::Set(0), OP::SetOffset, OP::GotoTop]);
-    }
-    /// The slice takes a number and creates a slice in the heap.
-    pub fn compiled_newslice(&mut self) {
-        self.new_label_here("newslice".to_string());
-        self.emit_chunks(vec![OP::AllocObj, OP::Set(0), OP::SetOffset, OP::GotoTop]);
     }
 }

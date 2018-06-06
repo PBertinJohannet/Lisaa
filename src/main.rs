@@ -10,17 +10,17 @@ extern crate rand;
 extern crate lazy_static;
 
 extern crate time;
-mod compile_req;
 mod compile;
+mod compile_req;
 mod expression;
 mod keywords;
 mod native;
-mod types;
 mod parser;
 mod scanner;
 pub mod statement;
 mod token;
 mod typecheck;
+mod types;
 mod vm;
 mod ytp;
 use std::io::Read;
@@ -39,7 +39,7 @@ fn main() {
             Arg::with_name("INPUT")
                 .index(1)
                 .help("the file to run")
-                .default_value("inline.lisaa")
+                .default_value("pi.lisaa")
                 .required(true),
         )
         .get_matches();

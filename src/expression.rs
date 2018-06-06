@@ -1,9 +1,9 @@
 //! The module containing the code for the different expressions.
 //!
 
-use types::LisaaType;
 use std::fmt;
 use token::{Token, TokenType};
+use types::LisaaType;
 
 #[derive(Debug, Clone)]
 /// The base for an expression.
@@ -95,7 +95,7 @@ impl Expr {
     pub fn return_type_uncheck(&self) -> &Option<LisaaType> {
         &self.return_type
     }
-    pub fn method_call(expr : Expr, args: Vec<Expr>, line: usize) -> Self {
+    pub fn method_call(expr: Expr, args: Vec<Expr>, line: usize) -> Self {
         Expr {
             expr: ExprEnum::FunctionCall(FunctionCall::method(expr, args)),
             return_type: None,
@@ -116,7 +116,7 @@ impl Expr {
             line: line,
         }
     }
-    pub fn char(ch : char, line : usize) -> Self {
+    pub fn char(ch: char, line: usize) -> Self {
         Expr {
             expr: ExprEnum::Literal(LiteralExpr::CHAR(ch)),
             return_type: Some(LisaaType::Char),
@@ -183,33 +183,47 @@ impl Deref {
     }
 }
 
-
 /// Represents a function call in the code.
 #[derive(Debug, Clone)]
-pub enum Callee{
+pub enum Callee {
     StaticFunc(String),
     Method(Box<Expr>),
 }
 
+impl Callee {
+    pub fn get_method(&self) -> Option<&Expr>{
+        match self {
+            &Callee::StaticFunc(_) => None,
+            &Callee::Method(ref e) => match e.expr() {
+                ExprEnum::GetAttr(b) => Some(b.lhs()),
+                _ => panic!("method without getattr ? wtf"),
+            },
+        }
+    }
+}
+
 /// Represents a function call in the code.
 #[derive(Debug, Clone)]
-pub struct FunctionCall {
+pub struct  FunctionCall {
     callee: Callee,
+    name: String,
     args: Vec<Expr>,
 }
 
 impl FunctionCall {
-    pub fn method(lhs : Expr, args: Vec<Expr>) -> Self {
+    pub fn method(lhs: Expr, args: Vec<Expr>) -> Self {
         FunctionCall {
             callee: Callee::Method(Box::new(lhs)),
             args: args,
+            name: "method".to_owned(),
         }
     }
     /// Creates a new function call expression
     pub fn function(name: String, args: Vec<Expr>) -> Self {
         FunctionCall {
-            callee: Callee::StaticFunc(name),
+            callee: Callee::StaticFunc(name.clone()),
             args: args,
+            name: name,
         }
     }
     pub fn is_method(&self) -> bool {
@@ -226,11 +240,12 @@ impl FunctionCall {
     }
 
     /// Returns the name.
+    pub fn set_name(&mut self, name: &String) {
+        self.name = name.to_owned();
+    }
+    /// Returns the name.
     pub fn name(&self) -> &String {
-        match self.callee {
-            Callee::StaticFunc(ref n) => n,
-            _ => panic!("methods not implemented yet")
-        }
+        &self.name
     }
     /// Returns the list of arguments.
     pub fn args(&self) -> &Vec<Expr> {
