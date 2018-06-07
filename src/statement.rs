@@ -78,11 +78,15 @@ impl ClassDecl {
     }
     /// Get the declaration of an attribute given its name.
     pub fn get_attr_index(&self, str: &String) -> usize {
-        self.attributes.iter().position(|d| &d.val_name == str).expect("attr not found")
+        self.attributes
+            .iter()
+            .position(|d| &d.val_name == str)
+            .expect("attr not found")
     }
     /// Returns the constructor's function.
     pub fn get_constructor(&self) -> FunctionDecl {
         FunctionDecl {
+            self_type : None,
             name: self.name.clone(),
             args: vec![],
             type_args: vec![],
@@ -116,7 +120,7 @@ impl ClassDecl {
                 OP::SetHeap,
             ]));
         }
-        scope.push(Statement::Native(vec![OP::Set(0)]));
+        scope.push(Statement::Native(vec![OP::Set(0), OP::PopN(len), OP::SetOffset, OP::GotoTop]));
         Statement::Scope(scope)
     }
 }
@@ -130,20 +134,22 @@ pub struct FunctionDecl {
     /// The name of the function.
     pub name: String,
     /// The type parameters of the function <Y, U, T>
-    pub type_args: Vec<LisaaType>,
+    pub type_args: Vec<String>,
     /// The arguments taken by the function
     pub args: Vec<TypedVar>,
     /// The scope of the function, the statement inside it.
     pub scope: Statement,
     /// The return type of the function.
     pub ret_type: LisaaType,
+    /// If the function is a method, the type of self.
+    pub self_type: Option<LisaaType>,
 }
 
 impl FunctionDecl {
     /// Creates a new function declaration.
     pub fn new(
         name: String,
-        type_args: Vec<LisaaType>,
+        type_args: Vec<String>,
         args: Vec<TypedVar>,
         scope: Statement,
         ret_type: LisaaType,
@@ -155,7 +161,12 @@ impl FunctionDecl {
             args: args,
             scope: scope,
             ret_type: ret_type,
+            self_type: None,
         }
+    }
+    /// set the type of the "self" if it is a method.
+    pub fn set_self(&mut self, tp: LisaaType) {
+        self.self_type = Some(tp)
     }
     /// returns the return type of the function.
     pub fn ret_type(&self) -> &LisaaType {

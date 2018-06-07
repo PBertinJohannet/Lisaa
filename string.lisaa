@@ -1,3 +1,30 @@
-fn main() -> {
+Class String {
+    num len = 0;
+    slice<char> inner = newslice(0);
+}
 
+method extend(num a) of String {
+    self.len = self.len + a;
+    self.inner = newslice(self.len);
+}
+
+method print() of String {
+    num i = 0;
+    while i < self.len{
+        print(self.inner[i]);
+        i = i + 1;
+    }
+}
+method println() of String {
+    self.print();
+    print('\n');
+}
+
+method index(num i)-> char of String {
+    return self.inner[i];
+}
+
+
+fn main() {
+    "hello, world!".println();
 }

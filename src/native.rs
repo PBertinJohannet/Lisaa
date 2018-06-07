@@ -6,12 +6,13 @@ trait NativeFunc {
     fn print() -> FunctionDecl;
     fn rand() -> FunctionDecl;
     fn num_funcs() -> Vec<FunctionDecl>;
-    fn newslice() -> FunctionDecl;
+    fn slice_funcs() -> Vec<FunctionDecl>;
 }
 
 impl NativeFunc for FunctionDecl {
     fn print() -> Self {
         FunctionDecl {
+            self_type: None,
             inline: true,
             name: "print".to_owned(),
             type_args: vec![],
@@ -22,6 +23,7 @@ impl NativeFunc for FunctionDecl {
     }
     fn rand() -> Self {
         FunctionDecl {
+            self_type: None,
             inline: true,
             name: "rand".to_owned(),
             type_args: vec![],
@@ -30,19 +32,32 @@ impl NativeFunc for FunctionDecl {
             ret_type: LisaaType::Num,
         }
     }
-    fn newslice() -> Self {
-        FunctionDecl {
-            inline: true,
-            name: "newslice".to_owned(),
-            type_args: vec![],
-            args: vec![TypedVar::new(LisaaType::Num, "n".to_string())],
-            scope: Statement::Native(vec![OP::AllocObj]),
-            ret_type: LisaaType::slice(LisaaType::Any),
-        }
+    fn slice_funcs() -> Vec<Self> {
+        vec![
+            FunctionDecl {
+                self_type: None,
+                inline: true,
+                name: "newslice".to_owned(),
+                type_args: vec![],
+                args: vec![TypedVar::new(LisaaType::Num, "n".to_string())],
+                scope: Statement::Native(vec![OP::AllocObj]),
+                ret_type: LisaaType::slice(LisaaType::Any),
+            },
+            FunctionDecl {
+                self_type: None,
+                inline: true,
+                name: "slice::index".to_owned(),
+                type_args: vec![],
+                args: vec![TypedVar::new(LisaaType::Num, "n".to_string())],
+                scope: Statement::Native(vec![OP::Add]),
+                ret_type: LisaaType::TypeArg(0),
+            },
+        ]
     }
     fn num_funcs() -> Vec<Self> {
         vec![
             FunctionDecl {
+                self_type: None,
                 inline: true,
                 name: "num::add".to_owned(),
                 type_args: vec![],
@@ -51,60 +66,67 @@ impl NativeFunc for FunctionDecl {
                 ret_type: LisaaType::Num,
             },
             FunctionDecl {
+                self_type: None,
                 inline: true,
                 name: "num::times".to_owned(),
                 type_args: vec![],
                 args: vec![TypedVar::new(LisaaType::Num, "n".to_string())],
                 scope: Statement::Native(vec![OP::Mul]),
-                ret_type: LisaaType::slice(LisaaType::Num),
+                ret_type: LisaaType::Num,
             },
             FunctionDecl {
+                self_type: None,
                 inline: true,
                 name: "num::minus".to_owned(),
                 type_args: vec![],
                 args: vec![TypedVar::new(LisaaType::Num, "n".to_string())],
                 scope: Statement::Native(vec![OP::Neg, OP::Add]),
-                ret_type: LisaaType::slice(LisaaType::Num),
+                ret_type: LisaaType::Num,
             },
             FunctionDecl {
+                self_type: None,
                 inline: true,
                 name: "num::divide".to_owned(),
                 type_args: vec![],
                 args: vec![TypedVar::new(LisaaType::Num, "n".to_string())],
                 scope: Statement::Native(vec![OP::Inv, OP::Mul]),
-                ret_type: LisaaType::slice(LisaaType::Num),
+                ret_type: LisaaType::Num,
             },
             FunctionDecl {
+                self_type: None,
                 inline: true,
                 name: "num::not".to_owned(),
                 type_args: vec![],
                 args: vec![],
                 scope: Statement::Native(vec![OP::Not]),
-                ret_type: LisaaType::slice(LisaaType::Num),
+                ret_type: LisaaType::Num,
             },
             FunctionDecl {
+                self_type: None,
                 inline: true,
                 name: "num::negate".to_owned(),
                 type_args: vec![],
                 args: vec![],
                 scope: Statement::Native(vec![OP::Neg]),
-                ret_type: LisaaType::slice(LisaaType::Num),
+                ret_type: LisaaType::Num,
             },
             FunctionDecl {
+                self_type: None,
                 inline: true,
                 name: "num::ne".to_owned(),
                 type_args: vec![],
                 args: vec![TypedVar::new(LisaaType::Num, "n".to_string())],
                 scope: Statement::Native(vec![OP::Eq, OP::Not]),
-                ret_type: LisaaType::slice(LisaaType::Num),
+                ret_type: LisaaType::Num,
             },
             FunctionDecl {
+                self_type: None,
                 inline: true,
                 name: "num::equals".to_owned(),
                 type_args: vec![],
                 args: vec![TypedVar::new(LisaaType::Num, "n".to_string())],
                 scope: Statement::Native(vec![OP::Eq]),
-                ret_type: LisaaType::slice(LisaaType::Num),
+                ret_type: LisaaType::Num,
             },
             /// we have a > b
             /// a, b
@@ -118,44 +140,49 @@ impl NativeFunc for FunctionDecl {
             /// a==b, a > b
             ///
             FunctionDecl {
+                self_type: None,
                 inline: true,
                 name: "num::ge".to_owned(),
                 type_args: vec![],
                 args: vec![TypedVar::new(LisaaType::Num, "n".to_string())],
-                scope: Statement::Native(vec![OP::GreaterEq]),
-                ret_type: LisaaType::slice(LisaaType::Num),
+                scope: Statement::Native(vec![OP::LowerThan]),
+                ret_type: LisaaType::Num,
             },
             FunctionDecl {
+                self_type: None,
                 inline: true,
                 name: "num::le".to_owned(),
                 type_args: vec![],
                 args: vec![TypedVar::new(LisaaType::Num, "n".to_string())],
-                scope: Statement::Native(vec![OP::LowerEq]),
-                ret_type: LisaaType::slice(LisaaType::Num),
+                scope: Statement::Native(vec![OP::GreaterEq]),
+                ret_type: LisaaType::Num,
             },
             FunctionDecl {
+                self_type: None,
                 inline: true,
                 name: "num::less".to_owned(),
                 type_args: vec![],
                 args: vec![TypedVar::new(LisaaType::Num, "n".to_string())],
-                scope: Statement::Native(vec![OP::LowerThan]),
-                ret_type: LisaaType::slice(LisaaType::Num),
+                scope: Statement::Native(vec![OP::GreaterThan]),
+                ret_type: LisaaType::Num,
             },
             FunctionDecl {
+                self_type: None,
                 inline: true,
                 name: "num::greater".to_owned(),
                 type_args: vec![],
                 args: vec![TypedVar::new(LisaaType::Num, "n".to_string())],
-                scope: Statement::Native(vec![OP::GreaterThan]),
-                ret_type: LisaaType::slice(LisaaType::Num),
+                scope: Statement::Native(vec![OP::LowerThan]),
+                ret_type: LisaaType::Num,
             },
             FunctionDecl {
+                self_type: None,
                 inline: true,
                 name: "num::index".to_owned(),
                 type_args: vec![],
                 args: vec![TypedVar::new(LisaaType::Num, "n".to_string())],
                 scope: Statement::Native(vec![OP::Add]),
-                ret_type: LisaaType::slice(LisaaType::Num),
+                ret_type: LisaaType::Num,
             },
         ]
     }
@@ -167,9 +194,9 @@ pub fn get_native_types(library: &str) -> Vec<FunctionDecl> {
             let mut base = vec![
                 FunctionDecl::print(),
                 FunctionDecl::rand(),
-                FunctionDecl::newslice(),
             ];
             base.append(&mut FunctionDecl::num_funcs());
+            base.append(&mut FunctionDecl::slice_funcs());
             base
         } //, time, rand],
         _ => vec![],

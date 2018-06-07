@@ -131,9 +131,16 @@ impl Scanner {
             return self.error("Unterminated char declaration".to_string());
         }
         let val = self.advance();
+        let mut fin = val;
+        if val == '\\' {
+            fin = match self.advance(){
+                'n' => '\n',
+                c => c,
+            }
+        }
         match self.match_next('\'') {
             false => self.error("char must be only 1 character long".to_string()),
-            true => Ok(Token::char(self.line, val)),
+            true => Ok(Token::char(self.line, fin)),
         }
     }
 

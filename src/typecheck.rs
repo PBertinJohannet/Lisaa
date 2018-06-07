@@ -96,7 +96,8 @@ impl TypeChecker {
         let (lhs, rhs) = (expr.return_type().max_deref(), expected.max_deref());
         if !lhs.0.is_equivalent(&rhs.0) {
             return Err(format!(
-                "Expected : {}, got : {}",
+                "Line : {}, Expected : {}, got : {}",
+                expr.get_line(),
                 expected,
                 expr.return_type()
             ));
@@ -124,6 +125,7 @@ impl TypeChecker {
         let (ret_type, name) = (func.ret_type().clone(), func.name().to_string());
         let depth = self.scopes.len();
         self.scopes.push(Scope::new(depth));
+        func.self_type.clone().map(|t|self.create_var(TypedVar::new(t, "self".to_string())));
         for arg in func.args() {
             self.create_var(arg.clone());
         }
@@ -230,7 +232,6 @@ impl TypeChecker {
         let tp = match expr.expr_mut() {
             &mut ExprEnum::Literal(_) => Ok(ret_type.unwrap()),
             &mut ExprEnum::Unary(ref mut u) => self.unary(u),
-            &mut ExprEnum::Binary(ref mut b) => self.binary(b),
             &mut ExprEnum::GetAttr(ref mut b) => self.getattr(b),
             &mut ExprEnum::Identifier(ref mut i) => self.identifier(i),
             &mut ExprEnum::FunctionCall(ref mut f) => self.function_call(f),
@@ -250,7 +251,10 @@ impl TypeChecker {
         } else {
             self.expression(expr.lhs_mut())?;
             let rhs = expr.rhs().get_identifier()?;
-            expr.lhs().return_type().get_attr(rhs, &self.classes)
+            expr.lhs()
+                .return_type()
+                .get_attr(rhs, &self.classes, &self.functions)
+                .map_err(|e| format!("{} line {}", e, expr.lhs().get_line()))
         }
     }
 
@@ -268,13 +272,33 @@ impl TypeChecker {
             &mut Callee::Method(ref mut e) => {
                 let line = e.get_line();
                 self.expression(e)?;
-                e.return_type()
-                    .function_name()
-                    .map_err(|()| format!("Line : {}\tNot a method\n", line))
+                e.return_type().function_name().map_err(|()| {
+                    format!("Line : {}\tNot a method : {:?}\n", line, e.return_type())
+                })
             }
         }
     }
 
+    /// Aalright so we have the declaration of the function and the call with the types so surely
+    /// we can get the return type
+    pub fn resolve_method_call<'a>(
+        decl: &'a FunctionDecl,
+        call: &FunctionCall,
+    ) -> Result<(LisaaType, &'a Vec<TypedVar>), String> {
+        if let &LisaaType::TypeArg(n) = decl.ret_type() {
+            let ret = &call
+                .callee()
+                .get_method()
+                .unwrap()
+                .return_type()
+                .type_args()[n];
+            return Ok((ret.clone(), decl.args()));
+        } else {
+            return Ok((decl.ret_type().clone(), decl.args()));
+        }
+    }
+
+    /// Returns the return type and the arguments of the function.
     pub fn get_function(
         &mut self,
         func: &mut FunctionCall,
@@ -282,7 +306,7 @@ impl TypeChecker {
         let name = self.get_function_name(func)?;
         func.set_name(&name);
         match self.functions.get(&name) {
-            Some(f) => Ok((f.ret_type().clone(), f.args())),
+            Some(f) => Self::resolve_method_call(f, func),
             None => Err(String::from(format!("Unknown function : {:?}", name))),
         }
     }
@@ -290,8 +314,6 @@ impl TypeChecker {
     /// Find the return type of a function call expression and returns it.
     /// Checks that arguments lists are the same size.
     /// Checks for arguments given to the function.
-    /// And well... This is a bit embarassing...
-    /// The ugly hack with the closure feels a little bit odd.
     pub fn function_call(&mut self, exp: &mut FunctionCall) -> Result<LisaaType, String> {
         let (ret, args) = {
             let (r, a) = self.get_function(exp)?;
@@ -325,43 +347,6 @@ impl TypeChecker {
                 _ => Err(String::from("Operator '!' supported only for primitives")),
             },
             e => Err(format!("operator {:?} can not be aplied to one value", e)),
-        }
-    }
-
-    /// Find the return type of a binary expression and returns it.
-    pub fn binary(&mut self, exp: &mut BinaryExpr) -> Result<LisaaType, String> {
-        self.expression(exp.lhs_mut())?;
-        self.expression(exp.rhs_mut())?;
-        let exp_res = (exp.lhs().return_type(), exp.rhs().return_type());
-        match exp.operator() {
-            Operator::MINUS => match exp_res {
-                (LisaaType::Num, LisaaType::Num) => Ok(LisaaType::Num),
-                _ => Err(String::from("Operator '-' supported only for num")),
-            },
-            Operator::PLUS => match exp_res {
-                (LisaaType::Num, LisaaType::Num) => Ok(LisaaType::Num),
-                _ => Err(String::from("Operator '+' supported only for num")),
-            },
-            Operator::STAR => match exp_res {
-                (LisaaType::Num, LisaaType::Num) => Ok(LisaaType::Num),
-                _ => Err(String::from("Operator '*' supported only for num")),
-            },
-            Operator::SLASH => match exp_res {
-                (LisaaType::Num, LisaaType::Num) => Ok(LisaaType::Num),
-                _ => Err(String::from("Operator '*' supported only for num")),
-            },
-            Operator::GreaterEqual => Ok(LisaaType::Num),
-            Operator::GREATER => Ok(LisaaType::Num),
-            Operator::LessEqual => Ok(LisaaType::Num),
-            Operator::LESS => Ok(LisaaType::Num),
-            Operator::EqualEqual => Ok(LisaaType::Num),
-            Operator::NotEqual => Ok(LisaaType::Num),
-            Operator::AndAnd => Ok(LisaaType::Num),
-            Operator::INDEX => match exp_res {
-                (LisaaType::Slice(box inner), LisaaType::Num) => Ok(inner.clone()),
-                _ => Err(String::from("Can only index slice using num")),
-            },
-            e => Err(format!("operator {:?} can not be aplied to two value", e)),
         }
     }
 

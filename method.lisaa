@@ -1,0 +1,23 @@
+Class Point {
+    num x = 0;
+}
+
+method inc(num a) of Point {
+    self.x = self.x + a;
+}
+
+method dist(Point b, num c) -> num of Point {
+    self.x = b.x + c;
+    if b.x < c {
+        b.x = c;
+    }
+    return b.x;
+}
+
+fn main() -> num {
+    Point a = Point();
+    a.inc(5);
+    a.inc(2);
+    a.inc(-12+a.x);
+    return a.dist(Point(), 5); // both should be 5 now.
+}

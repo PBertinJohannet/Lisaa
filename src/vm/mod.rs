@@ -117,6 +117,10 @@ impl Allocator {
 
     /// Sets the given pointer at the given adress
     pub fn set_ptr(&mut self, adress: usize, value: usize) {
+        if adress > self.heap.len()-1 {
+            println!("Segmentation fault (Core dumped)");
+            panic!("Program exited");
+        }
         self.heap[adress] = value;
     }
 }
@@ -165,6 +169,7 @@ pub enum OP {
     /// skip the next instruction
     JMP,
     PushNum(f64),
+    PushCopy,
     ChangeTo(f64),
     PrintNum,
     PrintChar,
@@ -200,10 +205,10 @@ impl Vm {
         while instruction_pointer < program.len() {
             let op = &program[instruction_pointer];
             instruction_pointer += 1;
-            println!("executing {:?}", op);
+            //println!("executing {:?}", op);
             match op {
                 &OP::End => {
-                    println!("program execution terminated");
+                    //println!("program execution terminated");
                     return;
                 },
                 &OP::Goto(u) => instruction_pointer = u,
@@ -266,6 +271,10 @@ impl Vm {
                     self.stack.push(val)
                 }
                 &OP::PushNum(n) => self.stack.push(n),
+                &OP::PushCopy => {
+                    let top = self.stack.last().unwrap().clone();
+                    self.stack.push(top);
+                },
                 &OP::ChangeTo(n) => {
                     *self.stack.last_mut().unwrap() = n;
                 }
@@ -340,7 +349,8 @@ impl Vm {
                 }
                 //_ => panic!("unsupported operand"),
             }
-            println!("stack : {:?}", self.stack);
+            //println!("stack : {:?}", self.stack);
+            //println!("heap : {:?}", self.allocator.heap);
         }
     }
 }
