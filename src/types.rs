@@ -1,4 +1,4 @@
-use statement::ClassDecl;
+use statement::{ClassDecl, FunctionDecl};
 use std::collections::HashMap;
 use std::fmt;
 
@@ -19,16 +19,16 @@ pub enum LisaaType {
     Void,
     /// Any type the legendary void*
     Any,
-    /// An unresolved type found in the wild -> must be expanded to a class or type parameter.
-    Unresolved(String),
+    /// THe type argument with number usize.
+    TypeArg(usize),
     /// A method, represented by the type :: the name.
-    Function(String),
+    Function(String, Vec<LisaaType>),
 }
 
 impl LisaaType {
     /// Creates a pointer pointing to the given type
     pub fn method(inner: LisaaType, name: String) -> Self {
-        LisaaType::Function(format!("{}::{}", inner, name))
+        LisaaType::Function(format!("{}::{}", inner, name), vec![])
     }
     /// Creates a pointer pointing to the given type
     pub fn pointer(inner: LisaaType) -> Self {
@@ -41,7 +41,8 @@ impl LisaaType {
 
     pub fn function_name(&self) -> Result<String, ()> {
         match self {
-            &LisaaType::Function(ref s) => Ok(s.to_owned()),
+            &LisaaType::Function(ref s, _) => Ok(s.to_owned()),
+            &LisaaType::Pointer(ref inner) => Ok(inner.function_name()?),
             _ => Err(()),
         }
     }
@@ -64,7 +65,6 @@ impl LisaaType {
         } else if let (_, &LisaaType::Any) = (self, other) {
             return true;
         } else {
-            println!("self {:?}, other {:?}", self, other);
             return self == other;
         }
     }
@@ -73,25 +73,48 @@ impl LisaaType {
         &self,
         name: &String,
         classes: &HashMap<String, ClassDecl>,
+        functions: &HashMap<String, FunctionDecl>,
     ) -> Result<LisaaType, String> {
         match self {
-            &LisaaType::Num => Ok(LisaaType::Function(format!("num::{}", name))),
-            &LisaaType::Char => Ok(LisaaType::Function(format!("num::{}", name))),
+            &LisaaType::Pointer(ref inner) => inner.get_attr(name, classes, functions),
+            &LisaaType::Num => Ok(LisaaType::Function(format!("num::{}", name), vec![])),
+            &LisaaType::Char => Ok(LisaaType::Function(format!("num::{}", name), vec![])),
+            &LisaaType::Slice(ref inner) => Ok(LisaaType::Function(
+                format!("slice::{}", name),
+                vec![*inner.clone()],
+            )),
             &LisaaType::Class(ref s) => Ok(LisaaType::pointer(match classes.get(s) {
                 Some(class) => match class.get_attr(name) {
                     Some(decl) => Ok(decl.val_type().clone()),
-                    None => Err(format!("Can't take attribute {} of class {}", name, s)),
+                    None =>  match functions.get(&format!("{}::{}", s, name)){
+                        Some(f) => Ok(LisaaType::Function(f.name().clone(), vec![])),
+                        None => Err(format!("Can't take attribute {} of class {}", name, s)),
+                    },
                 },
                 None => Err(format!("Unknown class : {}", s)),
             }?)),
-            _ => Err(format!("can not get attr {}of {}", name, self)),
+            _ => Err(format!("can not get attr {} of {}", name, self)),
         }
     }
     /// Returns the attribute's type. Panics if it doesnt exist.
     pub fn get_attr_index(&self, name: &String, classes: &HashMap<String, ClassDecl>) -> usize {
         match self {
-            &LisaaType::Class(ref s) => classes.get(s).expect("class not found").get_attr_index(name),
+            &LisaaType::Class(ref s) => classes
+                .get(s)
+                .expect("class not found")
+                .get_attr_index(name),
             _ => panic!(format!("can not get attr {} of {}", name, self)),
+        }
+    }
+
+    pub fn type_args(&self) -> Vec<LisaaType> {
+        match self {
+            &LisaaType::Slice(ref u) => vec![*u.clone()],
+            &LisaaType::Num => vec![],
+            &LisaaType::Char => vec![],
+            &LisaaType::Class(_) => vec![],
+            &LisaaType::Pointer(ref p) => p.type_args(),
+            _ => panic!("ok im out "),
         }
     }
 }
@@ -106,8 +129,8 @@ impl fmt::Display for LisaaType {
             &LisaaType::Pointer(ref p) => write!(f, "&{}", p),
             &LisaaType::Any => write!(f, "any"),
             &LisaaType::Class(ref c) => write!(f, "class"),
-            &LisaaType::Unresolved(ref str) => write!(f, "{}", str),
-            &LisaaType::Function(ref str) => write!(f, "{}", str),
+            &LisaaType::TypeArg(ref str) => write!(f, "{}", str),
+            &LisaaType::Function(ref str, _) => write!(f, "{}", str),
         }
     }
 }

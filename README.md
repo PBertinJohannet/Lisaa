@@ -15,7 +15,6 @@ cargo build --release
 target/release/ytp my_file.ytp
 ```
 
-currently it supports functions, strings and integers.
 
 # Example
 

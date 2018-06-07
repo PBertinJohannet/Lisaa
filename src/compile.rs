@@ -202,6 +202,7 @@ impl Compiler {
         self.create_var("0".to_string()); // return value.
         self.create_var("1".to_string()); // next instruction.
         self.create_var("2".to_string()); // offset.
+        func.self_type.clone().map(|t| self.create_var("self".to_string()));
         for var in func.args() {
             self.create_var(var.name().to_string());
         }
@@ -235,7 +236,8 @@ impl Compiler {
     /// We need to free everything except the Ret | Off then Sets the offset to the position of Off
     /// while consuming it.
     pub fn return_statement(&mut self, expression: &Expr) {
-        self.expression(expression);
+        let new_expr = expression.as_assigned_to();
+        self.expression(&new_expr);
         self.emit(OP::Set(0)); // sets return value.
         let to_pop = self.scopes.last().unwrap().current_size - 3;
         self.emit(OP::PopN(to_pop)); // pop the allocated variables.
@@ -361,7 +363,6 @@ impl Compiler {
         match expr.expr() {
             &ExprEnum::Literal(ref l) => self.literal(l),
             &ExprEnum::Unary(ref u) => self.unary(u),
-            &ExprEnum::Binary(ref b) => self.binary(b),
             &ExprEnum::GetAttr(ref a) => self.get_attr(a),
             &ExprEnum::Identifier(ref i) => self.identifier(i),
             &ExprEnum::FunctionCall(ref f) => self.generic_call(f),
@@ -373,7 +374,8 @@ impl Compiler {
         self.expression(exp.lhs());
         let class = exp.lhs().return_type();
         if let ExprEnum::Identifier(id) = exp.rhs().expr() {
-            class.get_attr_index(id, &self.classes);
+            let index = class.get_attr_index(id, &self.classes);
+            self.emit_chunks(vec![OP::PushNum(index as f64), OP::Add]);
         } else {
             panic!("can not get attr");
         }
@@ -426,8 +428,8 @@ impl Compiler {
         self.emit(OP::Swap2); // swaps to get the return value under the offset.
         self.emit_push(after_call.to_string()); // push the value of the instructions after the call.
         self.emit(OP::Swap2); // Swaps the offset with the instruction pointer.
-        self.push_arguments(call);
-        self.emit(OP::OffsetToTop(call.args().len() + 3)); // down the current offset to (num args + 3)
+        self.push_arguments(call); // push the function arguments to the top.
+        self.emit(OP::OffsetToTop(call.args().len() + 3 + call.callee().get_method().is_some() as usize)); // down the current offset to (num args + 3)
         self.emit_goto(call.name().to_string());
         self.label_here(after_call);
     }
@@ -436,12 +438,29 @@ impl Compiler {
         match literal {
             &LiteralExpr::NUMBER(n) => self.emit(OP::PushNum(n)),
             &LiteralExpr::CHAR(c) => self.emit(OP::PushNum(c as u32 as f64)),
+            &LiteralExpr::STRING(ref s) => {
+                // first allocate enough memory :  (2 for string)
+                self.emit_chunks(vec![OP::PushNum(2.0), OP::AllocObj]);
+                // then set the size.
+                self.emit_chunks(vec![OP::PushCopy, OP::PushNum(s.len() as f64), OP::Swap2,
+                                      OP::SetHeap]);
+                // remember the address of the string.
+                self.emit(OP::PushCopy);
+                // allocates some memory for the slice. stack : ( a a s )
+                self.emit_chunks(vec![OP::PushNum(s.len() as f64), OP::AllocObj]);
+                // fill the slice.
+                for (id, ch )in s.chars().enumerate(){
+                    self.emit_chunks(vec![OP::PushCopy, OP::PushNum(ch as u32 as f64), OP::Swap2,
+                                          OP::PushNum(id as f64), OP::Add, OP::SetHeap])
+                }
+                // sets the slice in the string.
+                self.emit_chunks(vec![OP::Swap2, OP::PushNum(1.0), OP::Add, OP::SetHeap]);
+            },
             _ => panic!("strings not supported yet"),
         }
     }
 
     pub fn identifier(&mut self, ident: &String) {
-        println!("get var : {}", ident);
         let val = self.get_var(ident).unwrap();
         self.emit(OP::Bring(val));
     }
@@ -452,29 +471,6 @@ impl Compiler {
             Operator::MINUS => self.emit(OP::Neg),
             Operator::Not => self.emit_chunks(vec![OP::Not]),
             _ => panic!("unexpected this"),
-        }
-    }
-
-    /// We exchange lower than and greater than because the rhs is at the top of the stack.
-    pub fn binary(&mut self, exp: &BinaryExpr) {
-        // puts left hand side at the top
-        self.expression(exp.lhs());
-        // puts rhs at the top.
-        self.expression(exp.rhs());
-        match exp.operator() {
-            Operator::MINUS => self.emit_chunks(vec![OP::Neg, OP::Add]),
-            Operator::PLUS => self.emit(OP::Add),
-            Operator::STAR => self.emit(OP::Mul),
-            Operator::SLASH => self.emit_chunks(vec![OP::Inv, OP::Mul]),
-            Operator::GreaterEqual => self.emit_chunks(vec![OP::LowerThan, OP::Eq, OP::Add]),
-            Operator::GREATER => self.emit(OP::LowerThan),
-            Operator::LessEqual => self.emit_chunks(vec![OP::GreaterThan, OP::Eq, OP::Add]),
-            Operator::LESS => self.emit(OP::GreaterThan),
-            Operator::EqualEqual => self.emit(OP::Eq),
-            Operator::NotEqual => self.emit_chunks(vec![OP::Eq, OP::Not]),
-            Operator::AndAnd => self.emit_chunks(vec![OP::And]),
-            Operator::INDEX => self.emit_chunks(vec![OP::Add]),
-            e => panic!(format!("operator {:?} can not be aplied to two value", e)),
         }
     }
 }

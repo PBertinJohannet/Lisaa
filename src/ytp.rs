@@ -47,9 +47,9 @@ impl Ytp {
         let code = Compiler::new()
             .compile(&tree)
             .map_err(|e| format!("compilation error : {:?}", e))?;
-        for c in code.iter() {
-            println!("{:?}", c);
-        }
+        //for c in code.iter() {
+        //    println!("{:?}", c);
+        //}
 
         let mut vm = Vm::new();
         let start = PreciseTime::now();
@@ -57,9 +57,9 @@ impl Ytp {
         let end = PreciseTime::now();
         let diff = start.to(end).num_milliseconds();
 
-        println!("vm state : {:?}", vm);
+        //println!("vm state {:?}", vm);
 
-        println!("vm time : {:?}ms", diff);
+        //println!("vm time : {:?}ms", diff);
         Ok(())
     }
 }

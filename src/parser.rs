@@ -96,25 +96,55 @@ impl Parser {
     pub fn element(&mut self) -> Result<Element, String> {
         match self.peek().get_type() {
             &TokenType::FUN => Ok(Element::Function(self.parse_function_decl()?)),
-            &TokenType::CLASS => {
-                self.advance();
-                // skip the func keyword
-                let name = match self.check(&TokenType::IDENTIFIER) {
-                    true => self.advance().get_lexeme().to_string(),
-                    false => return Err("Expected identifier after class".to_string()),
-                };
-                self.expect(TokenType::LeftCurlyBrace)?;
-                let mut attrs = vec![];
-                while self.peek().get_type() != &TokenType::RightCurlyBrace {
-                    let tp = self.parse_type()?;
-                    let decl = self.parse_declaration(tp)?.into_decl();
-                    attrs.push(decl);
-                }
-                self.advance();
-                Ok(Element::Class(ClassDecl::new(name, attrs)))
-            }
-            _ => Err("error : expected function declaration there".to_string()),
+            &TokenType::CLASS => Ok(Element::Class(self.parse_class_decl()?)),
+            &TokenType::METHOD => Ok(Element::Function(self.parse_method_decl()?)),
+            _ => Err("error : expected function or class declaration there".to_string()),
         }
+    }
+
+    pub fn parse_method_decl(&mut self) -> Result<FunctionDecl, String> {
+        self.advance();
+        // skip the func keyword
+        let name = match self.check(&TokenType::IDENTIFIER) {
+            true => self.advance().get_lexeme().to_string(),
+            false => return Err("Expected identifier after method".to_string()),
+        };
+        let type_parameters = self.parse_type_list()?;
+        let arguments = self.func_args()?;
+        let return_type = self.func_return_type()?;
+        self.expect(TokenType::OF)?;
+        let class_name = match self.check(&TokenType::IDENTIFIER) {
+            true => self.advance().get_lexeme().to_string(),
+            false => return Err("Expected class name after of".to_string()),
+        };
+        let scope = self.scope()?;
+        let mut res = FunctionDecl::new(
+            format!("{}::{}", class_name, name),
+            type_parameters,
+            arguments,
+            scope,
+            return_type,
+        );
+        res.set_self(LisaaType::Class(class_name));
+        Ok(res)
+    }
+
+    pub fn parse_class_decl(&mut self) -> Result<ClassDecl, String> {
+        self.advance();
+        // skip the func keyword
+        let name = match self.check(&TokenType::IDENTIFIER) {
+            true => self.advance().get_lexeme().to_string(),
+            false => return Err("Expected identifier after class".to_string()),
+        };
+        self.expect(TokenType::LeftCurlyBrace)?;
+        let mut attrs = vec![];
+        while self.peek().get_type() != &TokenType::RightCurlyBrace {
+            let tp = self.parse_type()?;
+            let decl = self.parse_declaration(tp)?.into_decl();
+            attrs.push(decl);
+        }
+        self.advance();
+        Ok(ClassDecl::new(name, attrs))
     }
 
     pub fn parse_function_decl(&mut self) -> Result<FunctionDecl, String> {
@@ -136,7 +166,7 @@ impl Parser {
         ))
     }
 
-    pub fn parse_type_list(&mut self) -> Result<Vec<LisaaType>, String> {
+    pub fn parse_type_list(&mut self) -> Result<Vec<String>, String> {
         let mut args = vec![];
         match self.peek().is_type(&TokenType::LESS) {
             true => {
@@ -145,7 +175,7 @@ impl Parser {
                     match self.peek().get_type().clone() {
                         TokenType::GREATER => break,
                         TokenType::IDENTIFIER => {
-                            args.push(self.parse_type()?);
+                            args.push(self.advance().get_lexeme().to_string());
                             match self.peek().get_type() {
                                 TokenType::GREATER => break,
                                 TokenType::COMMA => {
@@ -547,7 +577,7 @@ impl Parser {
         self.expect(TokenType::DOT)?;
         let next = self.advance();
         let name = Expr::identifier(next.get_lexeme().to_owned(), next.get_line());
-        Ok(Expr::getattr(lit, name, next.get_line()))
+        Ok(Expr::deref(Expr::getattr(lit, name, next.get_line())))
     }
 
     pub fn expect(&mut self, token_type: TokenType) -> Result<(), String> {

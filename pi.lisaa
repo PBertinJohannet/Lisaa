@@ -7,6 +7,6 @@ fn main(){
 		num dist = x*x + y*y;
 		if dist < 1 total = total + 1;
 		vals = vals+1;
-		print(4*total/vals);
+		//print(4*total/vals);
 	}
 }

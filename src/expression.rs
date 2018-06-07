@@ -12,8 +12,6 @@ pub enum ExprEnum {
     Unary(UnaryExpr),
     /// The binary expressions, see below.
     GetAttr(BinaryExpr),
-    /// The binary expressions, see below.
-    Binary(BinaryExpr),
     /// The literals, see below.
     Literal(LiteralExpr),
     /// an identifier
@@ -39,6 +37,13 @@ pub struct Expr {
 }
 
 impl Expr {
+    pub fn as_assigned_to(&self) -> Self {
+        let mut new = self.clone();
+        if let ExprEnum::Deref(ref mut d) = new.expr_mut(){
+            d.set_assigned();
+        }
+        new
+    }
     pub fn deref(inner: Expr) -> Self {
         let line = inner.get_line();
         Expr {
@@ -54,19 +59,15 @@ impl Expr {
             line: line,
         }
     }
+    /// Now the binary expression turn into a call of a getattr.
+    ///
     pub fn binary(lhs: Expr, operator: Operator, rhs: Expr, line: usize) -> Self {
-        Expr {
-            expr: ExprEnum::Binary(BinaryExpr::new(lhs, operator, rhs)),
-            return_type: None,
-            line: line,
-        }
+        let inner = Expr::getattr(lhs, Expr::identifier(format!("{}", operator), line), line);
+        Expr::method_call(inner, vec![rhs], line)
     }
     pub fn indexing(indexed: Expr, index: Expr, line: usize) -> Self {
-        Expr {
-            expr: ExprEnum::Binary(BinaryExpr::new(indexed, Operator::INDEX, index)),
-            return_type: None,
-            line: line,
-        }
+        let inner = Expr::getattr(indexed, Expr::identifier("index".to_string(), line), line);
+        Expr::method_call(inner, vec![index], line)
     }
     pub fn is_identifier(&self) -> bool {
         match self.expr {
@@ -133,7 +134,7 @@ impl Expr {
     pub fn string(string: String, line: usize) -> Self {
         Expr {
             expr: ExprEnum::Literal(LiteralExpr::STRING(string)),
-            return_type: Some(LisaaType::slice(LisaaType::Char)),
+            return_type: Some(LisaaType::Class("String".to_owned())),
             line: line,
         }
     }
@@ -196,7 +197,11 @@ impl Callee {
             &Callee::StaticFunc(_) => None,
             &Callee::Method(ref e) => match e.expr() {
                 ExprEnum::GetAttr(b) => Some(b.lhs()),
-                _ => panic!("method without getattr ? wtf"),
+                ExprEnum::Deref(deref) => match deref.expr.expr() {
+                    ExprEnum::GetAttr(attr) => Some(attr.lhs()),
+                    _ => panic!(format!("method without getattr ? {:?}", e)),
+                },
+                _ => panic!(format!("method without getattr ? {:?}", e)),
             },
         }
     }
@@ -295,6 +300,27 @@ impl Operator {
                 "can not convert token : {:?} to operator",
                 token.get_type()
             )),
+        }
+    }
+}
+
+impl fmt::Display for Operator {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &Operator::Not => write!(f, "not"),
+            &Operator::PLUS => write!(f, "add"),
+            &Operator::MINUS => write!(f, "minus"),
+            &Operator::STAR => write!(f, "times"),
+            &Operator::SLASH => write!(f, "divide"),
+            &Operator::GreaterEqual => write!(f, "ge"),
+            &Operator::GREATER => write!(f, "greater"),
+            &Operator::LessEqual => write!(f, "le"),
+            &Operator::LESS => write!(f, "less"),
+            &Operator::EqualEqual => write!(f, "equals"),
+            &Operator::NotEqual => write!(f, "ne"),
+            &Operator::AndAnd => write!(f, "andand"),
+            &Operator::INDEX => write!(f, "index"),
+            &Operator::Get => write!(f, "get"),
         }
     }
 }

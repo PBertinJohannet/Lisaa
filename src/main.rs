@@ -39,7 +39,7 @@ fn main() {
             Arg::with_name("INPUT")
                 .index(1)
                 .help("the file to run")
-                .default_value("struct.lisaa")
+                .default_value("string.lisaa")
                 .required(true),
         )
         .get_matches();

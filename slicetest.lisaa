@@ -1,5 +1,6 @@
-fn main(){
-	slice a = newslice(2);
-	a[0] = 1;
-	return a;
+fn main() -> num{
+	slice<slice<num>> a = newslice(2);
+	a[0] = newslice(2);
+	a[1] = newslice(2);
+	return a[2][0];
 }

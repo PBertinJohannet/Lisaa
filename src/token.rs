@@ -72,8 +72,12 @@ pub enum TokenType {
     ANDAND,
     /// The & keyword, used for binary operation.
     AND,
-    /// The class keyword, not used yet
+    /// The class keyword
     CLASS,
+    /// The method keyword, used to implement method.
+    OF,
+    /// The of keyword, used to specify which class a method references.
+    METHOD,
     /// The class keyword, not used yet
     ELSE,
     /// The class keyword, not used yet
