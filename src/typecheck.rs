@@ -1,6 +1,9 @@
 use expression::{BinaryExpr, Callee, Expr, ExprEnum, FunctionCall, Operator, UnaryExpr};
 use native::get_native_types;
-use statement::{Assignment, Declaration, FunctionDecl, IfStatement, Statement, WhileStatement};
+use statement::{
+    Assignment, ClassDecl, Declaration, FunctionDecl, IfStatement, Program, Statement,
+    WhileStatement,
+};
 use std::collections::HashMap;
 use types::{LisaaType, TypedVar};
 
@@ -42,6 +45,7 @@ impl Scope {
 /// Also check for lvalues and assignment.
 pub struct TypeChecker {
     functions: HashMap<String, FunctionDecl>,
+    classes: HashMap<String, ClassDecl>,
     scopes: Vec<Scope>,
 }
 
@@ -51,6 +55,7 @@ impl TypeChecker {
         TypeChecker {
             scopes: vec![Scope::new(1)],
             functions: HashMap::new(),
+            classes: HashMap::new(),
         }
     }
     /// Add a lib to the program.
@@ -101,10 +106,11 @@ impl TypeChecker {
 
     /// Resolve types if possible
     /// The aim is to traverse the tree and resolve the return type of all expressions.
-    pub fn resolve(&mut self, program: &mut HashMap<String, FunctionDecl>) -> Result<(), String> {
-        self.functions = program.clone();
+    pub fn resolve(&mut self, program: &mut Program) -> Result<(), String> {
+        self.functions = program.functions().clone();
+        self.classes = program.classes().clone();
         self.add_lib("base");
-        for (_, mut func) in program {
+        for (_, mut func) in program.functions_mut() {
             self.function(&mut func)?;
         }
         Ok(())

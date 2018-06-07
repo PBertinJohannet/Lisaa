@@ -15,8 +15,8 @@ impl NativeFunc for FunctionDecl {
             inline: true,
             name: "print".to_owned(),
             type_args: vec![],
-            args: vec![TypedVar::new(LisaaType::Num, "a".to_owned())],
-            scope: Statement::Native(vec![OP::PrintNum, OP::PushNum(0.0)]),
+            args: vec![TypedVar::new(LisaaType::Char, "a".to_owned())],
+            scope: Statement::Native(vec![OP::PrintChar, OP::PushNum(0.0)]),
             ret_type: LisaaType::Num,
         }
     }

@@ -3,10 +3,10 @@
 use expression::{
     BinaryExpr, Deref, Expr, ExprEnum, FunctionCall, LiteralExpr, Operator, UnaryExpr,
 };
-use statement::{Assignment, Declaration, FunctionDecl, IfStatement, Statement, WhileStatement};
+use native::get_native_types;
+use statement::{Assignment, Declaration, FunctionDecl, IfStatement, Statement, WhileStatement, Program};
 use std::collections::HashMap;
 use vm::OP;
-use native::get_native_types;
 
 /// These are unlinked instructions.
 /// the goto (symbol) will be replaced by goto(usize) when the program is completed.
@@ -113,7 +113,7 @@ impl Compiler {
     pub fn get_var(&self, var_name: &str) -> Option<usize> {
         let current_scope = self.scopes.last().unwrap().depth;
         let len = self.scopes.len();
-        for sc in 0..current_scope +1{
+        for sc in 0..current_scope + 1 {
             if self.scopes[len - sc - 1].get_var(var_name).is_some() {
                 return self.scopes[len - sc - 1].get_var(var_name);
             }
@@ -158,13 +158,13 @@ impl Compiler {
 
     /// Resolve types if possible
     /// The aim is to traverse the tree and resolve the return type of all expressions.
-    pub fn compile(&mut self, program: &HashMap<String, FunctionDecl>) -> Result<Vec<OP>, String> {
-        self.functions = program.clone();
+    pub fn compile(&mut self, program: &Program) -> Result<Vec<OP>, String> {
+        self.functions = program.functions().clone();
         self.add_lib("base");
 
         self.function_call(&FunctionCall::function("main".to_string(), vec![]));
         self.emit(OP::End);
-        for f in program.iter() {
+        for f in program.functions().iter() {
             self.function(f.1);
         }
 
@@ -372,28 +372,26 @@ impl Compiler {
         }
     }
 
-
     /// A generic call, can be a method a function or anything callable.
     /// checks for method first.
     /// If it is a method, brings the callee then call the method.
-    pub fn generic_call(&mut self, call : &FunctionCall){
+    pub fn generic_call(&mut self, call: &FunctionCall) {
         let func = self.functions.get(call.name()).unwrap().clone();
-        if func.is_inline(){
+        if func.is_inline() {
             self.inline_call(call);
         } else {
             self.function_call(call);
         }
     }
 
-    pub fn inline_call(&mut self, call : &FunctionCall){
+    pub fn inline_call(&mut self, call: &FunctionCall) {
         let func = self.functions.get(call.name()).unwrap().clone();
         self.push_arguments(call);
         self.statement(&func.scope);
-
     }
 
-    pub fn push_arguments(&mut self, call : &FunctionCall){
-        if let Some(e) = call.callee().get_method(){
+    pub fn push_arguments(&mut self, call: &FunctionCall) {
+        if let Some(e) = call.callee().get_method() {
             self.expression(e);
         }
         for var in call.args() {

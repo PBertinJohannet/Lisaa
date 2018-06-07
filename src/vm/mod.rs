@@ -200,7 +200,7 @@ impl Vm {
         while instruction_pointer < program.len() {
             let op = &program[instruction_pointer];
             instruction_pointer += 1;
-            //println!("executing {:?}", op);
+            println!("executing {:?}", op);
             match op {
                 &OP::End => {
                     println!("program execution terminated");
@@ -340,7 +340,7 @@ impl Vm {
                 }
                 //_ => panic!("unsupported operand"),
             }
-            //println!("stack : {:?}", self.stack);
+            println!("stack : {:?}", self.stack);
         }
     }
 }

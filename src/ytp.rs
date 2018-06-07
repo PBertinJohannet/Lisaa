@@ -3,11 +3,12 @@ use compile::Compiler;
 //use interpreter::Interpreter;
 use parser::Parser;
 use scanner::Scanner;
-use statement::FunctionDecl;
+use statement::{FunctionDecl, Program};
 use std::collections::HashMap;
 use time::PreciseTime;
 use typecheck::TypeChecker;
 use vm::Vm;
+
 /// The interpreter, contains the code.
 pub struct Ytp {
     source: String,
@@ -29,6 +30,7 @@ impl Ytp {
             }
             String::from("Compilation aborted because of preceding errors.")
         })?;
+        tree.initiate_methods();
         if let Err(e) = TypeChecker::new().resolve(&mut tree) {
             println!("TypeError : {}", e);
             return Err(String::from(
@@ -41,7 +43,7 @@ impl Ytp {
         Ok(())
     }
 
-    pub fn do_vm(&self, tree: HashMap<String, FunctionDecl>) -> Result<(), String> {
+    pub fn do_vm(&self, tree: Program) -> Result<(), String> {
         let code = Compiler::new()
             .compile(&tree)
             .map_err(|e| format!("compilation error : {:?}", e))?;
