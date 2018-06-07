@@ -2,6 +2,8 @@ Class Point{
     num x = 7;
 }
 
-fn main() -> num {
+fn main() -> Point {
     Point a = Point();
+    a.x = 123;
+    return a;
 }

@@ -1,3 +1,5 @@
+use statement::ClassDecl;
+use std::collections::HashMap;
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -67,11 +69,29 @@ impl LisaaType {
         }
     }
     /// Returns the attribute's type if it exists
-    pub fn get_attr(&self, name: &String) -> Result<LisaaType, String> {
+    pub fn get_attr(
+        &self,
+        name: &String,
+        classes: &HashMap<String, ClassDecl>,
+    ) -> Result<LisaaType, String> {
         match self {
             &LisaaType::Num => Ok(LisaaType::Function(format!("num::{}", name))),
             &LisaaType::Char => Ok(LisaaType::Function(format!("num::{}", name))),
+            &LisaaType::Class(ref s) => Ok(LisaaType::pointer(match classes.get(s) {
+                Some(class) => match class.get_attr(name) {
+                    Some(decl) => Ok(decl.val_type().clone()),
+                    None => Err(format!("Can't take attribute {} of class {}", name, s)),
+                },
+                None => Err(format!("Unknown class : {}", s)),
+            }?)),
             _ => Err(format!("can not get attr {}of {}", name, self)),
+        }
+    }
+    /// Returns the attribute's type. Panics if it doesnt exist.
+    pub fn get_attr_index(&self, name: &String, classes: &HashMap<String, ClassDecl>) -> usize {
+        match self {
+            &LisaaType::Class(ref s) => classes.get(s).expect("class not found").get_attr_index(name),
+            _ => panic!(format!("can not get attr {} of {}", name, self)),
         }
     }
 }
