@@ -36,7 +36,7 @@ impl Program {
         &mut self.functions
     }
     /// Takes all the classes methods and add them to the program's functions.
-    pub fn initiate_methods(&mut self){
+    pub fn initiate_methods(&mut self) {
         for c in self.classes.iter() {
             let cons = c.1.get_constructor();
             self.functions.insert(cons.name().to_owned(), cons);
@@ -72,6 +72,14 @@ impl ClassDecl {
     pub fn name(&self) -> &String {
         &self.name
     }
+    /// Get the declaration of an attribute given its name.
+    pub fn get_attr(&self, str: &String) -> Option<&Declaration> {
+        self.attributes.iter().find(|d| &d.val_name == str)
+    }
+    /// Get the declaration of an attribute given its name.
+    pub fn get_attr_index(&self, str: &String) -> usize {
+        self.attributes.iter().position(|d| &d.val_name == str).expect("attr not found")
+    }
     /// Returns the constructor's function.
     pub fn get_constructor(&self) -> FunctionDecl {
         FunctionDecl {
@@ -101,7 +109,7 @@ impl ClassDecl {
         ]));
         for i in 0..len {
             scope.push(Statement::Native(vec![
-                OP::Bring(i+3),
+                OP::Bring(i + 3),
                 OP::Bring(len + 3),
                 OP::PushNum(i as f64),
                 OP::Add,
@@ -359,7 +367,7 @@ pub enum StatementResult {
     Return(LiteralExpr),
 }
 
-impl Statement{
+impl Statement {
     /// Checks if the statement will make the scope quit.
     pub fn into_decl(self) -> Declaration {
         match self {

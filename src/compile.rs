@@ -4,7 +4,10 @@ use expression::{
     BinaryExpr, Deref, Expr, ExprEnum, FunctionCall, LiteralExpr, Operator, UnaryExpr,
 };
 use native::get_native_types;
-use statement::{Assignment, Declaration, FunctionDecl, IfStatement, Statement, WhileStatement, Program};
+use statement::{
+    Assignment, ClassDecl, Declaration, FunctionDecl, IfStatement, Program, Statement,
+    WhileStatement,
+};
 use std::collections::HashMap;
 use vm::OP;
 
@@ -80,6 +83,7 @@ impl Scope {
 pub struct Compiler {
     code: Vec<UnlinkedInstruction>,
     functions: HashMap<String, FunctionDecl>,
+    classes: HashMap<String, ClassDecl>,
     scopes: Vec<Scope>,
     /// associates the labels with the positions in the code.
     labels: HashMap<String, Option<usize>>,
@@ -92,6 +96,7 @@ impl Compiler {
             code: vec![],
             scopes: vec![],
             functions: HashMap::new(),
+            classes: HashMap::new(),
             labels: HashMap::new(),
         }
     }
@@ -160,6 +165,7 @@ impl Compiler {
     /// The aim is to traverse the tree and resolve the return type of all expressions.
     pub fn compile(&mut self, program: &Program) -> Result<Vec<OP>, String> {
         self.functions = program.functions().clone();
+        self.classes = program.classes().clone();
         self.add_lib("base");
 
         self.function_call(&FunctionCall::function("main".to_string(), vec![]));
@@ -356,10 +362,20 @@ impl Compiler {
             &ExprEnum::Literal(ref l) => self.literal(l),
             &ExprEnum::Unary(ref u) => self.unary(u),
             &ExprEnum::Binary(ref b) => self.binary(b),
-            &ExprEnum::GetAttr(ref a) => panic!("can not get attr"),
+            &ExprEnum::GetAttr(ref a) => self.get_attr(a),
             &ExprEnum::Identifier(ref i) => self.identifier(i),
             &ExprEnum::FunctionCall(ref f) => self.generic_call(f),
             &ExprEnum::Deref(ref d) => self.deref(d),
+        }
+    }
+
+    pub fn get_attr(&mut self, exp: &BinaryExpr) {
+        self.expression(exp.lhs());
+        let class = exp.lhs().return_type();
+        if let ExprEnum::Identifier(id) = exp.rhs().expr() {
+            class.get_attr_index(id, &self.classes);
+        } else {
+            panic!("can not get attr");
         }
     }
 

@@ -250,7 +250,7 @@ impl TypeChecker {
         } else {
             self.expression(expr.lhs_mut())?;
             let rhs = expr.rhs().get_identifier()?;
-            expr.lhs().return_type().get_attr(rhs)
+            expr.lhs().return_type().get_attr(rhs, &self.classes)
         }
     }
 
