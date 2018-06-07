@@ -1,18 +1,12 @@
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-/// This represents a class
-/// Classes are not supported yet so it is useless.
-pub struct Class {
-    name: String,
-}
-#[derive(Debug, Clone, PartialEq, Eq)]
 /// Represents the possible types of the language.
 pub enum LisaaType {
     /// Represents a pointer to a heap allocated ressource.
     Pointer(Box<LisaaType>),
     /// Represents a Class
-    Class(Class),
+    Class(String),
     /// A simple number (can be heap/stack)
     Num,
     /// A Char (heap/stack too)
@@ -68,6 +62,7 @@ impl LisaaType {
         } else if let (_, &LisaaType::Any) = (self, other) {
             return true;
         } else {
+            println!("self {:?}, other {:?}", self, other);
             return self == other;
         }
     }

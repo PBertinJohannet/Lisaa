@@ -1,7 +1,118 @@
 //! The module for statement.
 use expression::{Expr, LiteralExpr};
-use types::{Class, LisaaType, TypedVar};
+use std::collections::HashMap;
+use types::{LisaaType, TypedVar};
 use vm::OP;
+
+/// Represents a program.
+/// Classes and functions.
+#[derive(Debug, Clone)]
+pub struct Program {
+    functions: HashMap<String, FunctionDecl>,
+    classes: HashMap<String, ClassDecl>,
+}
+impl Program {
+    /// Creates a new program with the given classes and functions.
+    pub fn new(funcs: HashMap<String, FunctionDecl>, classes: HashMap<String, ClassDecl>) -> Self {
+        Program {
+            functions: funcs,
+            classes: classes,
+        }
+    }
+    /// Get the classes in the program.
+    pub fn classes(&self) -> &HashMap<String, ClassDecl> {
+        &self.classes
+    }
+    /// Get the classes as mutable.
+    pub fn classes_mut(&mut self) -> &mut HashMap<String, ClassDecl> {
+        &mut self.classes
+    }
+    /// Get the functions in the program.
+    pub fn functions(&self) -> &HashMap<String, FunctionDecl> {
+        &self.functions
+    }
+    /// Get the functinos in the program as mutable.
+    pub fn functions_mut(&mut self) -> &mut HashMap<String, FunctionDecl> {
+        &mut self.functions
+    }
+    /// Takes all the classes methods and add them to the program's functions.
+    pub fn initiate_methods(&mut self){
+        for c in self.classes.iter() {
+            let cons = c.1.get_constructor();
+            self.functions.insert(cons.name().to_owned(), cons);
+        }
+    }
+}
+
+/// An element in the code
+#[derive(Debug, Clone)]
+pub enum Element {
+    /// A function declaration.
+    Function(FunctionDecl),
+    /// A class declaration.
+    Class(ClassDecl),
+}
+
+/// A class declaration
+#[derive(Debug, Clone)]
+pub struct ClassDecl {
+    name: String,
+    attributes: Vec<Declaration>,
+}
+
+impl ClassDecl {
+    /// Creates a new class with the given arguments.
+    pub fn new(name: String, attrs: Vec<Declaration>) -> Self {
+        ClassDecl {
+            name: name,
+            attributes: attrs,
+        }
+    }
+    /// Returns the name of the class.
+    pub fn name(&self) -> &String {
+        &self.name
+    }
+    /// Returns the constructor's function.
+    pub fn get_constructor(&self) -> FunctionDecl {
+        FunctionDecl {
+            name: self.name.clone(),
+            args: vec![],
+            type_args: vec![],
+            inline: false,
+            ret_type: LisaaType::Class(self.name.clone()),
+            scope: self.create_constructor_scope(),
+        }
+    }
+    /// Creates the code for the constructor.
+    /// First allocates some space.
+    /// Then performs the assignments/expressions in the stack.
+    /// Then assign the variables in the heap.
+    /// The object's pointer is stored at len+2 in the stack.
+    pub fn create_constructor_scope(&self) -> Statement {
+        let mut scope: Vec<Statement> = self
+            .attributes
+            .iter()
+            .map(|d| Statement::Declaration(d.clone()))
+            .collect();
+        let len = self.attributes.len();
+        scope.push(Statement::Native(vec![
+            OP::PushNum(len as f64),
+            OP::AllocObj,
+        ]));
+        for i in 0..len {
+            scope.push(Statement::Native(vec![
+                OP::Bring(i+3),
+                OP::Bring(len + 3),
+                OP::PushNum(i as f64),
+                OP::Add,
+                OP::SetHeap,
+            ]));
+        }
+        scope.push(Statement::Native(vec![OP::Set(0)]));
+        Statement::Scope(scope)
+    }
+}
+
 /// A function declaration
 #[derive(Debug, Clone)]
 pub struct FunctionDecl {
@@ -73,7 +184,7 @@ impl FunctionDecl {
         val.unwrap()
     }
     /// Checks if the function must be inlined.
-    pub fn is_inline(&self) -> bool{
+    pub fn is_inline(&self) -> bool {
         self.inline
     }
 }
@@ -248,12 +359,12 @@ pub enum StatementResult {
     Return(LiteralExpr),
 }
 
-impl StatementResult {
+impl Statement{
     /// Checks if the statement will make the scope quit.
-    pub fn is_quit(&self) -> bool {
+    pub fn into_decl(self) -> Declaration {
         match self {
-            &StatementResult::Empty => false,
-            _ => true,
+            Statement::Declaration(d) => d,
+            _ => panic!("not a declaration wtf ?"),
         }
     }
 }

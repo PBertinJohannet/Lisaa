@@ -1,7 +1,10 @@
 //! Contains the code for the parser,
 //! currently only contains enough to parse expressions and return parse errors.
 use expression::{Expr, Operator};
-use statement::{Assignment, Declaration, FunctionDecl, IfStatement, Statement, WhileStatement};
+use statement::{
+    Assignment, ClassDecl, Declaration, Element, FunctionDecl, IfStatement, Program, Statement,
+    WhileStatement,
+};
 use std::collections::HashMap;
 use std::fmt;
 use token::{Token, TokenType};
@@ -61,14 +64,19 @@ impl Parser {
     /// When an error happens in an expression, we leave the expression to avoid cascading errors.
     ///
     /// But we start again with the new expressions.
-    pub fn program(&mut self) -> Result<HashMap<String, FunctionDecl>, Vec<ParseError>> {
+    pub fn program(&mut self) -> Result<Program, Vec<ParseError>> {
         let mut fails = vec![];
         let mut functions = HashMap::new();
+        let mut classes = HashMap::new();
         while !self.is_at_end() {
-            match self.function_decl() {
-                Ok(e) => {
+            match self.element() {
+                Ok(Element::Function(e)) => {
                     let name = e.name().to_string();
                     functions.insert(name, e);
+                }
+                Ok(Element::Class(c)) => {
+                    let name = c.name().to_string();
+                    classes.insert(name, c);
                 }
                 Err(e) => fails.push(ParseError::new(self.previous(), e)),
             }
@@ -78,34 +86,54 @@ impl Parser {
         }
 
         if fails.is_empty() {
-            Ok(functions)
+            Ok(Program::new(functions, classes))
         } else {
             Err(fails)
         }
     }
+
     /// A new function declaration.
-    pub fn function_decl(&mut self) -> Result<FunctionDecl, String> {
+    pub fn element(&mut self) -> Result<Element, String> {
         match self.peek().get_type() {
-            &TokenType::FUN => {
-                self.advance(); // skip the func keyword
+            &TokenType::FUN => Ok(Element::Function(self.parse_function_decl()?)),
+            &TokenType::CLASS => {
+                self.advance();
+                // skip the func keyword
                 let name = match self.check(&TokenType::IDENTIFIER) {
                     true => self.advance().get_lexeme().to_string(),
-                    false => return Err("Expected identifier after function".to_string()),
+                    false => return Err("Expected identifier after class".to_string()),
                 };
-                let type_parameters = self.parse_type_list()?;
-                let arguments = self.func_args()?;
-                let return_type = self.func_return_type()?;
-                let scope = self.scope()?;
-                Ok(FunctionDecl::new(
-                    name,
-                    type_parameters,
-                    arguments,
-                    scope,
-                    return_type,
-                ))
+                self.expect(TokenType::LeftCurlyBrace)?;
+                let mut attrs = vec![];
+                while self.peek().get_type() != &TokenType::RightCurlyBrace {
+                    let tp = self.parse_type()?;
+                    let decl = self.parse_declaration(tp)?.into_decl();
+                    attrs.push(decl);
+                }
+                self.advance();
+                Ok(Element::Class(ClassDecl::new(name, attrs)))
             }
             _ => Err("error : expected function declaration there".to_string()),
         }
+    }
+
+    pub fn parse_function_decl(&mut self) -> Result<FunctionDecl, String> {
+        self.advance(); // skip the func keyword
+        let name = match self.check(&TokenType::IDENTIFIER) {
+            true => self.advance().get_lexeme().to_string(),
+            false => return Err("Expected identifier after function".to_string()),
+        };
+        let type_parameters = self.parse_type_list()?;
+        let arguments = self.func_args()?;
+        let return_type = self.func_return_type()?;
+        let scope = self.scope()?;
+        Ok(FunctionDecl::new(
+            name,
+            type_parameters,
+            arguments,
+            scope,
+            return_type,
+        ))
     }
 
     pub fn parse_type_list(&mut self) -> Result<Vec<LisaaType>, String> {
@@ -187,7 +215,7 @@ impl Parser {
             }
             "num" => Ok(LisaaType::Num),
             "char" => Ok(LisaaType::Char),
-            i => Ok(LisaaType::Unresolved(i.to_string())),
+            i => Ok(LisaaType::Class(i.to_string())),
         }
     }
 

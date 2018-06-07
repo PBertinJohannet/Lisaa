@@ -191,7 +191,7 @@ pub enum Callee {
 }
 
 impl Callee {
-    pub fn get_method(&self) -> Option<&Expr>{
+    pub fn get_method(&self) -> Option<&Expr> {
         match self {
             &Callee::StaticFunc(_) => None,
             &Callee::Method(ref e) => match e.expr() {
@@ -204,7 +204,7 @@ impl Callee {
 
 /// Represents a function call in the code.
 #[derive(Debug, Clone)]
-pub struct  FunctionCall {
+pub struct FunctionCall {
     callee: Callee,
     name: String,
     args: Vec<Expr>,

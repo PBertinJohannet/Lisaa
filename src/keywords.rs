@@ -8,7 +8,7 @@ lazy_static! {
         let mut m = HashMap::new();
         m.insert("break",    TokenType::BREAK);
         m.insert("and",    TokenType::AND);
-        m.insert("class",  TokenType::CLASS);
+        m.insert("Class",  TokenType::CLASS);
         m.insert("else",   TokenType::ELSE);
         m.insert("false",  TokenType::FALSE);
         m.insert("for",    TokenType::FOR);

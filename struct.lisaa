@@ -1,0 +1,7 @@
+Class Point{
+    num x = 7;
+}
+
+fn main() -> num {
+    Point a = Point();
+}
