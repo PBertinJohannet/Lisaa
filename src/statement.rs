@@ -51,6 +51,8 @@ pub enum Element {
     Function(FunctionDecl),
     /// A class declaration.
     Class(ClassDecl),
+    /// Import a module
+    Import(String),
 }
 
 /// A class declaration
@@ -86,7 +88,7 @@ impl ClassDecl {
     /// Returns the constructor's function.
     pub fn get_constructor(&self) -> FunctionDecl {
         FunctionDecl {
-            self_type : None,
+            self_type: None,
             name: self.name.clone(),
             args: vec![],
             type_args: vec![],
@@ -120,7 +122,12 @@ impl ClassDecl {
                 OP::SetHeap,
             ]));
         }
-        scope.push(Statement::Native(vec![OP::Set(0), OP::PopN(len), OP::SetOffset, OP::GotoTop]));
+        scope.push(Statement::Native(vec![
+            OP::Set(0),
+            OP::PopN(len),
+            OP::SetOffset,
+            OP::GotoTop,
+        ]));
         Statement::Scope(scope)
     }
 }
@@ -367,6 +374,60 @@ impl WhileStatement {
     }
 }
 
+/// Represents an for statement, its condition and the statement to exeute if it is true.
+/// A for statement contains (the init, the condition, the everytime);
+#[derive(Debug, Clone)]
+pub struct ForStatement {
+    init : Box<Statement>,
+    cond: Expr,
+    repeat : Box<Statement>,
+    inner: Box<Statement>,
+}
+
+impl ForStatement {
+    /// Creates a new while statement with the following condition and statement to execute.
+    pub fn new(init : Statement, cond: Expr, repeat : Statement, inner: Statement) -> Self {
+        ForStatement {
+            init : Box::new(init),
+            cond: cond,
+            repeat: Box::new(repeat),
+            inner: Box::new(inner),
+        }
+    }
+    /// Returns the condition to execute.
+    pub fn condition(&self) -> &Expr {
+        &self.cond
+    }
+    /// Returns the statement to execute.
+    pub fn inner(&self) -> &Statement {
+        &*self.inner
+    }
+    /// Returns the condition to execute.
+    pub fn condition_mut(&mut self) -> &mut Expr {
+        &mut self.cond
+    }
+    /// Returns the statement to execute.
+    pub fn inner_mut(&mut self) -> &mut Statement {
+        &mut *self.inner
+    }
+    /// Returns the condition to execute.
+    pub fn init(&self) -> &Statement {
+        &*self.init
+    }
+    /// Returns the statement to execute.
+    pub fn repeat(&self) -> &Statement {
+        &*self.repeat
+    }
+    /// Returns the statement to execute.
+    pub fn repeat_mut(&mut self) -> &mut Statement {
+        &mut *self.repeat
+    }
+    /// Returns the statement to execute.
+    pub fn init_mut(&mut self) -> &mut Statement {
+        &mut *self.init
+    }
+}
+
 /// The result of a statement.
 #[derive(Debug, Clone)]
 pub enum StatementResult {
@@ -385,5 +446,12 @@ impl Statement {
             Statement::Declaration(d) => d,
             _ => panic!("not a declaration wtf ?"),
         }
+    }
+
+    /// A for statement is just a init cond followed by a while
+    pub fn for_statement(init : Statement, cond : Expr, repeat : Statement, inner : Statement) -> Statement {
+        let inner_scope = Statement::Scope(vec![inner, repeat]);
+        let inner_while = Statement::WhileStatement(WhileStatement::new(cond, inner_scope));
+        Statement::Scope(vec![init, inner_while])
     }
 }

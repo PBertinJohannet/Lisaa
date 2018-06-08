@@ -2,8 +2,8 @@
 //! currently only contains enough to parse expressions and return parse errors.
 use expression::{Expr, Operator};
 use statement::{
-    Assignment, ClassDecl, Declaration, Element, FunctionDecl, IfStatement, Program, Statement,
-    WhileStatement,
+    Assignment, ClassDecl, Declaration, Element, ForStatement, FunctionDecl, IfStatement, Program,
+    Statement, WhileStatement,
 };
 use std::collections::HashMap;
 use std::fmt;
@@ -73,10 +73,13 @@ impl Parser {
                 Ok(Element::Function(e)) => {
                     let name = e.name().to_string();
                     functions.insert(name, e);
-                }
+                },
                 Ok(Element::Class(c)) => {
                     let name = c.name().to_string();
                     classes.insert(name, c);
+                },
+                Ok(Element::Import(s)) => {
+                    
                 }
                 Err(e) => fails.push(ParseError::new(self.previous(), e)),
             }
@@ -98,6 +101,7 @@ impl Parser {
             &TokenType::FUN => Ok(Element::Function(self.parse_function_decl()?)),
             &TokenType::CLASS => Ok(Element::Class(self.parse_class_decl()?)),
             &TokenType::METHOD => Ok(Element::Function(self.parse_method_decl()?)),
+            &TokenType::IMPORT => Ok(Element::Import(self.advance().get_lexeme().to_owned())),
             _ => Err("error : expected function or class declaration there".to_string()),
         }
     }
@@ -281,6 +285,14 @@ impl Parser {
     pub fn while_loop(&mut self) -> Result<Statement, String> {
         match self.peek().is_type(&TokenType::WHILE) {
             true => self.parse_while(),
+            false => self.for_loop(),
+        }
+    }
+
+    /// parses an if condition.
+    pub fn for_loop(&mut self) -> Result<Statement, String> {
+        match self.peek().is_type(&TokenType::FOR) {
+            true => self.parse_for(),
             false => self.scope(),
         }
     }
@@ -311,6 +323,25 @@ impl Parser {
             condition,
             next_statement,
         )))
+    }
+
+    /// Parses a for  : the for have the following syntax :
+    /// for (statement init; condition; statement repeated) statement
+    pub fn parse_for(&mut self) -> Result<Statement, String> {
+        self.advance();
+        self.expect(TokenType::LeftParen)?;
+        let init = self.statement()?;
+        let condition = self.expression()?;
+        self.expect(TokenType::SEMICOLON)?;
+        let repeat = self.statement()?;
+        self.expect(TokenType::RightParen)?;
+        let inner = self.statement()?;
+        Ok(Statement::for_statement(
+            init,
+            condition,
+            repeat,
+            inner,
+        ))
     }
 
     /// Parses a scope.

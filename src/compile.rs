@@ -202,7 +202,9 @@ impl Compiler {
         self.create_var("0".to_string()); // return value.
         self.create_var("1".to_string()); // next instruction.
         self.create_var("2".to_string()); // offset.
-        func.self_type.clone().map(|t| self.create_var("self".to_string()));
+        func.self_type
+            .clone()
+            .map(|t| self.create_var("self".to_string()));
         for var in func.args() {
             self.create_var(var.name().to_string());
         }
@@ -227,7 +229,7 @@ impl Compiler {
             &Statement::BreakStatement => self.break_scope(),
             &Statement::ReturnStatement(ref e) => self.return_statement(e),
             &Statement::Native(ref ops) => self.emit_chunks(ops.clone()),
-        }
+            }
     }
 
     /// Compiles a return statement
@@ -429,7 +431,9 @@ impl Compiler {
         self.emit_push(after_call.to_string()); // push the value of the instructions after the call.
         self.emit(OP::Swap2); // Swaps the offset with the instruction pointer.
         self.push_arguments(call); // push the function arguments to the top.
-        self.emit(OP::OffsetToTop(call.args().len() + 3 + call.callee().get_method().is_some() as usize)); // down the current offset to (num args + 3)
+        self.emit(OP::OffsetToTop(
+            call.args().len() + 3 + call.callee().get_method().is_some() as usize,
+        )); // down the current offset to (num args + 3)
         self.emit_goto(call.name().to_string());
         self.label_here(after_call);
     }
@@ -442,20 +446,30 @@ impl Compiler {
                 // first allocate enough memory :  (2 for string)
                 self.emit_chunks(vec![OP::PushNum(2.0), OP::AllocObj]);
                 // then set the size.
-                self.emit_chunks(vec![OP::PushCopy, OP::PushNum(s.len() as f64), OP::Swap2,
-                                      OP::SetHeap]);
+                self.emit_chunks(vec![
+                    OP::PushCopy,
+                    OP::PushNum(s.len() as f64),
+                    OP::Swap2,
+                    OP::SetHeap,
+                ]);
                 // remember the address of the string.
                 self.emit(OP::PushCopy);
                 // allocates some memory for the slice. stack : ( a a s )
                 self.emit_chunks(vec![OP::PushNum(s.len() as f64), OP::AllocObj]);
                 // fill the slice.
-                for (id, ch )in s.chars().enumerate(){
-                    self.emit_chunks(vec![OP::PushCopy, OP::PushNum(ch as u32 as f64), OP::Swap2,
-                                          OP::PushNum(id as f64), OP::Add, OP::SetHeap])
+                for (id, ch) in s.chars().enumerate() {
+                    self.emit_chunks(vec![
+                        OP::PushCopy,
+                        OP::PushNum(ch as u32 as f64),
+                        OP::Swap2,
+                        OP::PushNum(id as f64),
+                        OP::Add,
+                        OP::SetHeap,
+                    ])
                 }
                 // sets the slice in the string.
                 self.emit_chunks(vec![OP::Swap2, OP::PushNum(1.0), OP::Add, OP::SetHeap]);
-            },
+            }
             _ => panic!("strings not supported yet"),
         }
     }

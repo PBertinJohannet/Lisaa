@@ -86,7 +86,7 @@ impl LisaaType {
             &LisaaType::Class(ref s) => Ok(LisaaType::pointer(match classes.get(s) {
                 Some(class) => match class.get_attr(name) {
                     Some(decl) => Ok(decl.val_type().clone()),
-                    None =>  match functions.get(&format!("{}::{}", s, name)){
+                    None => match functions.get(&format!("{}::{}", s, name)) {
                         Some(f) => Ok(LisaaType::Function(f.name().clone(), vec![])),
                         None => Err(format!("Can't take attribute {} of class {}", name, s)),
                     },

@@ -110,6 +110,8 @@ pub enum TokenType {
     INDEX,
     /// The ignore keyword, tells that this keyword may be ignored.
     IGNORE,
+    /// The import keyword import a module in scope
+    IMPORT,
 
     /// The End of the File
     EOF,

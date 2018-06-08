@@ -13,6 +13,7 @@ lazy_static! {
         m.insert("false",  TokenType::FALSE);
         m.insert("for",    TokenType::FOR);
         m.insert("fn",     TokenType::FUN);
+        m.insert("import", TokenType::IMPORT);
         m.insert("method", TokenType::METHOD);
         m.insert("of",     TokenType::OF);
         m.insert("if",     TokenType::IF);
