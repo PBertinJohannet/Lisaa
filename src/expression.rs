@@ -39,7 +39,7 @@ pub struct Expr {
 impl Expr {
     pub fn as_assigned_to(&self) -> Self {
         let mut new = self.clone();
-        if let ExprEnum::Deref(ref mut d) = new.expr_mut(){
+        if let ExprEnum::Deref(ref mut d) = new.expr_mut() {
             d.set_assigned();
         }
         new

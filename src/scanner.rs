@@ -133,7 +133,7 @@ impl Scanner {
         let val = self.advance();
         let mut fin = val;
         if val == '\\' {
-            fin = match self.advance(){
+            fin = match self.advance() {
                 'n' => '\n',
                 c => c,
             }

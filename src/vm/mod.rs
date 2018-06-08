@@ -117,7 +117,7 @@ impl Allocator {
 
     /// Sets the given pointer at the given adress
     pub fn set_ptr(&mut self, adress: usize, value: usize) {
-        if adress > self.heap.len()-1 {
+        if adress > self.heap.len() - 1 {
             println!("Segmentation fault (Core dumped)");
             panic!("Program exited");
         }
@@ -171,8 +171,8 @@ pub enum OP {
     PushNum(f64),
     PushCopy,
     ChangeTo(f64),
-    PrintNum,
     PrintChar,
+    ToStr,
     RandNum,
 }
 
@@ -278,11 +278,25 @@ impl Vm {
                 &OP::ChangeTo(n) => {
                     *self.stack.last_mut().unwrap() = n;
                 }
-                &OP::PrintNum => {
-                    print!("{}", self.stack.pop().unwrap());
-                }
                 &OP::PrintChar => {
                     print!("{}", char::from_u32(self.stack.pop().unwrap() as u32).unwrap());
+                }
+                &OP::ToStr => {
+                    println!("stack and heap before Str");
+                    println!("stack {:?}", self.stack);
+                    println!("heap {:?}", self.allocator.heap);
+                    let top = self.stack.pop().unwrap().to_string();
+                    let len = top.len();
+                    let str_index = self.allocator.alloc(2, 1);
+                    self.allocator.set_ptr(str_index, len);
+                    let slice_index = self.allocator.alloc(len, 1);
+                    self.allocator.set_ptr(str_index+1, slice_index);
+                    for (i, ch )in top.chars().enumerate(){
+                        self.allocator.set_ptr(slice_index+i, ch as u32 as usize);
+                    }
+                    self.stack.push(str_index as f64);
+                    println!("stack {:?}", self.stack);
+                    println!("heap {:?}", self.allocator.heap);
                 }
                 &OP::RandNum => {
                     self.stack.push(random::<f64>());

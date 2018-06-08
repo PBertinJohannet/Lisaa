@@ -2,7 +2,7 @@ use expression::{BinaryExpr, Callee, Expr, ExprEnum, FunctionCall, Operator, Una
 use native::get_native_types;
 use statement::{
     Assignment, ClassDecl, Declaration, FunctionDecl, IfStatement, Program, Statement,
-    WhileStatement,
+    WhileStatement, ForStatement,
 };
 use std::collections::HashMap;
 use types::{LisaaType, TypedVar};
@@ -125,7 +125,9 @@ impl TypeChecker {
         let (ret_type, name) = (func.ret_type().clone(), func.name().to_string());
         let depth = self.scopes.len();
         self.scopes.push(Scope::new(depth));
-        func.self_type.clone().map(|t|self.create_var(TypedVar::new(t, "self".to_string())));
+        func.self_type
+            .clone()
+            .map(|t| self.create_var(TypedVar::new(t, "self".to_string())));
         for arg in func.args() {
             self.create_var(arg.clone());
         }
@@ -166,6 +168,7 @@ impl TypeChecker {
         self.statement(if_statement.statement_mut())?;
         Ok(())
     }
+
 
     pub fn while_statement(&mut self, while_statement: &mut WhileStatement) -> Result<(), String> {
         self.expression(while_statement.condition_mut())?;

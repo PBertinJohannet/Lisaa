@@ -9,10 +9,8 @@ method extend(num a) of String {
 }
 
 method print() of String {
-    num i = 0;
-    while i < self.len{
+    for (num i = 0; i < self.len; i = i+1;){
         print(self.inner[i]);
-        i = i + 1;
     }
 }
 method println() of String {
@@ -24,7 +22,3 @@ method index(num i)-> char of String {
     return self.inner[i];
 }
 
-
-fn main() {
-    "hello, world!".println();
-}
