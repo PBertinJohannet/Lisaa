@@ -12,6 +12,13 @@ pub struct Program {
     classes: HashMap<String, ClassDecl>,
 }
 impl Program {
+    /// Creates an empty program.
+    pub fn empty() -> Self {
+        Program {
+            functions : HashMap::new(),
+            classes : HashMap::new(),
+        }
+    }
     /// Creates a new program with the given classes and functions.
     pub fn new(funcs: HashMap<String, FunctionDecl>, classes: HashMap<String, ClassDecl>) -> Self {
         Program {
@@ -35,12 +42,31 @@ impl Program {
     pub fn functions_mut(&mut self) -> &mut HashMap<String, FunctionDecl> {
         &mut self.functions
     }
+
     /// Takes all the classes methods and add them to the program's functions.
     pub fn initiate_methods(&mut self) {
         for c in self.classes.iter() {
             let cons = c.1.get_constructor();
             self.functions.insert(cons.name().to_owned(), cons);
         }
+    }
+    /// Merges this program with an other.
+    pub fn merge(&mut self, Program{functions, classes} : Program) -> Result<(), String>{
+        for func in functions{
+            if self.functions.get(&func.0).is_some(){
+                return Err(format!("function already exists : {}", func.0))
+            } else {
+                self.functions.insert(func.0, func.1);
+            }
+        }
+        for class in classes{
+            if self.classes.get(&class.0).is_some(){
+                return Err(format!("class already exists : {}", class.0))
+            } else {
+                self.classes.insert(class.0, class.1);
+            }
+        }
+        Ok(())
     }
 }
 

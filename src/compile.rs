@@ -173,17 +173,21 @@ impl Compiler {
         for f in program.functions().iter() {
             self.function(f.1);
         }
-
+        if program.functions().get("main").is_none(){
+            return Err(format!("No main function found... wtf ?"));
+        }
         Ok(self
             .code
             .iter()
-            .map(|e| match e {
-                &UnlinkedInstruction::Op(ref o) => o.clone(),
-                &UnlinkedInstruction::Goto(ref label) => {
-                    OP::Goto(self.labels.get(label).unwrap().unwrap())
-                }
-                &UnlinkedInstruction::Push(ref label) => {
-                    OP::PushNum(self.labels.get(label).unwrap().unwrap() as f64)
+            .map(|e| {
+                match e {
+                    &UnlinkedInstruction::Op(ref o) => o.clone(),
+                    &UnlinkedInstruction::Goto(ref label) => {
+                        OP::Goto(self.labels.get(label).unwrap().unwrap())
+                    }
+                    &UnlinkedInstruction::Push(ref label) => {
+                        OP::PushNum(self.labels.get(label).unwrap().unwrap() as f64)
+                    }
                 }
             })
             .collect())

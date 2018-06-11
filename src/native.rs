@@ -86,6 +86,15 @@ impl NativeFunc for FunctionDecl {
             FunctionDecl {
                 self_type: None,
                 inline: true,
+                name: "num::modulo".to_owned(),
+                type_args: vec![],
+                args: vec![TypedVar::new(LisaaType::Num, "n".to_string())],
+                scope: Statement::Native(vec![OP::Swap2, OP::Mod]),
+                ret_type: LisaaType::Num,
+            },
+            FunctionDecl {
+                self_type: None,
+                inline: true,
                 name: "num::minus".to_owned(),
                 type_args: vec![],
                 args: vec![TypedVar::new(LisaaType::Num, "n".to_string())],

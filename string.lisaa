@@ -22,3 +22,14 @@ method index(num i)-> char of String {
     return self.inner[i];
 }
 
+method add(String s) -> String of String {
+    String new = String();
+    new.extend(s.len+self.len);
+    for (num i = 0; i < self.len; i= i+1;){
+        new.inner[i] = self[i];
+    }
+    for (num i = 0; i < s.len; i= i+1;){
+        new.inner[i+self.len] = s[i];
+    }
+    return new;
+}

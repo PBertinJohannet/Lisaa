@@ -1,5 +1,5 @@
-fn main()-> num{
-    num a = rand();
-    print(a);
-    return a;
+import string
+
+fn main(){
+    String a = "ok"+"u";
 }

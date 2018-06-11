@@ -2,7 +2,6 @@
 //!
 use keywords::KEYWORDS;
 use token::{Token, TokenType};
-
 /// The scanner, will scan the tokens as expected.
 /// Does not report the position of the tokens in the lines but will soon.
 pub struct Scanner {
@@ -14,7 +13,7 @@ pub struct Scanner {
 }
 impl Scanner {
     /// Creates a new scanner for the given source code.
-    pub fn new(source: &String) -> Self {
+    pub fn new(source: String) -> Self {
         Scanner {
             tokens: vec![],
             source: source.chars().collect(),
@@ -60,6 +59,7 @@ impl Scanner {
             ',' => Ok(self.token(TokenType::COMMA, "")),
             '.' => Ok(self.token(TokenType::DOT, "")),
             '+' => Ok(self.token(TokenType::PLUS, "")),
+            '%' => Ok(self.token(TokenType::MOD, "")),
             ';' => Ok(self.token(TokenType::SEMICOLON, "")),
             '-' => Ok(match self.match_next('>') {
                 true => self.token(TokenType::ARROW, ""),
@@ -148,18 +148,24 @@ impl Scanner {
     /// Checks for unterminated string.
     /// It allows multiline strings.
     fn string(&mut self) -> Result<Token, String> {
+        let mut chars = vec![];
         while self.peek() != '"' && !self.is_at_end() {
             if self.peek() == '\n' {
                 self.line += 1;
             }
-            self.advance();
+            chars.push(match self.advance(){
+                '\\' => match self.advance(){
+                    'n' => Ok('\n'),
+                    't' => Ok('\t'),
+                    c => self.error(format!("unknown escape character : {}", c)).map(|t|'i'),
+                }?,
+                c => c,
+            });
         }
         if self.is_at_end() {
             self.error("Unterminated string sequence".to_string())
         } else {
-            let sub_string: String = self.source[self.start + 1..self.current]
-                .into_iter()
-                .collect();
+            let sub_string: String = chars.iter().collect();
             self.advance();
             Ok(self.token(TokenType::STRING, &sub_string))
         }

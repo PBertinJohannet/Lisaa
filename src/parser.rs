@@ -64,10 +64,11 @@ impl Parser {
     /// When an error happens in an expression, we leave the expression to avoid cascading errors.
     ///
     /// But we start again with the new expressions.
-    pub fn program(&mut self) -> Result<Program, Vec<ParseError>> {
+    pub fn program(&mut self) -> Result<(Program, Vec<String>), Vec<ParseError>> {
         let mut fails = vec![];
         let mut functions = HashMap::new();
         let mut classes = HashMap::new();
+        let mut imports = Vec::new();
         while !self.is_at_end() {
             match self.element() {
                 Ok(Element::Function(e)) => {
@@ -79,7 +80,8 @@ impl Parser {
                     classes.insert(name, c);
                 },
                 Ok(Element::Import(s)) => {
-                    
+                    println!("import : {}", s);
+                    imports.push(s);
                 }
                 Err(e) => fails.push(ParseError::new(self.previous(), e)),
             }
@@ -89,7 +91,7 @@ impl Parser {
         }
 
         if fails.is_empty() {
-            Ok(Program::new(functions, classes))
+            Ok((Program::new(functions, classes), imports))
         } else {
             Err(fails)
         }
@@ -101,7 +103,10 @@ impl Parser {
             &TokenType::FUN => Ok(Element::Function(self.parse_function_decl()?)),
             &TokenType::CLASS => Ok(Element::Class(self.parse_class_decl()?)),
             &TokenType::METHOD => Ok(Element::Function(self.parse_method_decl()?)),
-            &TokenType::IMPORT => Ok(Element::Import(self.advance().get_lexeme().to_owned())),
+            &TokenType::IMPORT => {
+                self.advance();
+                Ok(Element::Import(self.advance().get_lexeme().to_owned()))
+            },
             _ => Err("error : expected function or class declaration there".to_string()),
         }
     }
@@ -511,7 +516,7 @@ impl Parser {
     /// Parses a multiplication.
     pub fn multiplication(&mut self) -> Result<Expr, String> {
         let mut expr = self.unary()?;
-        while self.match_nexts(&[TokenType::STAR, TokenType::SLASH]) {
+        while self.match_nexts(&[TokenType::STAR, TokenType::SLASH, TokenType::MOD]) {
             let previous = self.previous();
             let right = self.unary()?;
             let new_expr = Expr::binary(

@@ -9,6 +9,8 @@ fn main(){
 		num dist = x*x + y*y;
 		if dist < 1 total = total + 1;
 		vals = vals+1;
-		(4*total/vals).toString().print();
+		if vals % 5000000 == 0{
+		    ("pi is " + (4*total/vals).toString() + " \t n : "+vals.toString()+"\n").print();
+		}
 	}
 }

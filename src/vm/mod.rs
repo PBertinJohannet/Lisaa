@@ -40,6 +40,9 @@ impl Allocator {
     /// The type must reference an actual type in the "struct_types" table.
     /// Returns the reference to the start of the object's value (not its type).
     pub fn alloc(&mut self, size: usize, type_obj: usize) -> usize {
+        if size == 0 {
+            return 0;
+        }
         let mut prev_hole = None;
         let mut next_hole = self.first_hole;
         while !(self.heap[next_hole + 1] == size + 1
@@ -47,6 +50,7 @@ impl Allocator {
         {
             prev_hole = Some(next_hole);
             next_hole = self.heap[next_hole];
+            println!("next hole {}", next_hole);
         }
         if self.heap[next_hole + 1] == usize::max_value() {
             self.extend_heap(size + 1);
@@ -66,9 +70,9 @@ impl Allocator {
     /// Creates a hole and link it.
     pub fn free(&mut self, position: usize, size: usize) {
         // If the first hole is at the end. (no fragmentation at all)
-        self.heap[position] = self.first_hole;
-        self.first_hole = position;
-        self.heap[position + 1] = size;
+        self.heap[position-1] = self.first_hole;
+        self.first_hole = position-1;
+        self.heap[position] = size;
     }
 
     /// Fills a hole and update the remaining memory by creating a hole if necessary.
@@ -142,6 +146,7 @@ pub enum OP {
     GotoTop,
     Inv,
     Mul,
+    Mod,
     GreaterThan,
     GreaterEq,
     Eq,
@@ -282,9 +287,9 @@ impl Vm {
                     print!("{}", char::from_u32(self.stack.pop().unwrap() as u32).unwrap());
                 }
                 &OP::ToStr => {
-                    println!("stack and heap before Str");
-                    println!("stack {:?}", self.stack);
-                    println!("heap {:?}", self.allocator.heap);
+                    //println!("stack and heap before Str");
+                    //println!("stack {:?}", self.stack);
+                    //println!("heap {:?}", self.allocator.heap);
                     let top = self.stack.pop().unwrap().to_string();
                     let len = top.len();
                     let str_index = self.allocator.alloc(2, 1);
@@ -295,8 +300,8 @@ impl Vm {
                         self.allocator.set_ptr(slice_index+i, ch as u32 as usize);
                     }
                     self.stack.push(str_index as f64);
-                    println!("stack {:?}", self.stack);
-                    println!("heap {:?}", self.allocator.heap);
+                    //println!("stack {:?}", self.stack);
+                    //println!("heap {:?}", self.allocator.heap);
                 }
                 &OP::RandNum => {
                     self.stack.push(random::<f64>());
@@ -325,6 +330,10 @@ impl Vm {
                     let val = self.stack.pop().unwrap() + self.stack.pop().unwrap();
                     self.stack.push(val)
                 }
+                &OP::Mod => {
+                    let val = (self.stack.pop().unwrap() as i32) % (self.stack.pop().unwrap() as i32);
+                    self.stack.push(val as f64)
+                }
                 &OP::Swap2 => {
                     let (high, low) = (self.stack.pop().unwrap(), self.stack.pop().unwrap());
                     self.stack.push(high);
@@ -346,6 +355,7 @@ impl Vm {
                 &OP::AllocObj => {
                     let size = self.stack.pop().unwrap() as i32 as usize;
                     let val = self.allocator.alloc(size, 1);
+                    //println!("\t\tallocated at {}", val); // 1 4 7 10 12
                     self.stack.push(val as f64);
                 }
                 &OP::GetHeap => {
@@ -374,7 +384,7 @@ mod tests_vm {
     use super::*;
     #[test]
     fn test_load() {
-        let mut source = vec![OP::PushNum(1.0), OP::PrintNum];
+        let mut source = vec![OP::PushNum(1.0), OP::PrintChar];
         let mut vm = Vm::new();
         vm.run(source);
         assert_eq!(0, vm.stack.len());
@@ -447,25 +457,26 @@ mod tests_vm {
             // a[0] = 1
             OP::PushNum(1.0), // =1
             OP::Bring(0),     // a
-            OP::PushNum(1.0), // [0]
+            OP::PushNum(0.0), // [0]
             OP::Add,
             OP::SetHeap,
             // a[1] = 2
             OP::PushNum(2.0), // =2
             OP::Bring(0),     // a
-            OP::PushNum(2.0), // [1]
+            OP::PushNum(1.0), // [1]
             OP::Add,
             OP::SetHeap,
             // a[2] = 3
             OP::PushNum(3.0), // =3
             OP::Bring(0),     // a
-            OP::PushNum(3.0), // [2]
+            OP::PushNum(2.0), // [2]
             OP::Add,
             OP::SetHeap,
         ];
         let mut vm = Vm::new();
         vm.run(source);
         println!("heap : {:?}", vm.allocator.heap);
+        println!("stack  : {:?}", vm.stack);
         assert_eq!(vm.allocator.heap, vec![1, 1, 2, 3, 0, usize::max_value()]);
     }
     //executes the following :
@@ -482,16 +493,16 @@ mod tests_vm {
             OP::PushNum(2.0), // = obj(size=2)
             OP::AllocObj,
             OP::Bring(0),     // a
-            OP::PushNum(1.0), // .0
+            OP::PushNum(0.0), // .0
             OP::Add,
             OP::SetHeap,
             // a.0.0 = 1
             OP::PushNum(7.0), // =1
             OP::Bring(0),     // a
-            OP::PushNum(1.0), // .0
+            OP::PushNum(0.0), // .0
             OP::Add,
             OP::GetHeap,      //
-            OP::PushNum(1.0), // .0
+            OP::PushNum(0.0), // .0
             OP::Add,
             OP::SetHeap,
         ];
@@ -500,7 +511,7 @@ mod tests_vm {
         println!("heap : {:?}", vm.allocator.heap);
         assert_eq!(
             vm.allocator.heap,
-            vec![1, 2, 1, 7, 0, 0, usize::max_value()]
+            vec![1, 3, 1, 7, 0, 0, usize::max_value()]
         );
     }
 }

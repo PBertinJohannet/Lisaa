@@ -25,6 +25,8 @@ pub enum TokenType {
     MINUS,
     /// A plus sign.
     PLUS,
+    /// A modulo sign %
+    MOD,
     /// A semicolon.
     SEMICOLON,
     /// A slash, used to divide.
