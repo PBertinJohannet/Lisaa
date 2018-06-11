@@ -355,7 +355,6 @@ impl Vm {
                 &OP::AllocObj => {
                     let size = self.stack.pop().unwrap() as i32 as usize;
                     let val = self.allocator.alloc(size, 1);
-                    //println!("\t\tallocated at {}", val); // 1 4 7 10 12
                     self.stack.push(val as f64);
                 }
                 &OP::GetHeap => {

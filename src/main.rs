@@ -29,7 +29,6 @@ use clap::{App, Arg};
 use std::fs::File;
 use std::process::exit;
 use lisaa::Lisaa;
-
 fn main() {
     let matches = App::new("Lisaa")
         .version("0.0.0")
