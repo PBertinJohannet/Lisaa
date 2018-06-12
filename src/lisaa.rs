@@ -9,21 +9,22 @@ use time::PreciseTime;
 use typecheck::TypeChecker;
 use vm::Vm;
 use std::fs::File;
-use std::io::Read;
+use std::io::{Read, Write, self};
 
 
 /// The interpreter, contains the code.
-pub struct Lisaa {
+pub struct Lisaa<'a> {
     source: String,
+    output_stream: &'a mut Write,
 }
-impl Lisaa {
+impl<'a> Lisaa<'a> {
     /// Creates a new instance of the interpreter with the given source
-    pub fn new(source: String) -> Self {
-        Lisaa { source: source }
+    pub fn new(source: String, output : &'a mut Write) -> Self {
+        Lisaa { source: source, output_stream : output}
     }
 
 
-    pub fn find_source(name : String) -> Result<String, String>{
+    fn find_source(name : String) -> Result<String, String>{
         if File::open(name.to_owned()).is_ok(){
             Ok(name)
         } else if File::open(format!("{}.lisaa", name.to_owned())).is_ok(){
@@ -34,7 +35,7 @@ impl Lisaa {
     }
 
     /// Finds the source associated with an import.
-    pub fn open_source(source_name : String) -> Result<String , String> {
+    fn open_source(source_name : String) -> Result<String , String> {
         let mut file = File::open(Lisaa::find_source(source_name.clone())?).unwrap();
 
         let mut contents = String::new();
@@ -48,7 +49,7 @@ impl Lisaa {
         Ok(contents)
     }
 
-    pub fn parse(&self) -> Result<Program, String>{
+    fn parse(&self) -> Result<Program, String>{
         let mut to_import = vec![self.source.clone()];
         let mut imported = HashSet::new();
         let mut program = Program::empty();
@@ -74,7 +75,7 @@ impl Lisaa {
     }
     /// Runs this instance of the interpreter.
     /// Will parse then interpret.
-    pub fn run(&mut self) -> Result<(), String> {
+    pub fn run(&mut self) -> Result<&mut Self, String> {
         //println!("source : {}", self.source);
         println!("\nlisaa : Running {}\n\n", self.source);
 
@@ -88,10 +89,10 @@ impl Lisaa {
 
         self.do_vm(tree.clone())?;
 
-        Ok(())
+        Ok(self)
     }
 
-    pub fn do_vm(&self, tree: Program) -> Result<(), String> {
+    fn do_vm(&mut self, tree: Program) -> Result<(), String> {
         let code = Compiler::new()
             .compile(&tree)
             .map_err(|e| format!("compilation error : {:?}", e))?;
@@ -99,7 +100,7 @@ impl Lisaa {
             println!("{:?}", c);
         }
 
-        let mut vm = Vm::new();
+        let mut vm = Vm::new(&mut self.output_stream);
         let start = PreciseTime::now();
         vm.run(code);
         let end = PreciseTime::now();

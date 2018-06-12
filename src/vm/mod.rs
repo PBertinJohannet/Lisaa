@@ -1,5 +1,6 @@
 use rand::random;
 use std::char;
+use std::io::{Write, self};
 mod gc;
 /// How heap memory/GC works.
 /// Everytime a pointer variable is created, an entry in root_references is created.
@@ -189,8 +190,7 @@ pub enum OP {
 
 /// no memory safety, everything leaks.
 /// Stack contains only f64. everything else in the heap.
-#[derive(Debug)]
-pub struct Vm {
+pub struct Vm<'a> {
     /// The root references into the heap. from the stack/global
     root_references: Vec<usize>,
     //program : Vec<Vec<OP>>, matches functions to OPs.
@@ -199,17 +199,20 @@ pub struct Vm {
     /// The current offset of the stack
     stack_offset: usize,
     allocator: Allocator,
+    output_stream: &'a mut Write,
 }
 
-impl Vm {
-    pub fn new() -> Vm {
+impl<'a> Vm<'a> {
+    pub fn new(output_stream : &'a mut Write) -> Vm {
         Vm {
             root_references: vec![],
             stack: vec![],
             stack_offset: 0,
             allocator: Allocator::new(),
+            output_stream: output_stream,
         }
     }
+
 
     pub fn run(&mut self, program: Vec<OP>) {
         let mut instruction_pointer = 0;
@@ -290,12 +293,9 @@ impl Vm {
                     *self.stack.last_mut().unwrap() = n;
                 }
                 &OP::PrintChar => {
-                    print!("{}", char::from_u32(self.stack.pop().unwrap() as u32).unwrap());
+                    write!(self.output_stream, "{}", char::from_u32(self.stack.pop().unwrap() as u32).unwrap()).unwrap();
                 }
                 &OP::ToStr => {
-                    //println!("stack and heap before Str");
-                    //println!("stack {:?}", self.stack);
-                    //println!("heap {:?}", self.allocator.heap);
                     let top = self.stack.pop().unwrap().to_string();
                     let len = top.len();
                     let str_index = self.allocator.alloc(2, 1);
@@ -390,7 +390,7 @@ mod tests_vm {
     #[test]
     fn test_load() {
         let mut source = vec![OP::PushNum(1.0), OP::PrintChar];
-        let mut vm = Vm::new();
+        let mut stdout = io::stdout(); let mut vm = Vm::new(&mut stdout);
         vm.run(source);
         assert_eq!(0, vm.stack.len());
         let mut source = vec![OP::PushNum(1.0), OP::PushNum(0.1)];
@@ -400,7 +400,7 @@ mod tests_vm {
     #[test]
     fn test_operations() {
         let mut source = vec![OP::PushNum(1.0), OP::PushNum(2.0), OP::Add, OP::Neg];
-        let mut vm = Vm::new();
+        let mut stdout = io::stdout(); let mut vm = Vm::new(&mut stdout);
         vm.run(source);
         assert_eq!(1, vm.stack.len());
         assert_eq!(-3.0, vm.stack[0]);
@@ -419,7 +419,7 @@ mod tests_vm {
             OP::PushNum(0.5),
             OP::Swap2,
         ];
-        let mut vm = Vm::new();
+        let mut stdout = io::stdout(); let mut vm = Vm::new(&mut stdout);
         vm.run(source);
         assert_eq!(3, vm.stack.len());
         assert_eq!(1.0, vm.stack[0]);
@@ -444,7 +444,7 @@ mod tests_vm {
             OP::Bring(2),
             OP::Set(1),
         ];
-        let mut vm = Vm::new();
+        let mut stdout = io::stdout(); let mut vm = Vm::new(&mut stdout);
         vm.run(source);
         assert_eq!(vec![1.0, -1.0, -1.0], vm.stack);
     }
@@ -478,7 +478,7 @@ mod tests_vm {
             OP::Add,
             OP::SetHeap,
         ];
-        let mut vm = Vm::new();
+        let mut stdout = io::stdout(); let mut vm = Vm::new(&mut stdout);
         vm.run(source);
         println!("heap : {:?}", vm.allocator.heap);
         println!("stack  : {:?}", vm.stack);
@@ -511,7 +511,7 @@ mod tests_vm {
             OP::Add,
             OP::SetHeap,
         ];
-        let mut vm = Vm::new();
+        let mut stdout = io::stdout(); let mut vm = Vm::new(&mut stdout);
         vm.run(source);
         println!("heap : {:?}", vm.allocator.heap);
         assert_eq!(

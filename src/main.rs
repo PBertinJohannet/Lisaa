@@ -23,7 +23,7 @@ mod typecheck;
 mod types;
 mod vm;
 mod lisaa;
-use std::io::Read;
+use std::io::{Read, self};
 
 use clap::{App, Arg};
 use std::fs::File;
@@ -44,8 +44,8 @@ fn main() {
         .get_matches();
 
     let input_file = matches.value_of("INPUT").unwrap();
-
-    exit(match Lisaa::new(input_file.to_owned()).run() {
+    let mut stdout = io::stdout();
+    exit(match Lisaa::new(input_file.to_owned(), &mut stdout).run() {
         Ok(_) => 0,
         Err(err) => {
             eprintln!("error: {:?}", err);

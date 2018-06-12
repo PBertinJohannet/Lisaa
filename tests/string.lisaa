@@ -1,0 +1,35 @@
+Class String {
+    num len = 0;
+    slice<char> inner = newslice(0);
+}
+
+method extend(num a) of String {
+    self.len = self.len + a;
+    self.inner = newslice(self.len);
+}
+
+method print() of String {
+    for (num i = 0; i < self.len; i = i+1;){
+        print(self.inner[i]);
+    }
+}
+method println() of String {
+    self.print();
+    print('\n');
+}
+
+method index(num i)-> char of String {
+    return self.inner[i];
+}
+
+method add(String s) -> String of String {
+    String new = String();
+    new.extend(s.len+self.len);
+    for (num i = 0; i < self.len; i= i+1;){
+        new.inner[i] = self[i];
+    }
+    for (num i = 0; i < s.len; i= i+1;){
+        new.inner[i+self.len] = s[i];
+    }
+    return new;
+}
