@@ -1,5 +1,6 @@
 use rand::random;
 use std::char;
+mod gc;
 /// How heap memory/GC works.
 /// Everytime a pointer variable is created, an entry in root_references is created.
 /// Everytime a heap object is created its reference is pushed to the top of the stack.
@@ -9,10 +10,15 @@ use std::char;
 ///  | 0 | 2 | . | here is a hole of size 2
 /// Everytime the allocator needs to alloc it searches for a hole of the right size.
 /// The GC is ran every ... allocations
-/// The GC searches from the root refs and marks the unreachable objects. then it destroys them
+/// when the gc runs it takes all allocated objects and mark them.
+/// The GC searches from the root refs and unmarks the unreachable objects. then it destroys them
 /// and updates the holes in the allocator.
-/// Currently, to avoid high fragmentation, the holes are filled only with holes of their size.
-
+/// Currently, to avoid high fragmentation, the holes are filled only with objects of their size.
+///
+/// So how to mark slices... -> (first bit at 1;  61 next bits =size ;2 last bits object type Pointer/char/int)
+/// We mark other objects then.
+/// The object info is given to the vm through a list of objectinfos.
+///
 /// The allocator struct.
 /// Allocates some memeory.
 /// Allocates contigus memory.
