@@ -27,10 +27,6 @@ pub enum LisaaType {
 
 impl LisaaType {
     /// Creates a pointer pointing to the given type
-    pub fn method(inner: LisaaType, name: String) -> Self {
-        LisaaType::Function(format!("{}::{}", inner, name), vec![])
-    }
-    /// Creates a pointer pointing to the given type
     pub fn pointer(inner: LisaaType) -> Self {
         LisaaType::Pointer(Box::new(inner))
     }
@@ -128,7 +124,7 @@ impl fmt::Display for LisaaType {
             &LisaaType::Void => write!(f, "void"),
             &LisaaType::Pointer(ref p) => write!(f, "&{}", p),
             &LisaaType::Any => write!(f, "any"),
-            &LisaaType::Class(ref c) => write!(f, "class"),
+            &LisaaType::Class(ref c) => write!(f, "class {}", c),
             &LisaaType::TypeArg(ref str) => write!(f, "{}", str),
             &LisaaType::Function(ref str, _) => write!(f, "{}", str),
         }
@@ -148,13 +144,6 @@ impl TypedVar {
         TypedVar {
             name: name,
             type_var: Some(type_var),
-        }
-    }
-    /// This is a num
-    pub fn num(name: String) -> Self {
-        TypedVar {
-            type_var: Some(LisaaType::Num),
-            name: name,
         }
     }
     /// Returns the name of the variable.

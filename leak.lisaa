@@ -1,0 +1,12 @@
+
+Class Dim {
+    num x = 97;
+    num y = 97;
+    num z = 97;
+}
+
+fn main(){
+  //  Gc().limit(10);
+	for (num i = 0;i< 3; i= i+1;)
+	    Dim();
+}

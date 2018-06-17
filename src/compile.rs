@@ -100,10 +100,6 @@ impl Compiler {
             labels: HashMap::new(),
         }
     }
-    /// Returns the current stack's size.
-    pub fn current_stack_size(&self) -> usize {
-        self.scopes.last().unwrap().current_size
-    }
     /// Add a lib to the program.
     pub fn add_lib(&mut self, lib: &str) {
         for f in get_native_types(lib) {
@@ -208,7 +204,7 @@ impl Compiler {
         self.create_var("2".to_string()); // offset.
         func.self_type
             .clone()
-            .map(|t| self.create_var("self".to_string()));
+            .map(|_| self.create_var("self".to_string()));
         for var in func.args() {
             self.create_var(var.name().to_string());
         }
@@ -474,7 +470,6 @@ impl Compiler {
                 // sets the slice in the string.
                 self.emit_chunks(vec![OP::Swap2, OP::PushNum(1.0), OP::Add, OP::SetHeap]);
             }
-            _ => panic!("strings not supported yet"),
         }
     }
 

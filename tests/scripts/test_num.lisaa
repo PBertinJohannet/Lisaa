@@ -1,0 +1,17 @@
+import string
+
+fn main() {
+	num a = 12;
+	num b = 12 + a;
+	b.toString().println();
+	(b - 1).toString().println();
+	(b * a).toString().println();
+	if b > a {
+		"ok".println();
+	} if b < a "not ok".println();
+	(1 >= 1).toString().println();
+	(3/2).toString().println();
+	(4%2).toString().println();
+	(5<2).toString().println();
+	(1.5<1).toString().println();
+}

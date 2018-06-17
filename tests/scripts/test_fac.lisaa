@@ -1,0 +1,13 @@
+import string
+
+fn main(){
+	for (num a = 0; a < 20; a=a+3;){
+		fac(a).toString().println();
+	}
+}
+
+fn fac(num a) -> num {
+	if a<2{
+		return 1;
+	} return a * fac(a-1);
+}

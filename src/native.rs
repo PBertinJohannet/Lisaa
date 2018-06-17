@@ -2,6 +2,7 @@ use statement::{FunctionDecl, Statement};
 use types::{LisaaType, TypedVar};
 use vm::OP;
 
+/// A native function.
 trait NativeFunc {
     fn print() -> FunctionDecl;
     fn rand() -> FunctionDecl;
@@ -95,6 +96,33 @@ impl NativeFunc for FunctionDecl {
             FunctionDecl {
                 self_type: None,
                 inline: true,
+                name: "num::andand".to_owned(),
+                type_args: vec![],
+                args: vec![TypedVar::new(LisaaType::Num, "n".to_string())],
+                scope: Statement::Native(vec![OP::AndAnd]),
+                ret_type: LisaaType::Num,
+            },
+            FunctionDecl {
+                self_type: None,
+                inline: true,
+                name: "num::oror".to_owned(),
+                type_args: vec![],
+                args: vec![TypedVar::new(LisaaType::Num, "n".to_string())],
+                scope: Statement::Native(vec![OP::OrOr]),
+                ret_type: LisaaType::Num,
+            },
+            FunctionDecl {
+                self_type: None,
+                inline: true,
+                name: "num::or".to_owned(),
+                type_args: vec![],
+                args: vec![TypedVar::new(LisaaType::Num, "n".to_string())],
+                scope: Statement::Native(vec![OP::Or]),
+                ret_type: LisaaType::Num,
+            },
+            FunctionDecl {
+                self_type: None,
+                inline: true,
                 name: "num::minus".to_owned(),
                 type_args: vec![],
                 args: vec![TypedVar::new(LisaaType::Num, "n".to_string())],
@@ -146,24 +174,13 @@ impl NativeFunc for FunctionDecl {
                 scope: Statement::Native(vec![OP::Eq]),
                 ret_type: LisaaType::Num,
             },
-            /// we have a > b
-            /// a, b
-            /// push a, b
-            /// a, b, a, b
-            /// eq
-            /// a, b, a==b,
-            /// swap 3
-            /// a==b, a, b
-            /// gt
-            /// a==b, a > b
-            ///
             FunctionDecl {
                 self_type: None,
                 inline: true,
                 name: "num::ge".to_owned(),
                 type_args: vec![],
                 args: vec![TypedVar::new(LisaaType::Num, "n".to_string())],
-                scope: Statement::Native(vec![OP::LowerThan]),
+                scope: Statement::Native(vec![OP::LowerEq]),
                 ret_type: LisaaType::Num,
             },
             FunctionDecl {

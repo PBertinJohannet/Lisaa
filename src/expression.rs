@@ -65,10 +65,6 @@ impl Expr {
         let inner = Expr::getattr(lhs, Expr::identifier(format!("{}", operator), line), line);
         Expr::method_call(inner, vec![rhs], line)
     }
-    pub fn indexing(indexed: Expr, index: Expr, line: usize) -> Self {
-        let inner = Expr::getattr(indexed, Expr::identifier("index".to_string(), line), line);
-        Expr::method_call(inner, vec![index], line)
-    }
     pub fn is_identifier(&self) -> bool {
         match self.expr {
             ExprEnum::Identifier(_) => true,
@@ -231,12 +227,6 @@ impl FunctionCall {
             name: name,
         }
     }
-    pub fn is_method(&self) -> bool {
-        match self.callee {
-            Callee::StaticFunc(_) => false,
-            _ => true,
-        }
-    }
     pub fn callee(&self) -> &Callee {
         &self.callee
     }
@@ -278,6 +268,8 @@ pub enum Operator {
     EqualEqual,
     NotEqual,
     AndAnd,
+    OrOr,
+    Or,
     INDEX,
     Get,
 }
@@ -298,6 +290,8 @@ impl Operator {
             &TokenType::EqualEqual => Ok(Operator::EqualEqual),
             &TokenType::BangEqual => Ok(Operator::NotEqual),
             &TokenType::ANDAND => Ok(Operator::AndAnd),
+            &TokenType::OROR => Ok(Operator::OrOr),
+            &TokenType::OR => Ok(Operator::Or),
             _ => Err(format!(
                 "can not convert token : {:?} to operator",
                 token.get_type()
@@ -322,6 +316,8 @@ impl fmt::Display for Operator {
             &Operator::EqualEqual => write!(f, "equals"),
             &Operator::NotEqual => write!(f, "ne"),
             &Operator::AndAnd => write!(f, "andand"),
+            &Operator::OrOr => write!(f, "oror"),
+            &Operator::Or => write!(f, "or"),
             &Operator::INDEX => write!(f, "index"),
             &Operator::Get => write!(f, "get"),
         }
@@ -384,6 +380,7 @@ impl BinaryExpr {
         &mut *self.lhs
     }
     /// Returns the riht hand side of the expression as mutable ref.
+    #[allow(dead_code)]
     pub fn rhs_mut(&mut self) -> &mut Expr {
         &mut *self.rhs
     }

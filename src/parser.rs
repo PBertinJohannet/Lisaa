@@ -2,7 +2,7 @@
 //! currently only contains enough to parse expressions and return parse errors.
 use expression::{Expr, Operator};
 use statement::{
-    Assignment, ClassDecl, Declaration, Element, ForStatement, FunctionDecl, IfStatement, Program,
+    Assignment, ClassDecl, Declaration, Element, FunctionDecl, IfStatement, Program,
     Statement, WhileStatement,
 };
 use std::collections::HashMap;
@@ -586,7 +586,7 @@ impl Parser {
     /// Returns a call with the given arguments, the call must be a method or a fucntion.
     pub fn callable(&mut self, args: Vec<Expr>, lit: Expr) -> Result<Expr, String> {
         let line = lit.get_line();
-        if let Ok(id) = lit.get_identifier() {
+        if let Ok(_) = lit.get_identifier() {
             return Ok(Expr::function_call(
                 lit.get_identifier()
                     .map_err(|_| "function calls only allowed on identifier")?
@@ -602,8 +602,9 @@ impl Parser {
         self.expect(TokenType::LeftBrace)?;
         let index = self.expression()?;
         self.expect(TokenType::RightBrace)?;
-        Ok(Expr::deref(Expr::indexing(
+        Ok(Expr::deref(Expr::binary(
             lit,
+            Operator::INDEX,
             index,
             self.previous().get_line(),
         )))

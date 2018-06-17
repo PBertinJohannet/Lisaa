@@ -11,7 +11,7 @@ extern crate lazy_static;
 
 extern crate time;
 mod compile;
-mod compile_req;
+//mod compile_req;
 mod expression;
 mod keywords;
 mod native;
@@ -23,9 +23,12 @@ mod typecheck;
 mod types;
 mod vm;
 mod lisaa;
+
+#[allow(unused_imports)]
 use std::io::{Read, self};
 
 use clap::{App, Arg};
+#[allow(unused_imports)]
 use std::fs::File;
 use std::process::exit;
 use lisaa::Lisaa;

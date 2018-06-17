@@ -78,6 +78,10 @@ impl Scanner {
                 true => self.token(TokenType::ANDAND, ""),
                 _ => self.token(TokenType::AND, ""),
             }),
+            '|' => Ok(match self.match_next('|') {
+                true => self.token(TokenType::OROR, ""),
+                _ => self.token(TokenType::OR, ""),
+            }),
             '<' => Ok(match self.match_next('=') {
                 true => self.token(TokenType::LessEqual, ""),
                 _ => self.token(TokenType::LESS, ""),
@@ -157,7 +161,7 @@ impl Scanner {
                 '\\' => match self.advance(){
                     'n' => Ok('\n'),
                     't' => Ok('\t'),
-                    c => self.error(format!("unknown escape character : {}", c)).map(|t|'i'),
+                    c => self.error(format!("unknown escape character : {}", c)).map(|_|'i'),
                 }?,
                 c => c,
             });

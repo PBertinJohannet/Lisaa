@@ -64,8 +64,6 @@ pub enum TokenType {
 
     /// a char literal.
     CHAR,
-    /// The type string before an assignment.
-    StringDecl,
 
     // Keywords.
     /// A break to quit a scope.
@@ -92,7 +90,7 @@ pub enum TokenType {
     IF,
     /// The class keyword, not used yet
     NIL,
-    /// The class keyword, not used yet
+    /// The or keyword
     OR,
     ///
     OROR,
@@ -105,11 +103,7 @@ pub enum TokenType {
     /// The class keyword, not used yet
     TRUE,
     /// The class keyword, not used yet
-    VAR,
-    /// The class keyword, not used yet
     WHILE,
-    /// The index of an array.
-    INDEX,
     /// The ignore keyword, tells that this keyword may be ignored.
     IGNORE,
     /// The import keyword import a module in scope
@@ -158,11 +152,6 @@ impl Token {
     /// Returns the type of the token.
     pub fn get_type(&self) -> &TokenType {
         &self.token_type
-    }
-
-    /// Changes the type of this token.
-    pub fn set_type(&mut self, tp: TokenType) {
-        self.token_type = tp;
     }
 
     /// Returns the lexeme of the token.

@@ -1,0 +1,10 @@
+import string
+
+fn main() -> char{
+	char b = 'i';
+	slice<char> a = newslice(2);
+	a[0] = b;
+	a[1] = '4';
+	print(a[0]);
+	print(a[1]);
+}

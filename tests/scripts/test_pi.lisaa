@@ -1,0 +1,16 @@
+import string
+
+fn main(){
+	num total = 0;
+	for (num vals = 0; vals<2000; vals= vals + 1;) {
+		num x = rand();
+		num y = rand();
+		num dist = x*x + y*y;
+		if dist < 1 total = total + 1;
+		num pi = (4*total/vals);
+		if vals == 1999 && pi > 2 && pi < 4{
+		    "ok".println();
+		}
+	}
+}
+

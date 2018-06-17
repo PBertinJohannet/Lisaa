@@ -1,0 +1,27 @@
+import string
+
+Class Point {
+	num x = 0;
+	num y = 0;
+}
+
+method toString() -> String of Point{
+	return self.x.toString()+", "+self.y.toString();
+}
+
+method add(Point p) -> Point of Point {
+	Point other = Point();
+	other.x = self.x + p.x;
+	other.y = self.y + p.y;
+	return other;
+}
+
+fn main() {
+	Point orig = Point();
+	Point other = Point();
+	orig.x = 2;
+	orig.y = 21;
+	other.x = 4;
+	other.y = -1;
+	(orig + other).toString().println();
+}

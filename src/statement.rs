@@ -1,5 +1,5 @@
 //! The module for statement.
-use expression::{Expr, LiteralExpr};
+use expression::Expr;
 use std::collections::HashMap;
 use types::{LisaaType, TypedVar};
 use vm::OP;
@@ -29,10 +29,6 @@ impl Program {
     /// Get the classes in the program.
     pub fn classes(&self) -> &HashMap<String, ClassDecl> {
         &self.classes
-    }
-    /// Get the classes as mutable.
-    pub fn classes_mut(&mut self) -> &mut HashMap<String, ClassDecl> {
-        &mut self.classes
     }
     /// Get the functions in the program.
     pub fn functions(&self) -> &HashMap<String, FunctionDecl> {
@@ -210,10 +206,12 @@ impl FunctionDecl {
         &self.name
     }
     /// Returns the arguments of a function.
+    #[allow(dead_code)]
     pub fn type_args(&self) -> &Vec<TypedVar> {
         &self.args
     }
     /// Returns the arguments of a function.
+    #[allow(dead_code)]
     pub fn args(&self) -> &Vec<TypedVar> {
         &self.args
     }
@@ -398,71 +396,6 @@ impl WhileStatement {
     pub fn statement_mut(&mut self) -> &mut Statement {
         &mut *self.statement
     }
-}
-
-/// Represents an for statement, its condition and the statement to exeute if it is true.
-/// A for statement contains (the init, the condition, the everytime);
-#[derive(Debug, Clone)]
-pub struct ForStatement {
-    init : Box<Statement>,
-    cond: Expr,
-    repeat : Box<Statement>,
-    inner: Box<Statement>,
-}
-
-impl ForStatement {
-    /// Creates a new while statement with the following condition and statement to execute.
-    pub fn new(init : Statement, cond: Expr, repeat : Statement, inner: Statement) -> Self {
-        ForStatement {
-            init : Box::new(init),
-            cond: cond,
-            repeat: Box::new(repeat),
-            inner: Box::new(inner),
-        }
-    }
-    /// Returns the condition to execute.
-    pub fn condition(&self) -> &Expr {
-        &self.cond
-    }
-    /// Returns the statement to execute.
-    pub fn inner(&self) -> &Statement {
-        &*self.inner
-    }
-    /// Returns the condition to execute.
-    pub fn condition_mut(&mut self) -> &mut Expr {
-        &mut self.cond
-    }
-    /// Returns the statement to execute.
-    pub fn inner_mut(&mut self) -> &mut Statement {
-        &mut *self.inner
-    }
-    /// Returns the condition to execute.
-    pub fn init(&self) -> &Statement {
-        &*self.init
-    }
-    /// Returns the statement to execute.
-    pub fn repeat(&self) -> &Statement {
-        &*self.repeat
-    }
-    /// Returns the statement to execute.
-    pub fn repeat_mut(&mut self) -> &mut Statement {
-        &mut *self.repeat
-    }
-    /// Returns the statement to execute.
-    pub fn init_mut(&mut self) -> &mut Statement {
-        &mut *self.init
-    }
-}
-
-/// The result of a statement.
-#[derive(Debug, Clone)]
-pub enum StatementResult {
-    /// The statement does not return anything.
-    Empty,
-    /// The statement Is a break statement.
-    Break,
-    /// The statement was broken by a return.
-    Return(LiteralExpr),
 }
 
 impl Statement {

@@ -38,6 +38,14 @@
 /// When it goes out of scope/its reference in the stack gets reassigned we remove it from the rootrefs
 /// When we need to garbage collect... We start with the root refs and we traverse the graph of objects
 /// and mark every object that can be reached.
+///
+/// Oh yea
+/// Those fucking root refs...
+/// Have a list of ref positions in the stack (easy this one).
+///
+/// Assume the list of holes goes from left to right, we create a map of all objects and mark them as unreachable.
+/// Then we go from the root refs and mark all encountered objects.
+/// Then we mark all the objects that were not
 struct Ok{
 
 }

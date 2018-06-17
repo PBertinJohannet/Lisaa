@@ -11,7 +11,7 @@ extern crate time;
 extern crate lazy_static;
 
 mod compile;
-mod compile_req;
+//mod compile_req;
 mod expression;
 mod keywords;
 mod native;
@@ -22,5 +22,6 @@ mod token;
 mod typecheck;
 mod types;
 mod vm;
+pub mod script;
 pub mod lisaa;
 

@@ -3,13 +3,13 @@ use compile::Compiler;
 //use interpreter::Interpreter;
 use parser::Parser;
 use scanner::Scanner;
-use statement::{FunctionDecl, Program};
-use std::collections::{HashMap, HashSet};
+use statement::{Program};
+use std::collections::{HashSet};
 use time::PreciseTime;
 use typecheck::TypeChecker;
 use vm::Vm;
 use std::fs::File;
-use std::io::{Read, Write, self};
+use std::io::{Read, Write};
 
 
 /// The interpreter, contains the code.
@@ -58,7 +58,7 @@ impl<'a> Lisaa<'a> {
             let tokens = Scanner::new(Lisaa::open_source(file)?).tokens()?;
             let (mut tree, imports) = Parser::new(tokens).program().map_err(|e| {
                 for p_err in e.iter() {
-                    eprintln!("{}\n", p_err);
+                    println!("{}\n", p_err);
                 }
                 String::from("Compilation aborted because of preceding errors.")
             })?;
@@ -106,9 +106,9 @@ impl<'a> Lisaa<'a> {
         let end = PreciseTime::now();
         let diff = start.to(end).num_milliseconds();
 
-        //println!("vm state {:?}", vm);
+        println!("vm state {:?}", vm.heap());
 
-        //println!("vm time : {:?}ms", diff);
+        println!("vm time : {:?}ms", diff);
         Ok(())
     }
 }

@@ -1,0 +1,21 @@
+import string
+
+fn main(){
+    // finds two factors of this number (7 and 31) 
+
+    num toFind = 7*31;
+    num a = 0;
+    num b = 0;
+    num found = 0;
+    while !found && a < toFind/2{
+        a = a+1;
+        b = 0;
+        while !found && b < toFind/2{
+            b = b + 1;
+            if a * b == toFind{
+                found = 1;
+		(a.toString() + ", "+b.toString()).println();
+            }
+        }
+    }
+}

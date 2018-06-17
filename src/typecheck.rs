@@ -2,7 +2,7 @@ use expression::{BinaryExpr, Callee, Expr, ExprEnum, FunctionCall, Operator, Una
 use native::get_native_types;
 use statement::{
     Assignment, ClassDecl, Declaration, FunctionDecl, IfStatement, Program, Statement,
-    WhileStatement, ForStatement,
+    WhileStatement,
 };
 use std::collections::HashMap;
 use types::{LisaaType, TypedVar};
@@ -68,18 +68,7 @@ impl TypeChecker {
     pub fn create_var(&mut self, var: TypedVar) {
         self.scopes.last_mut().unwrap().create_var(var);
     }
-    /// Finds the variable in the scope or the scope of its parent.
-    pub fn has_var(&self, var_name: &str) -> bool {
-        let current_scope = self.scopes.last().unwrap().depth;
-        let len = self.scopes.len();
-        let mut found = false;
-        for sc in 0..current_scope {
-            if self.scopes[len - sc - 1].has_var(var_name) {
-                found = true;
-            }
-        }
-        found
-    }
+
     /// Finds the variable in the scope or the scope of its parent.
     pub fn get_var(&self, var_name: &str) -> Option<TypedVar> {
         let current_scope = self.scopes.last().unwrap().depth;
@@ -217,7 +206,7 @@ impl TypeChecker {
     }
 
     pub fn deref_assignment(&mut self, assignement: &mut Expr) {
-        let mut a = assignement;
+        let a = assignement;
         if let &mut ExprEnum::Deref(ref mut d) = a.expr_mut() {
             d.set_assigned();
             self.deref_assignment(d.inner_mut());
