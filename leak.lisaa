@@ -6,7 +6,6 @@ Class Dim {
 }
 
 fn main(){
-  //  Gc().limit(10);
 	for (num i = 0;i< 3; i= i+1;)
 	    Dim();
 }
