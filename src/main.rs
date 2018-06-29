@@ -53,7 +53,7 @@ fn main() {
         .get_matches();
 
     let input_file = matches.value_of("INPUT").unwrap();
-    let verbose = matches.value_of("INPUT").unwrap();
+    let verbose = matches.value_of("VERBOSE").unwrap();
     let mut stdout = io::stdout();
     exit(match Lisaa::new(input_file.to_owned(), &mut stdout, verbose == "1").run() {
         Ok(_) => 0,

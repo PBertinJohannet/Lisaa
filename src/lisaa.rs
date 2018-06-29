@@ -26,7 +26,6 @@ impl<'a> Lisaa<'a> {
 
 
     fn find_source(name : String) -> Result<String, String>{
-        println!("will try for {}",format!("{}.lisaa", name.to_owned()) );
         if File::open(name.to_owned()).is_ok(){
             Ok(name)
         } else if File::open(format!("{}.lisaa", name.to_owned())).is_ok(){

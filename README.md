@@ -6,25 +6,25 @@ The lisaa language is a simple scripting language featuring static typing.
 
 # Usage
 
-Just create a file like the .ytp or .build
+Just create a file in .lisaa and pass it as first argument
 
-
-then run
 ```
 cargo build --release
-target/release/ytp my_file.ytp
+target/release/lisaa my_file.lisaa
 ```
 
 
 # Example
 
 ```
+import string
 fn main() {
      num a = 0;
      num b = 5;
      while b < 50 {
         b=b+1;
-	a = fac(b) + a;
+	    a = fac(b) + a;
+	    a.toString().println();
     }
 	return a;
 }
@@ -36,9 +36,11 @@ fn fac(num a) -> num{
 }
 ```
 
+Look at the source of string.lisaa to find more.
+
 # Performance
 
-The following becnhmarks were done on the following code : 
+The following benchmarks were done on the following code :
 ```
 fn main(){
     // finds two factors of this number (241 and 307) 
@@ -79,9 +81,9 @@ All the codes will now be compiled to be interpreted by the virtual machine
 
 The code is compiled to bytecode interpreted by a stack machine.
 
-The machine has a few instructions (25 instructions) that manipulates the stack and can allocate memory on a heap.
+The machine has a few instructions that manipulates the stack and can allocate memory on a heap.
 
 # Garbage Collection
 
-The garbage collection is not yet done but the memory layout already has the information to do so.
+Coming soon
 
