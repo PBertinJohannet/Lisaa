@@ -80,7 +80,6 @@ impl Parser {
                     classes.insert(name, c);
                 },
                 Ok(Element::Import(s)) => {
-                    println!("import : {}", s);
                     imports.push(s);
                 }
                 Err(e) => fails.push(ParseError::new(self.previous(), e)),

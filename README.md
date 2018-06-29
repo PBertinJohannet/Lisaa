@@ -26,7 +26,6 @@ fn main() {
 	    a = fac(b) + a;
 	    a.toString().println();
     }
-	return a;
 }
 fn fac(num a) -> num{
     if a == 1{
