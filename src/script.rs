@@ -25,7 +25,7 @@ impl Script {
             let mut output_stream = Cursor::new(unsafe {
                 output.as_bytes_mut()
             });
-            Lisaa::new(self.run.clone(), &mut output_stream).run()?;
+            Lisaa::new(self.run.clone(), &mut output_stream, true).run()?;
         }
         Ok(output)
     }

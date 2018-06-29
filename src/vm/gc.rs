@@ -1,5 +1,8 @@
 //! The module for garbage collection.
-/// How heap memory/GC works.
+//!
+//! This is a work in progress
+//!
+//!
 /// Everytime a pointer variable is created, an entry in root_references is created.
 /// Everytime a heap object is created its reference is pushed to the top of the stack.
 /// The first 64bits of the heap object is a reference to its type (usefull infos like size/refs...)
@@ -42,6 +45,19 @@
 /// Oh yea
 /// Those fucking root refs...
 /// Have a list of ref positions in the stack (easy this one).
+/// Or is it easy
+/// Imagine we alloc -> copy push1 add set
+/// We have two refs in the stack.
+/// Because of the copy.
+/// But is there a way for the copy to find itself somewhere else
+/// yes
+/// push alloc add puts the alloc down.
+///
+/// So maybe create a root ref when allocated.
+/// When destroyed
+/// a[i] = Point -> call a[i] destructor -> removes it from the root refs.
+///
+/// Then we need to know when objects get out of scope.
 ///
 /// Assume the list of holes goes from left to right, we create a map of all objects and mark them as unreachable.
 /// Then we go from the root refs and mark all encountered objects.

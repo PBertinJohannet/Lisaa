@@ -16,15 +16,17 @@ use std::io::{Read, Write};
 pub struct Lisaa<'a> {
     source: String,
     output_stream: &'a mut Write,
+    verbose : bool
 }
 impl<'a> Lisaa<'a> {
     /// Creates a new instance of the interpreter with the given source
-    pub fn new(source: String, output : &'a mut Write) -> Self {
-        Lisaa { source: source, output_stream : output}
+    pub fn new(source: String, output : &'a mut Write, verbose : bool) -> Self {
+        Lisaa { source: source, output_stream : output, verbose : verbose}
     }
 
 
     fn find_source(name : String) -> Result<String, String>{
+        println!("will try for {}",format!("{}.lisaa", name.to_owned()) );
         if File::open(name.to_owned()).is_ok(){
             Ok(name)
         } else if File::open(format!("{}.lisaa", name.to_owned())).is_ok(){
@@ -96,8 +98,10 @@ impl<'a> Lisaa<'a> {
         let code = Compiler::new()
             .compile(&tree)
             .map_err(|e| format!("compilation error : {:?}", e))?;
-        for c in code.iter() {
-            println!("{:?}", c);
+        if self.verbose {
+            for c in code.iter() {
+                println!("{:?}", c);
+            }
         }
 
         let mut vm = Vm::new(&mut self.output_stream);
@@ -106,9 +110,10 @@ impl<'a> Lisaa<'a> {
         let end = PreciseTime::now();
         let diff = start.to(end).num_milliseconds();
 
-        println!("vm state {:?}", vm.heap());
+        if self.verbose {
+            println!("heap state : {:?}", vm.heap());
+        }
 
-        println!("vm time : {:?}ms", diff);
         Ok(())
     }
 }

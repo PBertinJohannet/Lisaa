@@ -1,0 +1,9 @@
+import string
+
+Class Dot {
+	num a = 0;
+}
+
+method toString() -> String of Dot {
+	return "0";
+}

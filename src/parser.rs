@@ -103,12 +103,21 @@ impl Parser {
             &TokenType::FUN => Ok(Element::Function(self.parse_function_decl()?)),
             &TokenType::CLASS => Ok(Element::Class(self.parse_class_decl()?)),
             &TokenType::METHOD => Ok(Element::Function(self.parse_method_decl()?)),
-            &TokenType::IMPORT => {
-                self.advance();
-                Ok(Element::Import(self.advance().get_lexeme().to_owned()))
-            },
+            &TokenType::IMPORT => Ok(Element::Import(self.parse_import()?)),
             _ => Err("error : expected function or class declaration there".to_string()),
         }
+    }
+
+    pub fn parse_import(&mut self) -> Result<String, String>{
+        // skip the import keyword
+        self.advance();
+        let mut to_import = self.advance().get_lexeme().to_owned();
+        while self.peek().is_type(&TokenType::SLASH){
+            self.advance();
+            to_import.push('/');
+            to_import.push_str(self.advance().get_lexeme())
+        }
+        return Ok(to_import.clone())
     }
 
     pub fn parse_method_decl(&mut self) -> Result<FunctionDecl, String> {

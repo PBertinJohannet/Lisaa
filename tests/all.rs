@@ -51,3 +51,7 @@ fn test_factors() {
 fn test_overloading() {
     test_for("overloading");
 }
+#[test]
+fn test_import() {
+    test_for("import");
+}

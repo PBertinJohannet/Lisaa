@@ -16,3 +16,5 @@ Cargo.lock
 todo.md
 ok.txt
 test.py
+
+cmake*

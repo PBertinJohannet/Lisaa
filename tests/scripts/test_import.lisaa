@@ -1,0 +1,7 @@
+import tests/scripts/imp/dot
+import string
+
+fn main() {
+	Dot a = Dot();
+	a.toString().println();
+}
