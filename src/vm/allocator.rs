@@ -24,10 +24,12 @@
 /// | type of obj | first 64bits of obj | second 64bits | ...
 /// When the GC removes memory, create a hole at the oject place :
 /// | next hole adress | size of hole | .. | ...
+use std::mem::transmute;
+
 #[derive(Debug)]
 pub struct Allocator {
     first_hole: usize,
-    heap: Vec<i64>,
+    heap: Vec<f64>,
 }
 
 impl Allocator {
@@ -36,27 +38,27 @@ impl Allocator {
     pub fn new() -> Self {
         Allocator {
             first_hole: 0,
-            heap: vec![0, i64::max_value()],
+            heap: vec![zero_u64_as_float, Self::max_u64_as_float()],
         }
     }
     /// Allocate some memory of the required size.
     /// Returns the pointer to the allocated memory.
     /// The type must reference an actual type in the "struct_types" table.
     /// Returns the reference to the start of the object's value (not its type).
-    pub fn alloc(&mut self, size: usize, type_obj: usize) -> usize {
+    pub fn alloc(&mut self, size: usize, type_obj: u64) -> usize {
         if size == 0 {
             return 0;
         }
         let mut prev_hole = None;
         let mut next_hole = self.first_hole;
-        while !(self.heap[next_hole + 1] == (size + 1) as i64
-            || self.heap[next_hole + 1] == i64::max_value())
+        while !(self.u64_at(next_hole + 1) == (size + 1) as u64
+            || self.u64_at(next_hole + 1) == u64::max_value())
             {
                 prev_hole = Some(next_hole);
-                next_hole = self.heap[next_hole] as usize;
+                next_hole = self.u64_at(next_hole) as usize;
                 println!("next hole {}", next_hole);
             }
-        if self.heap[next_hole + 1] == i64::max_value() {
+        if self.u64_at(next_hole + 1) == u64::max_value() {
             self.extend_heap(size + 1);
             if prev_hole.is_none() {
                 self.first_hole += size + 1;
@@ -70,20 +72,44 @@ impl Allocator {
         self.fill_hole(next_hole, type_obj);
         return next_hole + 1;
     }
+    fn max_u64_as_float() -> f64{
+        transmute::<u64, f64>(u64::max_value())
+    }
+    fn zero_u64_as_float() -> f64{
+        transmute::<u64, f64>(0 as u64)
+    }
+    /// Returns the value at the given position as an u64
+    fn u64_at(&self, pos : usize) -> u64{
+        unsafe {
+            transmute::<f64, u64>(self.heap[pos])
+        }
+    }
+    /// Sets the value as a float but keeps the bitpattern.
+    fn set_u64_at(&self, pos: usize, val : u64) {
+        unsafe {
+            self.heap[pos] = transmute::<u64, f64>(val);
+        }
+    }
+    /// Sets the value as a float but keeps the bitpattern.
+    fn push_u64(&self, val : u64) {
+        unsafe {
+            self.heap.push(transmute::<u64, f64>(val));
+        }
+    }
     /// Frees an object in the heap.
     /// Creates a hole and link it.
     #[allow(dead_code)]
-    pub fn free(&mut self, position: usize, size: usize) {
+    fn free(&mut self, position: usize, size: usize) {
         // If the first hole is at the end. (no fragmentation at all)
-        self.heap[position-1] = self.first_hole as i64;
+        self.set_u64_at(position-1, self.first_hole as u64);
         self.first_hole = position-1;
-        self.heap[position] = size as i64;
+        self.set_u64_at(position, size as u64);
     }
 
     /// Fills a hole and update the remaining memory by creating a hole if necessary.
     /// No memory will remain.
-    pub fn fill_hole(&mut self, hole: usize, type_obj: usize) {
-        self.heap[hole] = type_obj as i64;
+    fn fill_hole(&mut self, hole: usize, type_obj: u64) {
+        self.set_u64_at(hole, type_obj);
     }
 
     /// Connects a hole to the future of a next hole..
@@ -93,11 +119,11 @@ impl Allocator {
     /// A -> C
     /// if b = usize::max_value() then
     /// A ->
-    pub fn connect_hole(&mut self, prev: usize, next: usize, size_allocated: usize) {
-        if self.heap[next + 1] == i64::max_value() {
-            self.heap[prev] = (next + size_allocated + 1) as i64;
+    fn connect_hole(&mut self, prev: usize, next: usize, size_allocated: usize) {
+        if self.u64_at(next + 1) == u64::max_value() {
+            self.set_u64_at(prev, (next + size_allocated + 1) as u64);
         } else {
-            self.heap[prev] = self.heap[next];
+            self.set_u64_at(prev, self.u64_at(next));
         }
     }
     /// Connects the first hole to the future of a next hole..
@@ -107,39 +133,45 @@ impl Allocator {
     /// A -> C
     /// if b = usize::max_value() then
     /// A ->
-    pub fn connect_first(&mut self, next: usize, size_allocated: usize) {
-        if self.heap[next + 1] == i64::max_value() {
+    fn connect_first(&mut self, next: usize, size_allocated: usize) {
+        if self.u64_at(next + 1) == u64::max_value() {
             self.first_hole = next + size_allocated + 1;
         } else {
-            self.first_hole = self.heap[next] as usize;
+            self.first_hole = self.u64_at(next) as usize;
         }
     }
     /// Sets the given pointer at the given adress
-    pub fn extend_heap(&mut self, size: usize) {
+    fn extend_heap(&mut self, size: usize) {
         for _ in 0..size {
-            self.heap.push(0);
+            self.heap.push_u64(0);
         }
         let len = self.heap.len() - 1;
-        self.heap[len] = self.heap[len - size];
-        self.heap[len - 1] = self.heap[len - 1 - size];
+        self.set_u64_at(len, self.u64_at(len - size));
+        self.set_u64_at(len - 1, self.u64_at(len - 1 - size));
     }
 
     /// Sets the given pointer at the given adress
-    pub fn set_ptr(&mut self, adress: usize, value: usize) {
+    pub fn set_ptr(&mut self, adress: usize, value: f64) {
         if adress > self.heap.len() - 1 {
             println!("Segmentation fault (Core dumped)");
             panic!("Program exited");
         }
-        self.heap[adress] = value as i64;
+        self.heap[adress] = value;
     }
 
     /// Get value at address
-    pub fn get_heap(&self, adress : usize) -> i64 {
+    pub fn get_heap(&self, adress : usize) -> f64 {
         self.heap[adress]
     }
     /// returns the heap
-    pub fn heap(&self)-> &Vec<i64>{
+    pub fn heap(&self)-> &Vec<f64>{
         &self.heap
+    }
+
+    /// given a vec of references to objects,
+    /// Runs garbage collection
+    pub fn run_gc(&mut self){
+
     }
 }
 
@@ -151,12 +183,12 @@ mod tests_allocator {
     #[test]
     fn test_alloc_extend() {
         let mut alloc = Allocator::new();
-        assert_eq!(alloc.heap, vec![0, i64::max_value()]);
+        assert_eq!(alloc.heap, vec![0, u64::max_value()]);
         alloc.alloc(3, 1);
         // size 3 obj | empty | empy | empty | hole | hole size |
         assert_eq!(
             alloc.heap,
-            vec![1, i64::max_value(), 0, 0, 0, i64::max_value()]
+            vec![1, u64::max_value(), 0, 0, 0, u64::max_value()]
         );
         assert_eq!(alloc.first_hole, 4);
         alloc.alloc(1, 2);
@@ -164,13 +196,13 @@ mod tests_allocator {
             alloc.heap,
             vec![
                 1,
-                i64::max_value(),
+                u64::max_value(),
                 0,
                 0,
                 2,
-                i64::max_value(),
+                u64::max_value(),
                 0,
-                i64::max_value(),
+                u64::max_value(),
             ]
         );
         assert_eq!(alloc.first_hole, 6);
@@ -179,19 +211,19 @@ mod tests_allocator {
             alloc.heap,
             vec![
                 1,
-                i64::max_value(),
+                u64::max_value(),
                 0,
                 0,
                 2,
-                i64::max_value(),
+                u64::max_value(),
                 3,
-                i64::max_value(),
+                u64::max_value(),
                 0,
                 0,
                 0,
                 0,
                 0,
-                i64::max_value(),
+                u64::max_value(),
             ]
         );
         assert_eq!(alloc.first_hole, 12);
@@ -206,10 +238,10 @@ mod tests_allocator {
         alloc.free(first, 3 + 1);
         assert_eq!(
             alloc.heap,
-            vec![7, 4, 0, 0, 1, i64::max_value(), 0, 0, i64::max_value()]
+            vec![7, 4, 0, 0, 1, u64::max_value(), 0, 0, u64::max_value()]
         );
         alloc.free(sec, 2 + 1);
-        assert_eq!(alloc.heap, vec![7, 4, 0, 0, 0, 3, 0, 0, i64::max_value()]);
+        assert_eq!(alloc.heap, vec![7, 4, 0, 0, 0, 3, 0, 0, u64::max_value()]);
         assert_eq!(alloc.first_hole, 4);
     }
 
@@ -229,16 +261,16 @@ mod tests_allocator {
                 0,
                 0,
                 1,
-                i64::max_value(),
+                u64::max_value(),
                 0,
                 2,
-                i64::max_value(),
+                u64::max_value(),
                 0,
                 0,
                 0,
                 0,
                 0,
-                i64::max_value(),
+                u64::max_value(),
             ]
         );
     }
@@ -254,7 +286,7 @@ mod tests_allocator {
         println!("first hole : {}", alloc.first_hole);
         assert_eq!(
             alloc.heap,
-            vec![2, 4, 0, 0, 1, i64::max_value(), 0, 0, i64::max_value()]
+            vec![2, 4, 0, 0, 1, u64::max_value(), 0, 0, u64::max_value()]
         );
     }
 
@@ -268,8 +300,8 @@ mod tests_allocator {
         println!("fail here \n\n{}\n{:?}\n\n", alloc.first_hole, alloc.heap);
         println!("first hole : {}", alloc.first_hole);
         // first is before the 3. link to 0
-        assert_eq!(alloc.heap, vec![3, 3, 0, 7, 4, 0, 0, 0, i64::max_value()]);
+        assert_eq!(alloc.heap, vec![3, 3, 0, 7, 4, 0, 0, 0, u64::max_value()]);
         alloc.alloc(3, 2);
-        assert_eq!(alloc.heap, vec![7, 3, 0, 2, 4, 0, 0, 0, i64::max_value()]);
+        assert_eq!(alloc.heap, vec![7, 3, 0, 2, 4, 0, 0, 0, u64::max_value()]);
     }
 }

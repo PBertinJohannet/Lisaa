@@ -444,7 +444,7 @@ impl Compiler {
             &LiteralExpr::CHAR(c) => self.emit(OP::PushNum(c as u32 as f64)),
             &LiteralExpr::STRING(ref s) => {
                 // first allocate enough memory :  (2 for string)
-                self.emit_chunks(vec![OP::PushNum(2.0), OP::AllocObj]);
+                self.emit_chunks(vec![OP::PushNum(2.0), OP::AllocObj]); // string has type 01 -> 2
                 // then set the size.
                 self.emit_chunks(vec![
                     OP::PushCopy,

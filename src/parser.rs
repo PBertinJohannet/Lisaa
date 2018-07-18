@@ -161,7 +161,10 @@ impl Parser {
             attrs.push(decl);
         }
         self.advance();
-        Ok(ClassDecl::new(name, attrs))
+        match attrs.len()>62 {
+            true => Err(format!("Class : {} has {} attributes but maximum is 62", name, attrs.len())),
+            _ => Ok(ClassDecl::new(name, attrs)),
+        }
     }
 
     pub fn parse_function_decl(&mut self) -> Result<FunctionDecl, String> {

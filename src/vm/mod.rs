@@ -5,6 +5,7 @@ use std::io::{Write, self};
 //mod gc;
 mod allocator;
 use self::allocator::Allocator;
+use std::collections::BTreeSet;
 
 #[derive(Debug, Clone)]
 pub enum OP {
@@ -43,6 +44,10 @@ pub enum OP {
     /// Add the top and second value of the stack.
     Add,
     /// allocate an object of known size to the heap and put its adress at the top of the stack
+    /// after using it, to avoid leaking memory, always add the pointers offsets from the top :
+    /// correct : Push(1.0) AllocObj Push(1.0) Add
+    /// incorrect : Push(1.0), Push(1.0) AllocObj Add.
+    /// In the incorrect case the reference is droped and will be freed on the next gc run...
     AllocObj,
     /// Access the value in the heap and push it to the stack.
     GetHeap,
@@ -62,8 +67,8 @@ pub enum OP {
 /// Stack contains only f64. everything else in the heap.
 pub struct Vm<'a> {
     /// The root references into the heap. from the stack/global
-    #[allow(dead_code)]
-    root_references: Vec<usize>,
+    /// Contains a list of bools, the size of the stack.
+    root_references: BTreeSet<usize>,
     //program : Vec<Vec<OP>>, matches functions to OPs.
     /// The stack contains ints/references in 64bit format.
     stack: Vec<f64>,
@@ -76,7 +81,7 @@ pub struct Vm<'a> {
 impl<'a> Vm<'a> {
     pub fn new(output_stream : &'a mut Write) -> Vm {
         Vm {
-            root_references: vec![],
+            root_references: BTreeSet::new(),
             stack: vec![],
             stack_offset: 0,
             allocator: Allocator::new(),
@@ -93,7 +98,7 @@ impl<'a> Vm<'a> {
         while instruction_pointer < program.len() {
             let op = &program[instruction_pointer];
             instruction_pointer += 1;
-            //println!("executing {:?}", op);
+            println!("executing {:?}", op);
             match op {
                 &OP::End => {
                     //println!("program execution terminated");
@@ -114,10 +119,14 @@ impl<'a> Vm<'a> {
                 }
                 &OP::PopN(u) => {
                     let next_size = self.stack.len()-u;
+                    for i in 0..u{
+                        self.root_references.remove(&(self.stack.len()-1-i));
+                    }
                     self.stack.truncate(next_size);
                 }
                 &OP::Pop => {
                     self.stack.pop();
+                    self.root_references.remove(&self.stack.len());
                 }
                 &OP::Not => {
                     let val = match self.stack.pop().unwrap() == 0.0 {
@@ -233,21 +242,31 @@ impl<'a> Vm<'a> {
                     self.stack.push(low);
                 }
                 &OP::Bring(id) => {
+                    if self.root_references.contains(&(self.stack_offset+id)){
+                        self.root_references.insert(self.stack.len());
+                    }
                     let val = self.stack[self.stack_offset + id];
                     self.stack.push(val);
                 }
                 &OP::Set(id) => {
                     let to_set = self.stack.pop().unwrap();
+                    if self.root_references.contains(&(self.stack.len())){
+                        self.root_references.remove(&self.stack.len());
+                        self.root_references.insert(self.stack_offset+id);
+                    }
                     self.stack[self.stack_offset + id] = to_set;
                 }
                 &OP::AllocObj => {
+                    self.allocator.run_gc();
                     let size = self.stack.pop().unwrap() as i32 as usize;
                     let val = self.allocator.alloc(size, 1);
+                    self.root_references.insert(self.stack.len());
                     self.stack.push(val as f64);
                 }
                 &OP::GetHeap => {
                     let adress: usize = self.stack.pop().unwrap() as usize;
                     let val: f64 = self.allocator.get_heap(adress) as f64;
+                    self.root_references.insert(self.stack.len());
                     self.stack.push(val);
                 }
                 &OP::SetHeap => {
@@ -255,13 +274,15 @@ impl<'a> Vm<'a> {
                         self.stack.pop().unwrap() as usize,
                         self.stack.pop().unwrap() as usize,
                     );
+                    self.root_references.remove(&(self.stack.len()+1));
                     //println!("val at : {} to {}", adress, value);
                     self.allocator.set_ptr(adress, value);
                 }
                 //_ => panic!("unsupported operand"),
             }
-            //println!("stack : {:?}", self.stack);
-            //println!("heap : {:?}", self.allocator.heap);
+            println!("stack : {:?}", self.stack);
+            println!("root refs : {:?}", self.root_references.iter().collect::<Vec<&usize>>());
+            //println!("heap : {:?}", self.allocator.heap());
         }
     }
 }

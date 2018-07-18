@@ -62,6 +62,9 @@
 /// Assume the list of holes goes from left to right, we create a map of all objects and mark them as unreachable.
 /// Then we go from the root refs and mark all encountered objects.
 /// Then we mark all the objects that were not
+///
+/// the bit 64, if set, says that this is a slice.
+/// the other bits are indexes of the pointer's functions.
 struct Ok{
 
 }

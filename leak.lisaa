@@ -1,10 +1,9 @@
 Class Dim {
     num x = 97;
     num y = 97;
-    num z = 97;
 }
 
 fn main()-> num{
-	for (num i = 0;i< 3; i= i+1;)
+	for (num i = 0;i< 2; i= i+1;)
 	    Dim();
 }

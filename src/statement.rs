@@ -92,6 +92,16 @@ impl ClassDecl {
             attributes: attrs,
         }
     }
+    /// Returns the type of object, this is a number between 0 and 64 for which the bits represents
+    /// the positions of the pointers.
+    /// eg (int, ptr, int, char, ptr) would be 01001 -> 17
+    pub fn get_mem_descriptor(&self) -> i64{
+        self.attributes.iter().enumerate()
+            .filter(|(i, a)|a.val_type() != &LisaaType::Num
+                && a.val_type() != &LisaaType::Char)
+            .map(|(i, a)|1 as i64 >>(i as i64))
+            .sum()
+    }
     /// Returns the name of the class.
     pub fn name(&self) -> &String {
         &self.name
