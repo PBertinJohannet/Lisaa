@@ -1,0 +1,16 @@
+import string
+
+fn main(){
+	num nb = 0;
+	num in = 0;
+	while 1 {
+		num x = rand();
+		num y = rand();
+		num dist = x*x+y*y;
+		if dist<=1 in = in+1;
+		nb = nb+1;
+		if (nb%1000000==0) {
+			("pi is "+(4*in/nb).toString()+"\t\t\t n is : "+nb.toString()).println();
+		}
+	}
+}
