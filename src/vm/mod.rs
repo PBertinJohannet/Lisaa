@@ -89,7 +89,7 @@ impl<'a> Vm<'a> {
         }
     }
 
-    pub fn heap(&self) -> &Vec<i64>{
+    pub fn heap(&self) -> &Vec<f64>{
         self.allocator.heap()
     }
 
@@ -198,11 +198,11 @@ impl<'a> Vm<'a> {
                     let top = self.stack.pop().unwrap().to_string();
                     let len = top.len();
                     let str_index = self.allocator.alloc(2, 1);
-                    self.allocator.set_ptr(str_index, len);
+                    self.allocator.set_ptr(str_index, len as f64);
                     let slice_index = self.allocator.alloc(len, 1);
-                    self.allocator.set_ptr(str_index+1, slice_index);
+                    self.allocator.set_ptr(str_index+1, slice_index as f64);
                     for (i, ch )in top.chars().enumerate(){
-                        self.allocator.set_ptr(slice_index+i, ch as u32 as usize);
+                        self.allocator.set_ptr(slice_index+i, ch as u32 as f64);
                     }
                     self.stack.push(str_index as f64);
                     //println!("stack {:?}", self.stack);
@@ -272,7 +272,7 @@ impl<'a> Vm<'a> {
                 &OP::SetHeap => {
                     let (adress, value) = (
                         self.stack.pop().unwrap() as usize,
-                        self.stack.pop().unwrap() as usize,
+                        self.stack.pop().unwrap(),
                     );
                     self.root_references.remove(&(self.stack.len()+1));
                     //println!("val at : {} to {}", adress, value);
@@ -385,7 +385,7 @@ mod tests_vm {
         vm.run(source);
         println!("heap : {:?}", vm.allocator.heap());
         println!("stack  : {:?}", vm.stack);
-        assert_eq!(vm.allocator.heap(), &vec![1, 1, 2, 3, 0, i64::max_value()]);
+        assert_eq!(vm.allocator.heap(), &vec![1.0, 1.0, 2.0, 3.0, 0.0, allocator::MAX_HEAP_SIZE]);
     }
     //executes the following :
     // a = obj(size=1)
@@ -419,7 +419,7 @@ mod tests_vm {
         println!("heap : {:?}", vm.allocator.heap());
         assert_eq!(
             vm.allocator.heap(),
-            &vec![1, 3, 1, 7, 0, 0, i64::max_value()]
+            &vec![1.0, 3.0, 1.0, 7.0, 0.0, 0.0, allocator::MAX_HEAP_SIZE]
         );
     }
 }
