@@ -24,13 +24,41 @@
 /// | type of obj | first 64bits of obj | second 64bits | ...
 /// When the GC removes memory, create a hole at the oject place :
 /// | next hole adress | size of hole | .. | ...
-///
+/// the "type of obj" entry is of the following form :
+/// 64th bit : 1 if slice, 0 if object
+/// if it is an object :
+///     the last bit at 1 specifies the size of the obj, the other bits are at 1 if the nth attribute
+///     is a pointer and 0 otherwise.
+///     eg String{ num len; slice<char> inner;} will be 011
+/// if it is a slice :
+///     the 63th bit tells if it is a slice of pointers or not and the 62 first bits are the size of
+///     the slice
+/// Knowing that, an object cannot have more than 62 attributes and a slice can not be more than
+/// 2**62 elements long, more than the adressing space anyway( see below )
 ///
 /// !!! !! !!!! ! Important (or not) the heap cannot take more than 2**52 bytes in memory. maybe
 /// this will be important in 2030
 ///
-use std::mem::transmute;
 pub const MAX_HEAP_SIZE : f64 = 4503599627370496.0;//2.0f64.powf(52.0);
+
+/// An object type, parsed from an u64 in the heap.
+pub enum ObjectType{
+    /// A slice containing, a bool to tell if it is a slice of pointers and its size.
+    Slice(bool, u64),
+    /// An object containing the ids of the pointers of the object's attributes and the object's size.
+    Object(Vec<usize>, u64)
+}
+
+impl ObjectType {
+    pub fn new(type_bits : u64) -> ObjectType{
+        if type_bits > 2 >> 63{
+            ObjectType::Slice((type_bits&(2>>62)) as bool, type_bits &!(2>>63+2>>64))
+        } else {
+            ObjectType::object(type_bits)
+        }
+    }
+
+}
 
 #[derive(Debug)]
 pub struct Allocator {
@@ -51,7 +79,7 @@ impl Allocator {
     /// Returns the pointer to the allocated memory.
     /// The type must reference an actual type in the "struct_types" table.
     /// Returns the reference to the start of the object's value (not its type).
-    pub fn alloc(&mut self, size: usize, type_obj: usize) -> usize {
+    pub fn alloc(&mut self, size: usize, type_obj: u64) -> usize {
         if size == 0 {
             return 0;
         }
@@ -90,8 +118,8 @@ impl Allocator {
 
     /// Fills a hole and update the remaining memory by creating a hole if necessary.
     /// No memory will remain.
-    pub fn fill_hole(&mut self, hole: usize, type_obj: usize) {
-        self.heap[hole] = type_obj as f64;
+    pub fn fill_hole(&mut self, hole: usize, type_obj: u64) {
+        self.heap[hole] = f64::from_bits(type_obj);
     }
 
     /// Connects a hole to the future of a next hole..
@@ -149,9 +177,31 @@ impl Allocator {
     pub fn heap(&self)-> &Vec<f64>{
         &self.heap
     }
+    /// Returns the positions in the heap of the allocated objects.
+    /// The objects are stored in the following form :
+    /// | type of obj | first 64bits of obj | second 64bits | ...
+    /// When the GC removes memory, create a hole at the oject place :
+    /// | next hole adress | size of hole | .. | ...
+    pub fn get_objects(&self) -> &Vec<usize>{
+        let mut objects = vec![];
+        let mut current_pos = 0usize;
+        let mut next_hole = self.first_hole as usize;
+        loop {
+            if current_pos == next_hole{
+                next_hole = self.heap[current_pos] as usize;
+                current_pos+=self.heap[current_pos+1] as usize;
+            } else {
+
+            }
+            objects.push(current_pos);
+        }
+        unimplemented!()
+    }
+
     /// given a vec of references to objects,
     /// Runs garbage collection
     pub fn run_gc(&mut self){
+        //let allocated = self.get_allocated();
 
     }
 }
