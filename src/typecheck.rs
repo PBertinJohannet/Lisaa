@@ -258,6 +258,7 @@ impl TypeChecker {
         }
     }
 
+    /// Returns the name of the called function.
     pub fn get_function_name(&mut self, func: &mut FunctionCall) -> Result<String, String> {
         match func.callee_mut() {
             &mut Callee::StaticFunc(ref mut s) => Ok(s.to_owned()),

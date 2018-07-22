@@ -1,0 +1,29 @@
+// Parsing traits after the =
+// Trait = Trait (+ trait) * | {  (method (+ method)?)* }
+Trait Add = {
+    add(Self, Self)->Self;
+}
+
+Class Point {
+    num x = 10;
+    num y = 10;
+}
+
+method add(Point a) -> Point of Point {
+    Point ret = Point();
+    ret.
+}
+
+// Parsing type parameters goes as follow :
+// TypeParam = name : Trait
+// The generic type must appear in the signature (params or ret), else throw an error.
+method sumThree<U : Add>(U a, U b, Uc) -> U {
+    return a + b + c;
+}
+
+fn main()-> num{
+    // must have a Trait type in LisaaType wich checks only the constraints.
+    // here it would try to find the generics from the signatue :
+    // first arg is U and Point so U = Point.
+	sumThree(Point(), Point(), Point());
+}
