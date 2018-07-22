@@ -1,5 +1,6 @@
 #![deny(missing_docs)]
 #![feature(box_patterns)]
+#![feature(int_to_from_bytes)]
 //! An interpreter for a language,
 //! This is an experiment.
 //!

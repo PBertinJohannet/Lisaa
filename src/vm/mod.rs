@@ -89,7 +89,7 @@ impl<'a> Vm<'a> {
         }
     }
 
-    pub fn heap(&self) -> &Vec<f64>{
+    pub fn heap(&self) -> Vec<u64>{
         self.allocator.heap()
     }
 
@@ -385,7 +385,7 @@ mod tests_vm {
         vm.run(source);
         println!("heap : {:?}", vm.allocator.heap());
         println!("stack  : {:?}", vm.stack);
-        assert_eq!(vm.allocator.heap(), &vec![1.0, 1.0, 2.0, 3.0, 0.0, allocator::MAX_HEAP_SIZE]);
+        assert_eq!(vm.allocator.heap(), vec![1, 1, 2, 3, 0, allocator::MAX_HEAP_SIZE]);
     }
     //executes the following :
     // a = obj(size=1)
@@ -419,7 +419,7 @@ mod tests_vm {
         println!("heap : {:?}", vm.allocator.heap());
         assert_eq!(
             vm.allocator.heap(),
-            &vec![1.0, 3.0, 1.0, 7.0, 0.0, 0.0, allocator::MAX_HEAP_SIZE]
+            vec![1, 3, 1, 7, 0, 0, allocator::MAX_HEAP_SIZE]
         );
     }
 }

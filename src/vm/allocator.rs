@@ -39,25 +39,55 @@
 /// !!! !! !!!! ! Important (or not) the heap cannot take more than 2**52 bytes in memory. maybe
 /// this will be important in 2030
 ///
-pub const MAX_HEAP_SIZE : f64 = 4503599627370496.0;//2.0f64.powf(52.0);
+use std::collections::BinaryHeap;
+pub const MAX_HEAP_SIZE : u64 = 4503599627370496;//2.0f64.powf(52.0);
+pub const MAX_HEAP_SIZE_F64 : f64 = 4503599627370496.0;
+pub const IS_SLICE_BIT : u64  = 0b1000_0000_0000_0000_0000_0000_0000_0000;
+pub const IS_PTR_SLICE_BIT : u64  = 0b0100_0000_0000_0000_0000_0000_0000_0000;
 
 /// An object type, parsed from an u64 in the heap.
+#[derive(Debug)]
 pub enum ObjectType{
     /// A slice containing, a bool to tell if it is a slice of pointers and its size.
     Slice(bool, u64),
     /// An object containing the ids of the pointers of the object's attributes and the object's size.
-    Object(Vec<usize>, u64)
+    Object(Vec<usize>, usize)
 }
 
 impl ObjectType {
     pub fn new(type_bits : u64) -> ObjectType{
-        if type_bits > 2 >> 63{
-            ObjectType::Slice((type_bits&(2>>62)) as bool, type_bits &!(2>>63+2>>64))
+        if (type_bits & IS_SLICE_BIT) != 0{
+            ObjectType::Slice((type_bits & IS_PTR_SLICE_BIT) != 0,// check that 63th bit is bool.
+                              type_bits &!(IS_PTR_SLICE_BIT & IS_SLICE_BIT))// remove 63th and 64th bits to get the size
         } else {
             ObjectType::object(type_bits)
         }
     }
+    /// Reads the bytes into an array, turn it into a vector of bools then
+    pub fn object(type_bits : u64) -> ObjectType{
+        let mut bits = (0..64)
+            .filter(|id| (type_bits & (2u64.pow((*id) as u32))) != 0 )
+            .collect::<Vec<usize>>();
+        let last = bits.pop().expect("objects should have sizes...");
+        ObjectType::Object(bits, last)
+    }
 
+    pub fn get_size(&self) -> usize {
+        match self {
+            &ObjectType::Object(_, s) => s as usize,
+            &ObjectType::Slice(_, s) => s as usize,
+        }
+    }
+
+    pub fn get_pointers(&self) -> Vec<usize>{
+        match self {
+            &ObjectType::Object(ref p, _) => p.clone(),
+            &ObjectType::Slice(b, s) => match b {
+                true => (0..s as usize).collect(),
+                _ => vec![],
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -72,7 +102,7 @@ impl Allocator {
     pub fn new() -> Self {
         Allocator {
             first_hole: 0.0,
-            heap: vec![0.0, MAX_HEAP_SIZE],
+            heap: vec![0.0, MAX_HEAP_SIZE_F64],
         }
     }
     /// Allocate some memory of the required size.
@@ -80,19 +110,22 @@ impl Allocator {
     /// The type must reference an actual type in the "struct_types" table.
     /// Returns the reference to the start of the object's value (not its type).
     pub fn alloc(&mut self, size: usize, type_obj: u64) -> usize {
+        println!("creating type obj : {}", type_obj);
+        let obj = ObjectType::new(type_obj);
+        assert_eq!(size, obj.get_size());
         if size == 0 {
             return 0;
         }
         let mut prev_hole = None;
         let mut next_hole = self.first_hole;
         while !(self.heap[next_hole as usize + 1] == (size as f64 + 1.0)
-            || self.heap[next_hole as usize + 1] == MAX_HEAP_SIZE)
+            || self.heap[next_hole as usize + 1] == MAX_HEAP_SIZE_F64)
             {
                 prev_hole = Some(next_hole);
                 next_hole = self.heap[next_hole as usize];
                 println!("next hole {}", next_hole);
             }
-        if self.heap[next_hole as usize + 1] == MAX_HEAP_SIZE {
+        if self.heap[next_hole as usize + 1] == MAX_HEAP_SIZE_F64 {
             self.extend_heap(size + 1);
             if prev_hole.is_none() {
                 self.first_hole += size as f64 + 1.0;
@@ -130,7 +163,7 @@ impl Allocator {
     /// if b = usize::max_value() then
     /// A ->
     pub fn connect_hole(&mut self, prev: usize, next: usize, size_allocated: usize) {
-        if self.heap[next + 1] == MAX_HEAP_SIZE {
+        if self.heap[next + 1] == MAX_HEAP_SIZE_F64 {
             self.heap[prev] = next as f64 + size_allocated as f64 + 1.0;
         } else {
             self.heap[prev] = self.heap[next];
@@ -144,7 +177,7 @@ impl Allocator {
     /// if b = usize::max_value() then
     /// A ->
     pub fn connect_first(&mut self, next: usize, size_allocated: usize) {
-        if self.heap[next + 1] == MAX_HEAP_SIZE {
+        if self.heap[next + 1] == MAX_HEAP_SIZE_F64 {
             self.first_hole = next as f64 + size_allocated as f64 + 1.0;
         } else {
             self.first_hole = self.heap[next];
@@ -174,28 +207,69 @@ impl Allocator {
         self.heap[adress]
     }
     /// returns the heap
-    pub fn heap(&self)-> &Vec<f64>{
-        &self.heap
+    /// Everything is casted to an u64
+    /// The object types are converted to u64 using from_bytes to keep the bitpattern unchanged.
+    pub fn heap(&self)-> Vec<u64>{
+        let allocated = self.get_objects();
+        println!("\n\n\nallocated are : {:?}", allocated);
+        let mut to_ret = vec![];
+        let mut starting_point = 0;
+        for target in allocated.into_iter() {
+            println!("starting point is : {} and target : {}", starting_point, target);
+            for i in starting_point..target {
+                to_ret.push(self.heap[i] as u64)
+            }
+            to_ret.push(f64::to_bits(self.heap[target]));
+            starting_point = target+1;
+        }
+        for i in starting_point..self.heap.len(){
+            to_ret.push(self.heap[i] as u64);
+        }
+        to_ret
     }
     /// Returns the positions in the heap of the allocated objects.
     /// The objects are stored in the following form :
     /// | type of obj | first 64bits of obj | second 64bits | ...
     /// When the GC removes memory, create a hole at the oject place :
     /// | next hole adress | size of hole | .. | ...
-    pub fn get_objects(&self) -> &Vec<usize>{
+    ///
+    /// We run through the objects between the holes until reaching the end node marking the end
+    /// of the heap.
+    pub fn get_objects(&self) -> Vec<usize>{
         let mut objects = vec![];
         let mut current_pos = 0usize;
-        let mut next_hole = self.first_hole as usize;
+        println!("holes : {:?}", self.get_holes());
+        let mut holes = self.get_holes().into_iter();
+        let mut next_hole = holes.next().unwrap();
         loop {
+            println!("current pos : {}, next_hole : {}", current_pos, next_hole);
             if current_pos == next_hole{
-                next_hole = self.heap[current_pos] as usize;
-                current_pos+=self.heap[current_pos+1] as usize;
+                if let Some(next) = holes.next() {
+                    current_pos += self.heap[current_pos + 1] as usize;
+                    next_hole = next;
+                } else {
+                    break;
+                }
             } else {
-
+                objects.push(current_pos);
+                let obj = ObjectType::new(f64::to_bits(self.heap[current_pos]));
+                current_pos+= obj.get_size()+1; // add 1 for the type descriptor.
             }
-            objects.push(current_pos);
         }
-        unimplemented!()
+        objects
+    }
+
+    /// Returns a list of the positions of the holes in the heap.
+    pub fn get_holes(&self) -> Vec<usize>{
+        let mut holes = BinaryHeap::new();
+        let mut next_hole = self.first_hole as usize;
+        holes.push(next_hole);
+        while self.heap[next_hole+1]!= MAX_HEAP_SIZE_F64{
+            println!("next hole : {}", next_hole);
+            next_hole = self.heap[next_hole] as usize;
+            holes.push(next_hole);
+        }
+        holes.into_sorted_vec()
     }
 
     /// given a vec of references to objects,
@@ -214,46 +288,46 @@ mod tests_allocator {
     #[test]
     fn test_alloc_extend() {
         let mut alloc = Allocator::new();
-        assert_eq!(alloc.heap, vec![0.0, MAX_HEAP_SIZE]);
-        alloc.alloc(3, 1);
-        // size 3 obj | empty | empy | empty | hole | hole size |
+        assert_eq!(alloc.heap(), vec![0, MAX_HEAP_SIZE]);
+        alloc.alloc(3, 8); // object with no pointers of size 3
+        // size 3 obj | empty | empty | empty | hole | hole size |
         assert_eq!(
-            alloc.heap,
-            vec![1.0, MAX_HEAP_SIZE, 0.0, 0.0, 0.0, MAX_HEAP_SIZE]
+            alloc.heap(),
+            vec![8, MAX_HEAP_SIZE, 0, 0, 0, MAX_HEAP_SIZE]
         );
         assert_eq!(alloc.first_hole, 4.0);
         alloc.alloc(1, 2);
         assert_eq!(
-            alloc.heap,
+            alloc.heap(),
             vec![
-                1.0,
+                8,
                 MAX_HEAP_SIZE,
-                0.0,
-                0.0,
-                2.0,
+                0,
+                0,
+                2,
                 MAX_HEAP_SIZE,
-                0.0,
+                0,
                 MAX_HEAP_SIZE,
             ]
         );
         assert_eq!(alloc.first_hole, 6.0);
-        alloc.alloc(5, 3);
+        alloc.alloc(5, 32);
         assert_eq!(
-            alloc.heap,
+            alloc.heap(),
             vec![
-                1.0,
+                8,
                 MAX_HEAP_SIZE,
-                0.0,
-                0.0,
-                2.0,
+                0,
+                0,
+                2,
                 MAX_HEAP_SIZE,
-                3.0,
+                32,
                 MAX_HEAP_SIZE,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
+                0,
+                0,
+                0,
+                0,
+                0,
                 MAX_HEAP_SIZE,
             ]
         );
@@ -263,44 +337,44 @@ mod tests_allocator {
     #[test]
     fn test_free() {
         let mut alloc = Allocator::new();
-        let first = alloc.alloc(3, 1);
-        let sec = alloc.alloc(2, 1);
+        let first = alloc.alloc(3, 8);
+        let sec = alloc.alloc(2, 4);
         println!("first : {}", first);
         alloc.free(first, 3 + 1);
         assert_eq!(
-            alloc.heap,
-            vec![7.0, 4.0, 0.0, 0.0, 1.0, MAX_HEAP_SIZE, 0.0, 0.0, MAX_HEAP_SIZE]
+            alloc.heap(),
+            vec![7, 4, 0, 0, 4, MAX_HEAP_SIZE, 0, 0, MAX_HEAP_SIZE]
         );
         alloc.free(sec, 2 + 1);
-        assert_eq!(alloc.heap, vec![7.0, 4.0, 0.0, 0.0, 0.0, 3.0, 0.0, 0.0, MAX_HEAP_SIZE]);
+        assert_eq!(alloc.heap(), vec![7, 4, 0, 0, 0, 3, 0, 0, MAX_HEAP_SIZE]);
         assert_eq!(alloc.first_hole, 4.0);
     }
 
     #[test]
     fn test_alloc_after_free() {
         let mut alloc = Allocator::new();
-        let first = alloc.alloc(3, 1);
-        alloc.alloc(2, 1);
+        let first = alloc.alloc(3, 8);
+        alloc.alloc(2, 4);
         alloc.free(first, 3 + 1);
-        println!("fail here \n\n{}\n{:?}\n\n", alloc.first_hole, alloc.heap);
-        alloc.alloc(5, 2);
+        println!("fail here \n\n{}\n{:?}\n\n", alloc.first_hole, alloc.heap());
+        alloc.alloc(5, 32);
         assert_eq!(
-            alloc.heap,
+            alloc.heap(),
             vec![
-                13.0,
-                4.0,
-                0.0,
-                0.0,
-                1.0,
+                13,
+                4,
+                0,
+                0,
+                4,
                 MAX_HEAP_SIZE,
-                0.0,
-                2.0,
+                0,
+                32,
                 MAX_HEAP_SIZE,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
+                0,
+                0,
+                0,
+                0,
+                0,
                 MAX_HEAP_SIZE,
             ]
         );
@@ -309,30 +383,30 @@ mod tests_allocator {
     #[test]
     fn test_alloc_fil_first_hole() {
         let mut alloc = Allocator::new();
-        let first = alloc.alloc(3, 1);
-        let _sec = alloc.alloc(2, 1);
+        let first = alloc.alloc(3, 8);
+        let _sec = alloc.alloc(2, 4);
         alloc.free(first, 3 + 1);
         println!("fail here \n\n{}\n{:?}\n\n", alloc.first_hole, alloc.heap);
-        alloc.alloc(3, 2);
+        alloc.alloc(3, 8);
         println!("first hole : {}", alloc.first_hole);
         assert_eq!(
-            alloc.heap,
-            vec![2.0, 4.0, 0.0, 0.0, 1.0, MAX_HEAP_SIZE, 0.0, 0.0, MAX_HEAP_SIZE]
+            alloc.heap(),
+            vec![8, 4, 0, 0, 4, MAX_HEAP_SIZE, 0, 0, MAX_HEAP_SIZE]
         );
     }
 
     #[test]
     fn test_alloc_fil_second_hole() {
         let mut alloc = Allocator::new();
-        let first = alloc.alloc(2, 1);
-        let sec = alloc.alloc(3, 1);
+        let first = alloc.alloc(2, 4);
+        let sec = alloc.alloc(3, 8);
         alloc.free(sec, 3 + 1);
         alloc.free(first, 2 + 1);
         println!("fail here \n\n{}\n{:?}\n\n", alloc.first_hole, alloc.heap);
         println!("first hole : {}", alloc.first_hole);
         // first is before the 3. link to 0
-        assert_eq!(alloc.heap, vec![3.0, 3.0, 0.0, 7.0, 4.0, 0.0, 0.0, 0.0, MAX_HEAP_SIZE]);
-        alloc.alloc(3, 2);
-        assert_eq!(alloc.heap, vec![7.0, 3.0, 0.0, 2.0, 4.0, 0.0, 0.0, 0.0, MAX_HEAP_SIZE]);
+        assert_eq!(alloc.heap(), vec![3, 3, 0, 7, 4, 0, 0, 0, MAX_HEAP_SIZE]);
+        alloc.alloc(3, 8);
+        assert_eq!(alloc.heap(), vec![7, 3, 0, 8, 4, 0, 0, 0, MAX_HEAP_SIZE]);
     }
 }

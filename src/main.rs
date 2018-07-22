@@ -1,4 +1,5 @@
 #![feature(box_patterns)]
+#![feature(int_to_from_bytes)]
 #![deny(missing_docs)]
 #![deny(unused_must_use)]
 //! An interpreter for a language,
@@ -8,7 +9,6 @@ extern crate clap;
 extern crate rand;
 #[macro_use]
 extern crate lazy_static;
-
 extern crate time;
 mod compile;
 //mod compile_req;
