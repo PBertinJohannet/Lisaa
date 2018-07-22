@@ -5,7 +5,9 @@ use std::io::{Write, self};
 //mod gc;
 mod allocator;
 use self::allocator::Allocator;
+pub use self::allocator::{IS_PTR_SLICE_BIT, IS_SLICE_BIT};
 use std::collections::BTreeSet;
+pub const STRING_TYPE : u64 = 6; // size 2 -> 4 + pointer in position 1 -> 2 = 6
 
 #[derive(Debug, Clone)]
 pub enum OP {
@@ -48,7 +50,10 @@ pub enum OP {
     /// correct : Push(1.0) AllocObj Push(1.0) Add
     /// incorrect : Push(1.0), Push(1.0) AllocObj Add.
     /// In the incorrect case the reference is droped and will be freed on the next gc run...
-    AllocObj,
+    /// Takes the memory descriptor of the object to allocate it.
+    AllocObj(u64),
+    /// Allocates a slice, temporary...
+    AllocSlice,
     /// Access the value in the heap and push it to the stack.
     GetHeap,
     /// Take the top of the stack as an adress to the heap and set its value to the second value in
@@ -197,9 +202,9 @@ impl<'a> Vm<'a> {
                 &OP::ToStr => {
                     let top = self.stack.pop().unwrap().to_string();
                     let len = top.len();
-                    let str_index = self.allocator.alloc(2, 1);
+                    let str_index = self.allocator.alloc(2, STRING_TYPE);
                     self.allocator.set_ptr(str_index, len as f64);
-                    let slice_index = self.allocator.alloc(len, 1);
+                    let slice_index = self.allocator.alloc(len, IS_SLICE_BIT+len as u64);
                     self.allocator.set_ptr(str_index+1, slice_index as f64);
                     for (i, ch )in top.chars().enumerate(){
                         self.allocator.set_ptr(slice_index+i, ch as u32 as f64);
@@ -256,10 +261,17 @@ impl<'a> Vm<'a> {
                     }
                     self.stack[self.stack_offset + id] = to_set;
                 }
-                &OP::AllocObj => {
+                &OP::AllocObj(descr) => {
                     self.allocator.run_gc();
                     let size = self.stack.pop().unwrap() as i32 as usize;
-                    let val = self.allocator.alloc(size, 1);
+                    let val = self.allocator.alloc(size, descr);
+                    self.root_references.insert(self.stack.len());
+                    self.stack.push(val as f64);
+                }
+                &OP::AllocSlice => {
+                    self.allocator.run_gc();
+                    let size = self.stack.pop().unwrap() as i32 as usize;
+                    let val = self.allocator.alloc(size, size as u64+IS_SLICE_BIT);
                     self.root_references.insert(self.stack.len());
                     self.stack.push(val as f64);
                 }
@@ -361,7 +373,7 @@ mod tests_vm {
         let source = vec![
             // a = num[]
             OP::PushNum(3.0),
-            OP::AllocObj, // a is at pos 0
+            OP::AllocObj(IS_SLICE_BIT+3), // type : is_slice + size = 3
             // a[0] = 1
             OP::PushNum(1.0), // =1
             OP::Bring(0),     // a
@@ -385,7 +397,7 @@ mod tests_vm {
         vm.run(source);
         println!("heap : {:?}", vm.allocator.heap());
         println!("stack  : {:?}", vm.stack);
-        assert_eq!(vm.allocator.heap(), vec![1, 1, 2, 3, 0, allocator::MAX_HEAP_SIZE]);
+        assert_eq!(vm.allocator.heap(), vec![IS_SLICE_BIT+3, 1, 2, 3, 0, allocator::MAX_HEAP_SIZE]);
     }
     //executes the following :
     // a = obj(size=1)
@@ -396,10 +408,10 @@ mod tests_vm {
         let source = vec![
             // a = obj(size=1)
             OP::PushNum(1.0),
-            OP::AllocObj, // a is at pos 0
+            OP::AllocObj(1+2), // type : 3 because 1 pointer and size 1 (1+2)
             // a.0 = obj(size=2)
             OP::PushNum(2.0), // = obj(size=2)
-            OP::AllocObj,
+            OP::AllocObj(4), // 4 because size 2
             OP::Bring(0),     // a
             OP::PushNum(0.0), // .0
             OP::Add,
@@ -419,7 +431,7 @@ mod tests_vm {
         println!("heap : {:?}", vm.allocator.heap());
         assert_eq!(
             vm.allocator.heap(),
-            vec![1, 3, 1, 7, 0, 0, allocator::MAX_HEAP_SIZE]
+            vec![3, 3, 4, 7, 0, 0, allocator::MAX_HEAP_SIZE]
         );
     }
 }

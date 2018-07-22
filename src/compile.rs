@@ -9,7 +9,7 @@ use statement::{
     WhileStatement,
 };
 use std::collections::HashMap;
-use vm::OP;
+use vm::{OP, IS_SLICE_BIT, IS_PTR_SLICE_BIT, STRING_TYPE};
 
 /// These are unlinked instructions.
 /// the goto (symbol) will be replaced by goto(usize) when the program is completed.
@@ -444,7 +444,7 @@ impl Compiler {
             &LiteralExpr::CHAR(c) => self.emit(OP::PushNum(c as u32 as f64)),
             &LiteralExpr::STRING(ref s) => {
                 // first allocate enough memory :  (2 for string)
-                self.emit_chunks(vec![OP::PushNum(2.0), OP::AllocObj]); // string has type 01 -> 2
+                self.emit_chunks(vec![OP::PushNum(2.0), OP::AllocObj(STRING_TYPE)]); // string is type 6
                 // then set the size.
                 self.emit_chunks(vec![
                     OP::PushCopy,
@@ -455,7 +455,8 @@ impl Compiler {
                 // remember the address of the string.
                 self.emit(OP::PushCopy);
                 // allocates some memory for the slice. stack : ( a a s )
-                self.emit_chunks(vec![OP::PushNum(s.len() as f64), OP::AllocObj]);
+                self.emit_chunks(vec![OP::PushNum(s.len() as f64),
+                                      OP::AllocObj(IS_SLICE_BIT+s.len() as u64)]);
                 // fill the slice.
                 for (id, ch) in s.chars().enumerate() {
                     self.emit_chunks(vec![

@@ -41,7 +41,7 @@ impl NativeFunc for FunctionDecl {
                 name: "newslice".to_owned(),
                 type_args: vec![],
                 args: vec![TypedVar::new(LisaaType::Num, "n".to_string())],
-                scope: Statement::Native(vec![OP::AllocObj]),
+                scope: Statement::Native(vec![OP::AllocSlice]),
                 ret_type: LisaaType::slice(LisaaType::Any),
             },
             FunctionDecl {

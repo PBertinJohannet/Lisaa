@@ -1,6 +1,9 @@
-create an option onto where to write (a writer ref in the vm maybe).
-By default in stdout.
+problem : 
+	need information about the parameters to compile slice.
+hmmm
+how do we plan the compilation already ?
+have a list of parameters needed.
+have a list of associated functions to compile : 
 
-Then use it to test in a test crate.
-Then write tests for basic things.
-
+eg params : U, T
+func : method<U, T>, metho2<U, U> etc...

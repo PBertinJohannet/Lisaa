@@ -94,13 +94,13 @@ impl ClassDecl {
     }
     /// Returns the type of object, this is a number between 0 and 64 for which the bits represents
     /// the positions of the pointers.
-    /// eg (int, ptr, int, char, ptr) would be 01001 -> 17
-    pub fn get_mem_descriptor(&self) -> i64{
+    /// eg (int, ptr, int, char, ptr) would be 010011 -> 2+16+32 => 50
+    pub fn get_mem_descriptor(&self) -> u64{
         self.attributes.iter().enumerate()
             .filter(|(i, a)|a.val_type() != &LisaaType::Num
                 && a.val_type() != &LisaaType::Char)
-            .map(|(i, a)|1 as i64 >>(i as i64))
-            .sum()
+            .map(|(id, a)|2u64.pow(id as u32))
+            .sum::<u64>() + 2u64.pow(self.attributes.len() as u32)
     }
     /// Returns the name of the class.
     pub fn name(&self) -> &String {
@@ -143,7 +143,7 @@ impl ClassDecl {
         let len = self.attributes.len();
         scope.push(Statement::Native(vec![
             OP::PushNum(len as f64),
-            OP::AllocObj,
+            OP::AllocObj(self.get_mem_descriptor()),
         ]));
         for i in 0..len {
             scope.push(Statement::Native(vec![

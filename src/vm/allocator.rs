@@ -58,7 +58,7 @@ impl ObjectType {
     pub fn new(type_bits : u64) -> ObjectType{
         if (type_bits & IS_SLICE_BIT) != 0{
             ObjectType::Slice((type_bits & IS_PTR_SLICE_BIT) != 0,// check that 63th bit is bool.
-                              type_bits &!(IS_PTR_SLICE_BIT & IS_SLICE_BIT))// remove 63th and 64th bits to get the size
+                              type_bits &!(IS_PTR_SLICE_BIT | IS_SLICE_BIT))// remove 63th and 64th bits to get the size
         } else {
             ObjectType::object(type_bits)
         }
