@@ -1,29 +1,29 @@
-// Parsing traits after the =
-// Trait = Trait (+ trait) * | {  (method (+ method)?)* }
-Trait Add = {
-    add(Self, Self)->Self;
+Trait Add = {method add(Self) -> Self;};
+Trait Neg = {method neg() -> Self;};
+Trait AddAndNeg = Add + Neg + {method and(Self) -> Self;}
+
+method minus<T : AddAndNeg>(T a) -> T of T{
+    return self + a.neg();
 }
 
-Class Point {
-    num x = 10;
-    num y = 10;
+// When checking if Int is AddAndNeg it will recursively check if it implements any of the required traits.
+// Add -> ok
+// Neg -> ok
+// AddAndNeg -> ok
+Class Int {
+    num val = 1;
+}
+method add(Int a) -> Int of Int {
+    return self.val + a.val;
+}
+method and(Int a) -> Int of Int {
+    return self.val & a.val;
+}
+method neg() -> Int of Int {
+    return -self.val;
 }
 
-method add(Point a) -> Point of Point {
-    Point ret = Point();
-    ret.
-}
-
-// Parsing type parameters goes as follow :
-// TypeParam = name : Trait
-// The generic type must appear in the signature (params or ret), else throw an error.
-method sumThree<U : Add>(U a, U b, Uc) -> U {
-    return a + b + c;
-}
-
-fn main()-> num{
-    // must have a Trait type in LisaaType wich checks only the constraints.
-    // here it would try to find the generics from the signatue :
-    // first arg is U and Point so U = Point.
-	sumThree(Point(), Point(), Point());
+fn main(){
+    Int a = Int();
+    Int b = a.minus(Int());
 }
