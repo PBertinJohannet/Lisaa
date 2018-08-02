@@ -3,7 +3,7 @@
 use expression::{Expr, Operator};
 use statement::{
     Assignment, ClassDecl, Declaration, Element, FunctionDecl, IfStatement, Program,
-    Statement, WhileStatement,
+    Statement, WhileStatement, FunctionSig, TraitDecl
 };
 use std::collections::HashMap;
 use std::fmt;
@@ -69,6 +69,7 @@ impl Parser {
         let mut functions = HashMap::new();
         let mut classes = HashMap::new();
         let mut imports = Vec::new();
+        let mut traits = HashMap::new();
         while !self.is_at_end() {
             match self.element() {
                 Ok(Element::Function(e)) => {
@@ -82,6 +83,10 @@ impl Parser {
                 Ok(Element::Import(s)) => {
                     imports.push(s);
                 }
+                Ok(Element::Trait(t)) => {
+                    let name = t.name().to_string();
+                    traits.insert(name, t);
+                }
                 Err(e) => fails.push(ParseError::new(self.previous(), e)),
             }
             if fails.len() != 0 {
@@ -90,7 +95,7 @@ impl Parser {
         }
 
         if fails.is_empty() {
-            Ok((Program::new(functions, classes), imports))
+            Ok((Program::new(functions, classes, traits), imports))
         } else {
             Err(fails)
         }
@@ -103,6 +108,7 @@ impl Parser {
             &TokenType::CLASS => Ok(Element::Class(self.parse_class_decl()?)),
             &TokenType::METHOD => Ok(Element::Function(self.parse_method_decl()?)),
             &TokenType::IMPORT => Ok(Element::Import(self.parse_import()?)),
+            &TokenType::TRAIT => Ok(Element::Trait(self.parse_trait()?)),
             _ => Err("error : expected function or class declaration there".to_string()),
         }
     }
@@ -119,21 +125,61 @@ impl Parser {
         return Ok(to_import.clone())
     }
 
+    /// Parses a trait declaration of the following form :
+    /// trait A = B + method actually(num c) -> Self
+    pub fn parse_trait(&mut self) -> Result<TraitDecl, String>{
+        // skip the trait keyword
+        self.advance();
+        let name = self.expect_ident(" trait ")?;
+        self.expect(TokenType::EQUAL)?;
+        let (traits, funcs) = self.parse_trait_expr()?;
+        self.expect(TokenType::SEMICOLON)?;
+        Ok(TraitDecl::new(name, traits, funcs))
+    }
+
+    pub fn parse_trait_expr(&mut self) -> Result<(Vec<String>, HashMap<String, FunctionSig>), String>{
+        let mut methods = HashMap::new();
+        let mut traits = vec![];
+        {
+            let mut get_next = |clo_self: &mut Self| match clo_self.peek().get_type().clone() {
+                TokenType::IDENTIFIER => Ok(traits.push(clo_self.advance().get_lexeme().to_string())),
+                TokenType::METHOD => Ok({
+                    let (name, meth) = clo_self.parse_signature()?;
+                    methods.insert(name, meth);
+                }),
+                e => Err(format!("expected : identifier or method, got : {:?}", e)),
+            };
+            get_next(self)?;
+            while self.peek().get_type() == &TokenType::COMMA {
+                self.advance();
+                get_next(self)?;
+            }
+        }
+        Ok((traits, methods))
+    }
+
+    pub fn parse_signature(&mut self) -> Result<(String, FunctionSig), String> {
+        self.advance();
+        let name = self.expect_ident("method")?;
+        let type_parameters = self.parse_type_list()?;
+        let mut arguments = self.parse_unnamed_args()?;
+        let return_type = self.func_return_type()?;
+        Ok((name, FunctionSig::new(type_parameters, arguments, return_type)))
+    }
+
+    pub fn parse_unnamed_args(&mut self) -> Result<Vec<TypedVar>, String>{
+
+    }
+
     pub fn parse_method_decl(&mut self) -> Result<FunctionDecl, String> {
         self.advance();
         // skip the func keyword
-        let name = match self.check(&TokenType::IDENTIFIER) {
-            true => self.advance().get_lexeme().to_string(),
-            false => return Err("Expected identifier after method".to_string()),
-        };
+        let name =  self.expect_ident("method")?;
         let type_parameters = self.parse_type_list()?;
         let arguments = self.func_args()?;
         let return_type = self.func_return_type()?;
         self.expect(TokenType::OF)?;
-        let class_name = match self.check(&TokenType::IDENTIFIER) {
-            true => self.advance().get_lexeme().to_string(),
-            false => return Err("Expected class name after of".to_string()),
-        };
+        let class_name =  self.expect_ident("of")?;
         let scope = self.scope()?;
         let mut res = FunctionDecl::new(
             format!("{}::{}", class_name, name),
@@ -149,10 +195,7 @@ impl Parser {
     pub fn parse_class_decl(&mut self) -> Result<ClassDecl, String> {
         self.advance();
         // skip the func keyword
-        let name = match self.check(&TokenType::IDENTIFIER) {
-            true => self.advance().get_lexeme().to_string(),
-            false => return Err("Expected identifier after class".to_string()),
-        };
+        let name =  self.expect_ident("class")?;
         self.expect(TokenType::LeftCurlyBrace)?;
         let mut attrs = vec![];
         while self.peek().get_type() != &TokenType::RightCurlyBrace {
@@ -169,10 +212,7 @@ impl Parser {
 
     pub fn parse_function_decl(&mut self) -> Result<FunctionDecl, String> {
         self.advance(); // skip the func keyword
-        let name = match self.check(&TokenType::IDENTIFIER) {
-            true => self.advance().get_lexeme().to_string(),
-            false => return Err("Expected identifier after function".to_string()),
-        };
+        let name = self.expect_ident("function")?;
         let type_parameters = self.parse_type_list()?;
         let arguments = self.func_args()?;
         let return_type = self.func_return_type()?;
@@ -186,33 +226,52 @@ impl Parser {
         ))
     }
 
+    pub fn expect_ident(&mut self, after : &'static str) -> Result<String, String> {
+        if self.check(&TokenType::IDENTIFIER) {
+            Ok(self.advance().get_lexeme().to_string())
+        } else {
+            Err(format!("Expected identifier after {}", after))
+        }
+    }
+
+    /// Parses the list of type parameters in the function
+    /// eg : the T : Add, E : Mul
+    /// in fn ok<T : Add, E : Mul>(a T) -> E
     pub fn parse_type_list(&mut self) -> Result<Vec<String>, String> {
-        let mut args = vec![];
         match self.peek().is_type(&TokenType::LESS) {
             true => {
-                self.advance();
-                loop {
-                    match self.peek().get_type().clone() {
-                        TokenType::GREATER => break,
-                        TokenType::IDENTIFIER => {
-                            args.push(self.advance().get_lexeme().to_string());
-                            match self.peek().get_type() {
-                                TokenType::GREATER => break,
-                                TokenType::COMMA => {
-                                    self.advance();
-                                }
-                                _ => Err("expected > or comma".to_string())?,
-                            }
-                        }
-                        other => Err(format!("Expected > or type parameter got {:?}", other))?,
-                    }
-                }
-                self.expect(TokenType::GREATER)?;
-                Ok(args)
+                self.parse_comma_separated_traits()
             }
             false => Ok(vec![]),
         }
     }
+
+    /// Parses something like this :
+    /// T : Add, E : Mul, A : Mul + method add(Self) -> Self
+    pub fn parse_comma_separated_traits(&mut self) -> Result<Vec<String>, String> {
+        let mut args = vec![];
+        self.advance();
+        loop {
+            match self.peek().get_type().clone() {
+                TokenType::GREATER => break,
+                TokenType::IDENTIFIER => {
+                    args.push(self.advance().get_lexeme().to_string());
+                    match self.peek().get_type() {
+                        TokenType::GREATER => break,
+                        TokenType::COMMA => {
+                            self.advance();
+                        }
+                        _ => Err("expected > or comma".to_string())?,
+                    }
+                }
+                other => Err(format!("Expected > or type parameter got {:?}", other))?,
+            }
+        }
+        self.expect(TokenType::GREATER)?;
+        Ok(args)
+    }
+
+    //pub fn parse_trait_assignment(&mut self) ->
 
     /// Parses the return type of a function.
     pub fn func_return_type(&mut self) -> Result<LisaaType, String> {

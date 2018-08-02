@@ -78,6 +78,10 @@ pub enum TokenType {
     OF,
     /// The of keyword, used to specify which class a method references.
     METHOD,
+    /// The of keyword, used to specify which class a method references.
+    BIGSELF,
+    /// A trait representing the functions implemented.
+    TRAIT,
     /// The class keyword, not used yet
     ELSE,
     /// The class keyword, not used yet

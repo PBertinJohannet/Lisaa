@@ -10,6 +10,7 @@ use vm::OP;
 pub struct Program {
     functions: HashMap<String, FunctionDecl>,
     classes: HashMap<String, ClassDecl>,
+    traits : HashMap<String, TraitDecl>,
 }
 impl Program {
     /// Creates an empty program.
@@ -17,13 +18,15 @@ impl Program {
         Program {
             functions : HashMap::new(),
             classes : HashMap::new(),
+            traits : HashMap::new(),
         }
     }
     /// Creates a new program with the given classes and functions.
-    pub fn new(funcs: HashMap<String, FunctionDecl>, classes: HashMap<String, ClassDecl>) -> Self {
+    pub fn new(funcs: HashMap<String, FunctionDecl>, classes: HashMap<String, ClassDecl>, traits : HashMap<String, TraitDecl>) -> Self {
         Program {
             functions: funcs,
             classes: classes,
+            traits : traits,
         }
     }
     /// Get the classes in the program.
@@ -47,7 +50,7 @@ impl Program {
         }
     }
     /// Merges this program with an other.
-    pub fn merge(&mut self, Program{functions, classes} : Program) -> Result<(), String>{
+    pub fn merge(&mut self, Program{functions, classes, traits} : Program) -> Result<(), String>{
         for func in functions{
             if self.functions.get(&func.0).is_some(){
                 return Err(format!("function already exists : {}", func.0))
@@ -75,7 +78,33 @@ pub enum Element {
     Class(ClassDecl),
     /// Import a module
     Import(String),
+    /// declares a trait
+    Trait(TraitDecl),
 }
+
+/// A trait declaration
+#[derive(Debug, Clone)]
+pub struct TraitDecl {
+    name : String,
+    sub_traits : Vec<String>,
+    methods : HashMap<String, FunctionSig>
+}
+
+impl TraitDecl {
+    /// Creates a new trait decl with the given name, sub traits and methods
+    pub fn new(name : String, sub_traits : Vec<String>, methods : HashMap<String, FunctionSig>) -> Self{
+        TraitDecl {
+            name : name,
+            sub_traits : sub_traits,
+            methods : methods,
+        }
+    }
+    /// Returns the name of the class.
+    pub fn name(&self) -> &String {
+        &self.name
+    }
+}
+
 
 /// A class declaration
 #[derive(Debug, Clone)]
@@ -122,10 +151,8 @@ impl ClassDecl {
         FunctionDecl {
             self_type: None,
             name: self.name.clone(),
-            args: vec![],
-            type_args: vec![],
+            signature : FunctionSig::new(vec![], vec![], LisaaType::Class(self.name.clone())),
             inline: false,
-            ret_type: LisaaType::Class(self.name.clone()),
             scope: self.create_constructor_scope(),
         }
     }
@@ -166,22 +193,45 @@ impl ClassDecl {
 
 /// A function declaration
 #[derive(Debug, Clone)]
+pub struct FunctionSig {
+    /// The type parameters of the function <Y, U, T>
+    pub type_args: Vec<String>,
+    /// The arguments taken by the function
+    pub args: Vec<TypedVar>,
+    /// The return type of the function.
+    pub ret_type: LisaaType,
+}
+impl FunctionSig {
+    /// Creates a new function signature.
+    pub fn new(type_args : Vec<String>, args : Vec<TypedVar>, ret_type : LisaaType) -> Self {
+        FunctionSig {
+            type_args : type_args,
+            args : args,
+            ret_type : ret_type,
+        }
+    }
+
+    ///
+    pub fn is_equivalent_to(&self, other : FunctionSig) -> bool {
+        unimplemented!()
+    }
+}
+
+
+/// A function declaration
+#[derive(Debug, Clone)]
 pub struct FunctionDecl {
     /// Tells is the function is inline, if it is there are no return and goto instruction,
     /// The return value will simply be put on the top of the stack.
     pub inline: bool,
     /// The name of the function.
     pub name: String,
-    /// The type parameters of the function <Y, U, T>
-    pub type_args: Vec<String>,
-    /// The arguments taken by the function
-    pub args: Vec<TypedVar>,
     /// The scope of the function, the statement inside it.
     pub scope: Statement,
-    /// The return type of the function.
-    pub ret_type: LisaaType,
     /// If the function is a method, the type of self.
     pub self_type: Option<LisaaType>,
+    /// The signature of the function
+    pub signature : FunctionSig,
 }
 
 impl FunctionDecl {
@@ -196,11 +246,28 @@ impl FunctionDecl {
         FunctionDecl {
             inline: false,
             name: name,
-            type_args: type_args,
-            args: args,
+            signature : FunctionSig::new(type_args, args, ret_type),
             scope: scope,
-            ret_type: ret_type,
             self_type: None,
+        }
+    }
+
+    /// Creates a new function declaration.
+    pub fn new_complete(
+        self_type: Option<LisaaType>,
+        inline: bool,
+        name: String,
+        type_args: Vec<String>,
+        args: Vec<TypedVar>,
+        scope: Statement,
+        ret_type: LisaaType,
+    ) -> Self {
+        FunctionDecl {
+            self_type: self_type,
+            inline: inline,
+            name: name,
+            signature : FunctionSig::new(type_args, args, ret_type),
+            scope: scope,
         }
     }
     /// set the type of the "self" if it is a method.
@@ -209,7 +276,7 @@ impl FunctionDecl {
     }
     /// returns the return type of the function.
     pub fn ret_type(&self) -> &LisaaType {
-        &self.ret_type
+        &self.signature.ret_type
     }
     /// Returns the name of the function.
     pub fn name(&self) -> &String {
@@ -218,12 +285,12 @@ impl FunctionDecl {
     /// Returns the arguments of a function.
     #[allow(dead_code)]
     pub fn type_args(&self) -> &Vec<TypedVar> {
-        &self.args
+        &self.signature.args
     }
     /// Returns the arguments of a function.
     #[allow(dead_code)]
     pub fn args(&self) -> &Vec<TypedVar> {
-        &self.args
+        &self.signature.args
     }
     /// Returns the scope of the function.
     /// TODO : this unwrap ?

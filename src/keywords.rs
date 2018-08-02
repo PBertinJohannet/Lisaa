@@ -15,6 +15,8 @@ lazy_static! {
         m.insert("fn",     TokenType::FUN);
         m.insert("import", TokenType::IMPORT);
         m.insert("method", TokenType::METHOD);
+        m.insert("trait",  TokenType::TRAIT);
+        m.insert("Self",   TokenType::BIGSELF);
         m.insert("of",     TokenType::OF);
         m.insert("if",     TokenType::IF);
         m.insert("nil",    TokenType::NIL);

@@ -1,0 +1,6 @@
+trait Add = {method add(Self) -> Self;};
+trait Minus = {method minus(Self) -> Self;};
+trait Mul = {method times(Self) -> Self;};
+trait Div = {method divide(Self) -> Self;};
+
+trait BaseMath = Add + Minus + Mul + Div;

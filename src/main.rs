@@ -41,7 +41,7 @@ fn main() {
             Arg::with_name("INPUT")
                 .index(1)
                 .help("the file to run")
-                .default_value("test.lisaa")
+                .default_value("type_params.lisaa")
                 .required(true),)
         .arg(
             Arg::with_name("VERBOSE")

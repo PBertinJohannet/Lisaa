@@ -1,29 +1,9 @@
-Trait Add = {method add(Self) -> Self;};
-Trait Neg = {method neg() -> Self;};
-Trait AddAndNeg = Add + Neg + {method and(Self) -> Self;}
+trait Add = method add(Self) -> Self
 
-method minus<T : AddAndNeg>(T a) -> T of T{
-    return self + a.neg();
-}
-
-// When checking if Int is AddAndNeg it will recursively check if it implements any of the required traits.
-// Add -> ok
-// Neg -> ok
-// AddAndNeg -> ok
-Class Int {
-    num val = 1;
-}
-method add(Int a) -> Int of Int {
-    return self.val + a.val;
-}
-method and(Int a) -> Int of Int {
-    return self.val & a.val;
-}
-method neg() -> Int of Int {
-    return -self.val;
-}
+//fn add3<T : Add>(T a, T b, T c) -> T {
+//    return a + b + c;
+//}
 
 fn main(){
-    Int a = Int();
-    Int b = a.minus(Int());
+    add3(1, 2, 3).toString().println();
 }
