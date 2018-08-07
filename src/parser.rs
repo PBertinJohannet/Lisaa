@@ -2,8 +2,8 @@
 //! currently only contains enough to parse expressions and return parse errors.
 use expression::{Expr, Operator};
 use statement::{
-    Assignment, ClassDecl, Declaration, Element, FunctionDecl, IfStatement, Program,
-    Statement, WhileStatement, FunctionSig, TraitDecl, TypeParam,
+    Assignment, ClassDecl, Declaration, Element, FunctionDecl, FunctionSig, IfStatement, Program,
+    Statement, TraitDecl, TypeParam, WhileStatement,
 };
 use std::collections::HashMap;
 use std::fmt;
@@ -75,11 +75,11 @@ impl Parser {
                 Ok(Element::Function(e)) => {
                     let name = e.name().to_string();
                     functions.insert(name, e);
-                },
+                }
                 Ok(Element::Class(c)) => {
                     let name = c.name().to_string();
                     classes.insert(name, c);
-                },
+                }
                 Ok(Element::Import(s)) => {
                     imports.push(s);
                 }
@@ -113,21 +113,21 @@ impl Parser {
         }
     }
 
-    pub fn parse_import(&mut self) -> Result<String, String>{
+    pub fn parse_import(&mut self) -> Result<String, String> {
         // skip the import keyword
         self.advance();
         let mut to_import = self.advance().get_lexeme().to_owned();
-        while self.peek().is_type(&TokenType::SLASH){
+        while self.peek().is_type(&TokenType::SLASH) {
             self.advance();
             to_import.push('/');
             to_import.push_str(self.advance().get_lexeme())
         }
-        return Ok(to_import.clone())
+        return Ok(to_import.clone());
     }
 
     /// Parses a trait declaration of the following form :
     /// trait A = B + method actually(num c) -> Self
-    pub fn parse_trait(&mut self) -> Result<TraitDecl, String>{
+    pub fn parse_trait(&mut self) -> Result<TraitDecl, String> {
         // skip the trait keyword
         self.advance();
         let name = self.expect_ident(" trait ")?;
@@ -139,12 +139,16 @@ impl Parser {
 
     /// Parses a trait's signature, eg :
     /// B + method actually(num c) -> Self
-    pub fn parse_trait_expr(&mut self) -> Result<(Vec<String>, HashMap<String, FunctionSig>), String>{
+    pub fn parse_trait_expr(
+        &mut self,
+    ) -> Result<(Vec<String>, HashMap<String, FunctionSig>), String> {
         let mut methods = HashMap::new();
         let mut traits = vec![];
         {
             let mut get_next = |clo_self: &mut Self| match clo_self.peek().get_type().clone() {
-                TokenType::IDENTIFIER => Ok(traits.push(clo_self.advance().get_lexeme().to_string())),
+                TokenType::IDENTIFIER => {
+                    Ok(traits.push(clo_self.advance().get_lexeme().to_string()))
+                }
                 TokenType::METHOD => Ok({
                     let (name, meth) = clo_self.parse_signature()?;
                     methods.insert(name, meth);
@@ -168,18 +172,23 @@ impl Parser {
         let type_parameters = self.parse_type_list()?;
         let mut arguments = self.parse_unnamed_args()?;
         let return_type = self.func_return_type()?;
-        Ok((name, FunctionSig::new(type_parameters, arguments, return_type)))
+        Ok((
+            name,
+            FunctionSig::new(type_parameters, arguments, return_type),
+        ))
     }
 
     /// Parses a list of unnamed arguments eg :
     /// (num, Point, String, num)
     /// can also match the keyword Self
-    pub fn parse_unnamed_args(&mut self) -> Result<Vec<TypedVar>, String>{
+    pub fn parse_unnamed_args(&mut self) -> Result<Vec<TypedVar>, String> {
         self.expect(TokenType::LeftParen)?;
         let mut types = vec![];
-        while self.peek().get_type() == &TokenType::IDENTIFIER || self.peek().get_type() == &TokenType::BIGSELF {
+        while self.peek().get_type() == &TokenType::IDENTIFIER
+            || self.peek().get_type() == &TokenType::BIGSELF
+        {
             types.push(TypedVar::new(self.parse_type()?, "".to_string()));
-            self.advance();// parse comma or closing paren;
+            self.advance(); // parse comma or closing paren;
         }
         Ok(types)
     }
@@ -187,12 +196,12 @@ impl Parser {
     pub fn parse_method_decl(&mut self) -> Result<FunctionDecl, String> {
         self.advance();
         // skip the func keyword
-        let name =  self.expect_ident("method")?;
+        let name = self.expect_ident("method")?;
         let type_parameters = self.parse_type_list()?;
         let arguments = self.func_args()?;
         let return_type = self.func_return_type()?;
         self.expect(TokenType::OF)?;
-        let class_name =  self.expect_ident("of")?;
+        let class_name = self.expect_ident("of")?;
         let scope = self.scope()?;
         let mut res = FunctionDecl::new(
             format!("{}::{}", class_name, name),
@@ -208,7 +217,7 @@ impl Parser {
     pub fn parse_class_decl(&mut self) -> Result<ClassDecl, String> {
         self.advance();
         // skip the func keyword
-        let name =  self.expect_ident("class")?;
+        let name = self.expect_ident("class")?;
         self.expect(TokenType::LeftCurlyBrace)?;
         let mut attrs = vec![];
         while self.peek().get_type() != &TokenType::RightCurlyBrace {
@@ -217,8 +226,12 @@ impl Parser {
             attrs.push(decl);
         }
         self.advance();
-        match attrs.len()>62 {
-            true => Err(format!("Class : {} has {} attributes but maximum is 62", name, attrs.len())),
+        match attrs.len() > 62 {
+            true => Err(format!(
+                "Class : {} has {} attributes but maximum is 62",
+                name,
+                attrs.len()
+            )),
             _ => Ok(ClassDecl::new(name, attrs)),
         }
     }
@@ -239,7 +252,7 @@ impl Parser {
         ))
     }
 
-    pub fn expect_ident(&mut self, after : &'static str) -> Result<String, String> {
+    pub fn expect_ident(&mut self, after: &'static str) -> Result<String, String> {
         if self.check(&TokenType::IDENTIFIER) {
             Ok(self.advance().get_lexeme().to_string())
         } else {
@@ -321,7 +334,7 @@ impl Parser {
             TokenType::BIGSELF => {
                 self.advance();
                 Ok(LisaaType::Class(String::from("Self")))
-            },
+            }
             TokenType::IDENTIFIER => {
                 let ident = self.advance().get_lexeme().to_string();
                 match ident.as_ref() {
@@ -336,7 +349,7 @@ impl Parser {
                     i => Ok(LisaaType::Class(i.to_string())),
                 }
             }
-            _ => Err(String::from("Expected Type or \"Self\" here"))
+            _ => Err(String::from("Expected Type or \"Self\" here")),
         }
     }
 
@@ -423,12 +436,7 @@ impl Parser {
         let repeat = self.statement()?;
         self.expect(TokenType::RightParen)?;
         let inner = self.statement()?;
-        Ok(Statement::for_statement(
-            init,
-            condition,
-            repeat,
-            inner,
-        ))
+        Ok(Statement::for_statement(init, condition, repeat, inner))
     }
 
     /// Parses a scope.

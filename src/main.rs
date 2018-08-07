@@ -14,6 +14,7 @@ mod compile;
 //mod compile_req;
 mod expression;
 mod keywords;
+mod lisaa;
 mod native;
 mod parser;
 mod scanner;
@@ -22,16 +23,15 @@ mod token;
 mod typecheck;
 mod types;
 mod vm;
-mod lisaa;
 
 #[allow(unused_imports)]
-use std::io::{Read, self};
+use std::io::{self, Read};
 
 use clap::{App, Arg};
+use lisaa::Lisaa;
 #[allow(unused_imports)]
 use std::fs::File;
 use std::process::exit;
-use lisaa::Lisaa;
 fn main() {
     let matches = App::new("Lisaa")
         .version("0.0.0")
@@ -42,7 +42,8 @@ fn main() {
                 .index(1)
                 .help("the file to run")
                 .default_value("type_params.lisaa")
-                .required(true),)
+                .required(true),
+        )
         .arg(
             Arg::with_name("VERBOSE")
                 .index(2)
@@ -55,11 +56,13 @@ fn main() {
     let input_file = matches.value_of("INPUT").unwrap();
     let verbose = matches.value_of("VERBOSE").unwrap();
     let mut stdout = io::stdout();
-    exit(match Lisaa::new(input_file.to_owned(), &mut stdout, verbose == "1").run() {
-        Ok(_) => 0,
-        Err(err) => {
-            eprintln!("error: {:?}", err);
-            1
-        }
-    });
+    exit(
+        match Lisaa::new(input_file.to_owned(), &mut stdout, verbose == "1").run() {
+            Ok(_) => 0,
+            Err(err) => {
+                eprintln!("error: {:?}", err);
+                1
+            }
+        },
+    );
 }

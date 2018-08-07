@@ -158,11 +158,13 @@ impl Scanner {
             if self.peek() == '\n' {
                 self.line += 1;
             }
-            chars.push(match self.advance(){
-                '\\' => match self.advance(){
+            chars.push(match self.advance() {
+                '\\' => match self.advance() {
                     'n' => Ok('\n'),
                     't' => Ok('\t'),
-                    c => self.error(format!("unknown escape character : {}", c)).map(|_|'i'),
+                    c => self
+                        .error(format!("unknown escape character : {}", c))
+                        .map(|_| 'i'),
                 }?,
                 c => c,
             });

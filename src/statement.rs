@@ -10,28 +10,36 @@ use vm::OP;
 pub struct Program {
     functions: HashMap<String, FunctionDecl>,
     classes: HashMap<String, ClassDecl>,
-    traits : HashMap<String, TraitDecl>,
+    traits: HashMap<String, TraitDecl>,
 }
 impl Program {
     /// Creates an empty program.
     pub fn empty() -> Self {
         Program {
-            functions : HashMap::new(),
-            classes : HashMap::new(),
-            traits : HashMap::new(),
+            functions: HashMap::new(),
+            classes: HashMap::new(),
+            traits: HashMap::new(),
         }
     }
     /// Creates a new program with the given classes and functions.
-    pub fn new(funcs: HashMap<String, FunctionDecl>, classes: HashMap<String, ClassDecl>, traits : HashMap<String, TraitDecl>) -> Self {
+    pub fn new(
+        funcs: HashMap<String, FunctionDecl>,
+        classes: HashMap<String, ClassDecl>,
+        traits: HashMap<String, TraitDecl>,
+    ) -> Self {
         Program {
             functions: funcs,
             classes: classes,
-            traits : traits,
+            traits: traits,
         }
     }
     /// Get the classes in the program.
     pub fn classes(&self) -> &HashMap<String, ClassDecl> {
         &self.classes
+    }
+    /// Get the functions in the program.
+    pub fn traits(&self) -> &HashMap<String, TraitDecl> {
+        &self.traits
     }
     /// Get the functions in the program.
     pub fn functions(&self) -> &HashMap<String, FunctionDecl> {
@@ -50,17 +58,24 @@ impl Program {
         }
     }
     /// Merges this program with an other.
-    pub fn merge(&mut self, Program{functions, classes, traits} : Program) -> Result<(), String>{
-        for func in functions{
-            if self.functions.get(&func.0).is_some(){
-                return Err(format!("function already exists : {}", func.0))
+    pub fn merge(
+        &mut self,
+        Program {
+            functions,
+            classes,
+            traits,
+        }: Program,
+    ) -> Result<(), String> {
+        for func in functions {
+            if self.functions.get(&func.0).is_some() {
+                return Err(format!("function already exists : {}", func.0));
             } else {
                 self.functions.insert(func.0, func.1);
             }
         }
-        for class in classes{
-            if self.classes.get(&class.0).is_some(){
-                return Err(format!("class already exists : {}", class.0))
+        for class in classes {
+            if self.classes.get(&class.0).is_some() {
+                return Err(format!("class already exists : {}", class.0));
             } else {
                 self.classes.insert(class.0, class.1);
             }
@@ -85,26 +100,37 @@ pub enum Element {
 /// A trait declaration
 #[derive(Debug, Clone)]
 pub struct TraitDecl {
-    name : String,
-    sub_traits : Vec<String>,
-    methods : HashMap<String, FunctionSig>
+    name: String,
+    sub_traits: Vec<String>,
+    methods: HashMap<String, FunctionSig>,
 }
 
 impl TraitDecl {
     /// Creates a new trait decl with the given name, sub traits and methods
-    pub fn new(name : String, sub_traits : Vec<String>, methods : HashMap<String, FunctionSig>) -> Self{
+    pub fn new(
+        name: String,
+        sub_traits: Vec<String>,
+        methods: HashMap<String, FunctionSig>,
+    ) -> Self {
         TraitDecl {
-            name : name,
-            sub_traits : sub_traits,
-            methods : methods,
+            name: name,
+            sub_traits: sub_traits,
+            methods: methods,
         }
     }
     /// Returns the name of the class.
     pub fn name(&self) -> &String {
         &self.name
     }
+    /// Returns the name of the class.
+    pub fn methods(&self) -> &HashMap<String, FunctionSig> {
+        &self.methods
+    }
+    ///  of the class.
+    pub fn sub_traits(&self) -> &Vec<String> {
+        &self.sub_traits
+    }
 }
-
 
 /// A class declaration
 #[derive(Debug, Clone)]
@@ -124,11 +150,12 @@ impl ClassDecl {
     /// Returns the type of object, this is a number between 0 and 64 for which the bits represents
     /// the positions of the pointers.
     /// eg (int, ptr, int, char, ptr) would be 010011 -> 2+16+32 => 50
-    pub fn get_mem_descriptor(&self) -> u64{
-        self.attributes.iter().enumerate()
-            .filter(|(i, a)|a.val_type() != &LisaaType::Num
-                && a.val_type() != &LisaaType::Char)
-            .map(|(id, a)|2u64.pow(id as u32))
+    pub fn get_mem_descriptor(&self) -> u64 {
+        self.attributes
+            .iter()
+            .enumerate()
+            .filter(|(i, a)| a.val_type() != &LisaaType::Num && a.val_type() != &LisaaType::Char)
+            .map(|(id, a)| 2u64.pow(id as u32))
             .sum::<u64>() + 2u64.pow(self.attributes.len() as u32)
     }
     /// Returns the name of the class.
@@ -151,7 +178,7 @@ impl ClassDecl {
         FunctionDecl {
             self_type: None,
             name: self.name.clone(),
-            signature : FunctionSig::new(vec![], vec![], LisaaType::Class(self.name.clone())),
+            signature: FunctionSig::new(vec![], vec![], LisaaType::Class(self.name.clone())),
             inline: false,
             scope: self.create_constructor_scope(),
         }
@@ -193,17 +220,25 @@ impl ClassDecl {
 #[derive(Debug, Clone)]
 /// A type parameter given to a function.
 pub struct TypeParam {
-    name : String,
-    trait_name : String,
+    name: String,
+    trait_name: String,
 }
 
 impl TypeParam {
     /// creates a new type parameter associating a name and a trait
-    pub fn new(name : String, trait_name : String) -> Self {
+    pub fn new(name: String, trait_name: String) -> Self {
         TypeParam {
-            name : name,
-            trait_name : trait_name,
+            name: name,
+            trait_name: trait_name,
         }
+    }
+    /// Returns the name given to the type parameter
+    pub fn name(&self) -> &String {
+        &self.name
+    }
+    /// Returns the trait's name
+    pub fn trait_name(&self) -> &String {
+        &self.trait_name
     }
 }
 
@@ -219,20 +254,19 @@ pub struct FunctionSig {
 }
 impl FunctionSig {
     /// Creates a new function signature.
-    pub fn new(type_args : Vec<TypeParam>, args : Vec<TypedVar>, ret_type : LisaaType) -> Self {
+    pub fn new(type_args: Vec<TypeParam>, args: Vec<TypedVar>, ret_type: LisaaType) -> Self {
         FunctionSig {
-            type_args : type_args,
-            args : args,
-            ret_type : ret_type,
+            type_args: type_args,
+            args: args,
+            ret_type: ret_type,
         }
     }
 
     ///
-    pub fn is_equivalent_to(&self, other : FunctionSig) -> bool {
+    pub fn is_equivalent_to(&self, other: FunctionSig) -> bool {
         unimplemented!()
     }
 }
-
 
 /// A function declaration
 #[derive(Debug, Clone)]
@@ -247,7 +281,7 @@ pub struct FunctionDecl {
     /// If the function is a method, the type of self.
     pub self_type: Option<LisaaType>,
     /// The signature of the function
-    pub signature : FunctionSig,
+    pub signature: FunctionSig,
 }
 
 impl FunctionDecl {
@@ -262,8 +296,19 @@ impl FunctionDecl {
         FunctionDecl {
             inline: false,
             name: name,
-            signature : FunctionSig::new(type_args, args, ret_type),
+            signature: FunctionSig::new(type_args, args, ret_type),
             scope: scope,
+            self_type: None,
+        }
+    }
+
+    /// Creates a new function declaration.
+    pub fn from_sig(name: String, sig: FunctionSig) -> Self {
+        FunctionDecl {
+            inline: false,
+            name: name,
+            signature: sig,
+            scope: Statement::Native(vec![]),
             self_type: None,
         }
     }
@@ -282,7 +327,7 @@ impl FunctionDecl {
             self_type: self_type,
             inline: inline,
             name: name,
-            signature : FunctionSig::new(type_args, args, ret_type),
+            signature: FunctionSig::new(type_args, args, ret_type),
             scope: scope,
         }
     }
@@ -300,8 +345,8 @@ impl FunctionDecl {
     }
     /// Returns the arguments of a function.
     #[allow(dead_code)]
-    pub fn type_args(&self) -> &Vec<TypedVar> {
-        &self.signature.args
+    pub fn type_args(&self) -> &Vec<TypeParam> {
+        &self.signature.type_args
     }
     /// Returns the arguments of a function.
     #[allow(dead_code)]
@@ -501,7 +546,12 @@ impl Statement {
     }
 
     /// A for statement is just a init cond followed by a while
-    pub fn for_statement(init : Statement, cond : Expr, repeat : Statement, inner : Statement) -> Statement {
+    pub fn for_statement(
+        init: Statement,
+        cond: Expr,
+        repeat: Statement,
+        inner: Statement,
+    ) -> Statement {
         let inner_scope = Statement::Scope(vec![inner, repeat]);
         let inner_while = Statement::WhileStatement(WhileStatement::new(cond, inner_scope));
         Statement::Scope(vec![init, inner_while])

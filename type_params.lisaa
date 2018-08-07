@@ -1,6 +1,6 @@
 
 fn add3<T : Add>(T a, T b, T c) -> T {
-    return a + b + c;
+    return a.add(b) + c;
 }
 
 trait Add = method add(Self) -> Self;

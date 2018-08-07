@@ -3,32 +3,34 @@ use compile::Compiler;
 //use interpreter::Interpreter;lk
 use parser::Parser;
 use scanner::Scanner;
-use statement::{Program};
-use std::collections::{HashSet};
+use statement::Program;
+use std::collections::HashSet;
+use std::fs::File;
+use std::io::{Read, Write};
 use time::PreciseTime;
 use typecheck::TypeChecker;
 use vm::Vm;
-use std::fs::File;
-use std::io::{Read, Write};
-
 
 /// The interpreter, contains the code.
 pub struct Lisaa<'a> {
     source: String,
     output_stream: &'a mut Write,
-    verbose : bool
+    verbose: bool,
 }
 impl<'a> Lisaa<'a> {
     /// Creates a new instance of the interpreter with the given source
-    pub fn new(source: String, output : &'a mut Write, verbose : bool) -> Self {
-        Lisaa { source: source, output_stream : output, verbose : verbose}
+    pub fn new(source: String, output: &'a mut Write, verbose: bool) -> Self {
+        Lisaa {
+            source: source,
+            output_stream: output,
+            verbose: verbose,
+        }
     }
 
-
-    fn find_source(name : String) -> Result<String, String>{
-        if File::open(name.to_owned()).is_ok(){
+    fn find_source(name: String) -> Result<String, String> {
+        if File::open(name.to_owned()).is_ok() {
             Ok(name)
-        } else if File::open(format!("{}.lisaa", name.to_owned())).is_ok(){
+        } else if File::open(format!("{}.lisaa", name.to_owned())).is_ok() {
             Ok(format!("{}.lisaa", name.to_owned()))
         } else {
             Err(format!("cannot find source for {}", name))
@@ -36,21 +38,23 @@ impl<'a> Lisaa<'a> {
     }
 
     /// Finds the source associated with an import.
-    fn open_source(source_name : String) -> Result<String , String> {
+    fn open_source(source_name: String) -> Result<String, String> {
         let mut file = File::open(Lisaa::find_source(source_name.clone())?).unwrap();
 
         let mut contents = String::new();
         file.read_to_string(&mut contents).map_err({
-                |e|format!(
+            |e| {
+                format!(
                     "could not read file : {},\
-                 error : {} ",
+                     error : {} ",
                     source_name, e
                 )
-            })?;
+            }
+        })?;
         Ok(contents)
     }
 
-    fn parse(&self) -> Result<Program, String>{
+    fn parse(&self) -> Result<Program, String> {
         let mut to_import = vec![self.source.clone()];
         let mut imported = HashSet::new();
         let mut program = Program::empty();
@@ -64,7 +68,7 @@ impl<'a> Lisaa<'a> {
                 String::from("Compilation aborted because of preceding errors.")
             })?;
             for imp in imports {
-                if !imported.contains(&imp){
+                if !imported.contains(&imp) {
                     to_import.push(imp.clone());
                     imported.insert(imp);
                 }

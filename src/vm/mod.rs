@@ -1,13 +1,13 @@
 use rand::random;
 use std::char;
 #[allow(unused_imports)]
-use std::io::{Write, self};
+use std::io::{self, Write};
 //mod gc;
 mod allocator;
 use self::allocator::Allocator;
 pub use self::allocator::{IS_PTR_SLICE_BIT, IS_SLICE_BIT};
 use std::collections::BTreeSet;
-pub const STRING_TYPE : u64 = 6; // size 2 -> 4 + pointer in position 1 -> 2 = 6
+pub const STRING_TYPE: u64 = 6; // size 2 -> 4 + pointer in position 1 -> 2 = 6
 
 #[derive(Debug, Clone)]
 pub enum OP {
@@ -84,7 +84,7 @@ pub struct Vm<'a> {
 }
 
 impl<'a> Vm<'a> {
-    pub fn new(output_stream : &'a mut Write) -> Vm {
+    pub fn new(output_stream: &'a mut Write) -> Vm {
         Vm {
             root_references: BTreeSet::new(),
             stack: vec![],
@@ -94,7 +94,7 @@ impl<'a> Vm<'a> {
         }
     }
 
-    pub fn heap(&self) -> Vec<u64>{
+    pub fn heap(&self) -> Vec<u64> {
         self.allocator.heap()
     }
 
@@ -293,7 +293,10 @@ impl<'a> Vm<'a> {
                 //_ => panic!("unsupported operand"),
             }
             println!("stack : {:?}", self.stack);
-            println!("root refs : {:?}", self.root_references.iter().collect::<Vec<&usize>>());
+            println!(
+                "root refs : {:?}",
+                self.root_references.iter().collect::<Vec<&usize>>()
+            );
             println!("heap : {:?}", self.allocator.heap());
         }
     }
@@ -305,7 +308,8 @@ mod tests_vm {
     #[test]
     fn test_load() {
         let source = vec![OP::PushNum(1.0), OP::PrintChar];
-        let mut stdout = io::stdout(); let mut vm = Vm::new(&mut stdout);
+        let mut stdout = io::stdout();
+        let mut vm = Vm::new(&mut stdout);
         vm.run(source);
         assert_eq!(0, vm.stack.len());
         let source = vec![OP::PushNum(1.0), OP::PushNum(0.1)];
@@ -315,7 +319,8 @@ mod tests_vm {
     #[test]
     fn test_operations() {
         let source = vec![OP::PushNum(1.0), OP::PushNum(2.0), OP::Add, OP::Neg];
-        let mut stdout = io::stdout(); let mut vm = Vm::new(&mut stdout);
+        let mut stdout = io::stdout();
+        let mut vm = Vm::new(&mut stdout);
         vm.run(source);
         assert_eq!(1, vm.stack.len());
         assert_eq!(-3.0, vm.stack[0]);
@@ -334,7 +339,8 @@ mod tests_vm {
             OP::PushNum(0.5),
             OP::Swap2,
         ];
-        let mut stdout = io::stdout(); let mut vm = Vm::new(&mut stdout);
+        let mut stdout = io::stdout();
+        let mut vm = Vm::new(&mut stdout);
         vm.run(source);
         assert_eq!(3, vm.stack.len());
         assert_eq!(1.0, vm.stack[0]);
@@ -359,7 +365,8 @@ mod tests_vm {
             OP::Bring(2),
             OP::Set(1),
         ];
-        let mut stdout = io::stdout(); let mut vm = Vm::new(&mut stdout);
+        let mut stdout = io::stdout();
+        let mut vm = Vm::new(&mut stdout);
         vm.run(source);
         assert_eq!(vec![1.0, -1.0, -1.0], vm.stack);
     }
@@ -373,7 +380,7 @@ mod tests_vm {
         let source = vec![
             // a = num[]
             OP::PushNum(3.0),
-            OP::AllocObj(IS_SLICE_BIT+3), // type : is_slice + size = 3
+            OP::AllocObj(IS_SLICE_BIT + 3), // type : is_slice + size = 3
             // a[0] = 1
             OP::PushNum(1.0), // =1
             OP::Bring(0),     // a
@@ -393,11 +400,15 @@ mod tests_vm {
             OP::Add,
             OP::SetHeap,
         ];
-        let mut stdout = io::stdout(); let mut vm = Vm::new(&mut stdout);
+        let mut stdout = io::stdout();
+        let mut vm = Vm::new(&mut stdout);
         vm.run(source);
         println!("heap : {:?}", vm.allocator.heap());
         println!("stack  : {:?}", vm.stack);
-        assert_eq!(vm.allocator.heap(), vec![IS_SLICE_BIT+3, 1, 2, 3, 0, allocator::MAX_HEAP_SIZE]);
+        assert_eq!(
+            vm.allocator.heap(),
+            vec![IS_SLICE_BIT + 3, 1, 2, 3, 0, allocator::MAX_HEAP_SIZE]
+        );
     }
     //executes the following :
     // a = obj(size=1)
@@ -408,10 +419,10 @@ mod tests_vm {
         let source = vec![
             // a = obj(size=1)
             OP::PushNum(1.0),
-            OP::AllocObj(1+2), // type : 3 because 1 pointer and size 1 (1+2)
+            OP::AllocObj(1 + 2), // type : 3 because 1 pointer and size 1 (1+2)
             // a.0 = obj(size=2)
             OP::PushNum(2.0), // = obj(size=2)
-            OP::AllocObj(4), // 4 because size 2
+            OP::AllocObj(4),  // 4 because size 2
             OP::Bring(0),     // a
             OP::PushNum(0.0), // .0
             OP::Add,
@@ -426,7 +437,8 @@ mod tests_vm {
             OP::Add,
             OP::SetHeap,
         ];
-        let mut stdout = io::stdout(); let mut vm = Vm::new(&mut stdout);
+        let mut stdout = io::stdout();
+        let mut vm = Vm::new(&mut stdout);
         vm.run(source);
         println!("heap : {:?}", vm.allocator.heap());
         assert_eq!(

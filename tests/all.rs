@@ -1,21 +1,28 @@
 extern crate lisaa_lang;
+use lisaa_lang::script::Script;
 use std::fs::File;
 use std::io::Read;
-use lisaa_lang::script::Script;
 
-fn test_for(script : &str){
-    let (mut name, mut expect) = ("tests/scripts/test_".to_string(), "tests/scripts/expect_".to_string());
+fn test_for(script: &str) {
+    let (mut name, mut expect) = (
+        "tests/scripts/test_".to_string(),
+        "tests/scripts/expect_".to_string(),
+    );
     name.push_str(script);
     name.push_str(".lisaa");
     expect.push_str(script);
-    let mut expected_file = File::open(expect).expect(&format!("could not open file tests/scripts/expect_{}", script));
+    let mut expected_file = File::open(expect).expect(&format!(
+        "could not open file tests/scripts/expect_{}",
+        script
+    ));
     let mut expected_result = String::new();
-    expected_file.read_to_string(&mut expected_result).expect("could not read file");
+    expected_file
+        .read_to_string(&mut expected_result)
+        .expect("could not read file");
     expected_result = expected_result.replace("\r", ""); // ignore stupid windows crlf
     let result = Script::new(&name).run_program(expected_result.len());
     assert_eq!(result.expect("not an error"), expected_result);
 }
-
 
 /// Create a directory tests.
 /// containing test_hunter2.rs and expect_hunter2

@@ -15,14 +15,13 @@ mod compile;
 //mod compile_req;
 mod expression;
 mod keywords;
+pub mod lisaa;
 mod native;
 mod parser;
 mod scanner;
+pub mod script;
 mod statement;
 mod token;
 mod typecheck;
 mod types;
 mod vm;
-pub mod script;
-pub mod lisaa;
-

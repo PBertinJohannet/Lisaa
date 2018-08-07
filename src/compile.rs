@@ -9,7 +9,7 @@ use statement::{
     WhileStatement,
 };
 use std::collections::HashMap;
-use vm::{OP, IS_SLICE_BIT, IS_PTR_SLICE_BIT, STRING_TYPE};
+use vm::{IS_PTR_SLICE_BIT, IS_SLICE_BIT, OP, STRING_TYPE};
 
 /// These are unlinked instructions.
 /// the goto (symbol) will be replaced by goto(usize) when the program is completed.
@@ -169,21 +169,19 @@ impl Compiler {
         for f in program.functions().iter() {
             self.function(f.1);
         }
-        if program.functions().get("main").is_none(){
+        if program.functions().get("main").is_none() {
             return Err(format!("No main function found... wtf ?"));
         }
         Ok(self
             .code
             .iter()
-            .map(|e| {
-                match e {
-                    &UnlinkedInstruction::Op(ref o) => o.clone(),
-                    &UnlinkedInstruction::Goto(ref label) => {
-                        OP::Goto(self.labels.get(label).unwrap().unwrap())
-                    }
-                    &UnlinkedInstruction::Push(ref label) => {
-                        OP::PushNum(self.labels.get(label).unwrap().unwrap() as f64)
-                    }
+            .map(|e| match e {
+                &UnlinkedInstruction::Op(ref o) => o.clone(),
+                &UnlinkedInstruction::Goto(ref label) => {
+                    OP::Goto(self.labels.get(label).unwrap().unwrap())
+                }
+                &UnlinkedInstruction::Push(ref label) => {
+                    OP::PushNum(self.labels.get(label).unwrap().unwrap() as f64)
                 }
             })
             .collect())
@@ -229,7 +227,7 @@ impl Compiler {
             &Statement::BreakStatement => self.break_scope(),
             &Statement::ReturnStatement(ref e) => self.return_statement(e),
             &Statement::Native(ref ops) => self.emit_chunks(ops.clone()),
-            }
+        }
     }
 
     /// Compiles a return statement
@@ -445,7 +443,7 @@ impl Compiler {
             &LiteralExpr::STRING(ref s) => {
                 // first allocate enough memory :  (2 for string)
                 self.emit_chunks(vec![OP::PushNum(2.0), OP::AllocObj(STRING_TYPE)]); // string is type 6
-                // then set the size.
+                                                                                     // then set the size.
                 self.emit_chunks(vec![
                     OP::PushCopy,
                     OP::PushNum(s.len() as f64),
@@ -455,8 +453,10 @@ impl Compiler {
                 // remember the address of the string.
                 self.emit(OP::PushCopy);
                 // allocates some memory for the slice. stack : ( a a s )
-                self.emit_chunks(vec![OP::PushNum(s.len() as f64),
-                                      OP::AllocObj(IS_SLICE_BIT+s.len() as u64)]);
+                self.emit_chunks(vec![
+                    OP::PushNum(s.len() as f64),
+                    OP::AllocObj(IS_SLICE_BIT + s.len() as u64),
+                ]);
                 // fill the slice.
                 for (id, ch) in s.chars().enumerate() {
                     self.emit_chunks(vec![
