@@ -29,6 +29,8 @@ pub enum TokenType {
     MOD,
     /// A semicolon.
     SEMICOLON,
+    /// A colon
+    COLON,
     /// A slash, used to divide.
     SLASH,
     /// A star "*".

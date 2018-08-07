@@ -3,7 +3,7 @@
 use expression::{Expr, Operator};
 use statement::{
     Assignment, ClassDecl, Declaration, Element, FunctionDecl, IfStatement, Program,
-    Statement, WhileStatement, FunctionSig, TraitDecl
+    Statement, WhileStatement, FunctionSig, TraitDecl, TypeParam,
 };
 use std::collections::HashMap;
 use std::fmt;
@@ -137,6 +137,8 @@ impl Parser {
         Ok(TraitDecl::new(name, traits, funcs))
     }
 
+    /// Parses a trait's signature, eg :
+    /// B + method actually(num c) -> Self
     pub fn parse_trait_expr(&mut self) -> Result<(Vec<String>, HashMap<String, FunctionSig>), String>{
         let mut methods = HashMap::new();
         let mut traits = vec![];
@@ -158,6 +160,8 @@ impl Parser {
         Ok((traits, methods))
     }
 
+    /// Parses a function signature in a trait eg :
+    /// method actually(num c) -> Self
     pub fn parse_signature(&mut self) -> Result<(String, FunctionSig), String> {
         self.advance();
         let name = self.expect_ident("method")?;
@@ -167,8 +171,17 @@ impl Parser {
         Ok((name, FunctionSig::new(type_parameters, arguments, return_type)))
     }
 
+    /// Parses a list of unnamed arguments eg :
+    /// (num, Point, String, num)
+    /// can also match the keyword Self
     pub fn parse_unnamed_args(&mut self) -> Result<Vec<TypedVar>, String>{
-
+        self.expect(TokenType::LeftParen)?;
+        let mut types = vec![];
+        while self.peek().get_type() == &TokenType::IDENTIFIER || self.peek().get_type() == &TokenType::BIGSELF {
+            types.push(TypedVar::new(self.parse_type()?, "".to_string()));
+            self.advance();// parse comma or closing paren;
+        }
+        Ok(types)
     }
 
     pub fn parse_method_decl(&mut self) -> Result<FunctionDecl, String> {
@@ -237,9 +250,10 @@ impl Parser {
     /// Parses the list of type parameters in the function
     /// eg : the T : Add, E : Mul
     /// in fn ok<T : Add, E : Mul>(a T) -> E
-    pub fn parse_type_list(&mut self) -> Result<Vec<String>, String> {
+    pub fn parse_type_list(&mut self) -> Result<Vec<TypeParam>, String> {
         match self.peek().is_type(&TokenType::LESS) {
             true => {
+                self.advance();
                 self.parse_comma_separated_traits()
             }
             false => Ok(vec![]),
@@ -248,26 +262,15 @@ impl Parser {
 
     /// Parses something like this :
     /// T : Add, E : Mul, A : Mul + method add(Self) -> Self
-    pub fn parse_comma_separated_traits(&mut self) -> Result<Vec<String>, String> {
+    pub fn parse_comma_separated_traits(&mut self) -> Result<Vec<TypeParam>, String> {
         let mut args = vec![];
-        self.advance();
-        loop {
-            match self.peek().get_type().clone() {
-                TokenType::GREATER => break,
-                TokenType::IDENTIFIER => {
-                    args.push(self.advance().get_lexeme().to_string());
-                    match self.peek().get_type() {
-                        TokenType::GREATER => break,
-                        TokenType::COMMA => {
-                            self.advance();
-                        }
-                        _ => Err("expected > or comma".to_string())?,
-                    }
-                }
-                other => Err(format!("Expected > or type parameter got {:?}", other))?,
-            }
+        while self.peek().get_type() == &TokenType::IDENTIFIER {
+            let type_name = self.advance().get_lexeme().to_string();
+            self.expect(TokenType::COLON)?;
+            let trait_name = self.advance().get_lexeme().to_string();
+            self.advance(); // take the > or a comma.
+            args.push(TypeParam::new(type_name, trait_name));
         }
-        self.expect(TokenType::GREATER)?;
         Ok(args)
     }
 
@@ -314,17 +317,26 @@ impl Parser {
     }
 
     pub fn parse_type(&mut self) -> Result<LisaaType, String> {
-        let ident = self.advance().get_lexeme().to_string();
-        match ident.as_ref() {
-            "slice" => {
-                self.expect(TokenType::LESS)?;
-                let inner = self.parse_type()?;
-                self.expect(TokenType::GREATER)?;
-                Ok(LisaaType::slice(inner))
+        match self.peek().get_type() {
+            TokenType::BIGSELF => {
+                self.advance();
+                Ok(LisaaType::Class(String::from("Self")))
+            },
+            TokenType::IDENTIFIER => {
+                let ident = self.advance().get_lexeme().to_string();
+                match ident.as_ref() {
+                    "slice" => {
+                        self.expect(TokenType::LESS)?;
+                        let inner = self.parse_type()?;
+                        self.expect(TokenType::GREATER)?;
+                        Ok(LisaaType::slice(inner))
+                    }
+                    "num" => Ok(LisaaType::Num),
+                    "char" => Ok(LisaaType::Char),
+                    i => Ok(LisaaType::Class(i.to_string())),
+                }
             }
-            "num" => Ok(LisaaType::Num),
-            "char" => Ok(LisaaType::Char),
-            i => Ok(LisaaType::Class(i.to_string())),
+            _ => Err(String::from("Expected Type or \"Self\" here"))
         }
     }
 

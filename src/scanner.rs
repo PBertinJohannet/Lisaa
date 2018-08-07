@@ -61,6 +61,7 @@ impl Scanner {
             '+' => Ok(self.token(TokenType::PLUS, "")),
             '%' => Ok(self.token(TokenType::MOD, "")),
             ';' => Ok(self.token(TokenType::SEMICOLON, "")),
+            ':' => Ok(self.token(TokenType::COLON, "")),
             '-' => Ok(match self.match_next('>') {
                 true => self.token(TokenType::ARROW, ""),
                 _ => self.token(TokenType::MINUS, ""),

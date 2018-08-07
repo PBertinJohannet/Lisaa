@@ -190,12 +190,28 @@ impl ClassDecl {
         Statement::Scope(scope)
     }
 }
+#[derive(Debug, Clone)]
+/// A type parameter given to a function.
+pub struct TypeParam {
+    name : String,
+    trait_name : String,
+}
+
+impl TypeParam {
+    /// creates a new type parameter associating a name and a trait
+    pub fn new(name : String, trait_name : String) -> Self {
+        TypeParam {
+            name : name,
+            trait_name : trait_name,
+        }
+    }
+}
 
 /// A function declaration
 #[derive(Debug, Clone)]
 pub struct FunctionSig {
-    /// The type parameters of the function <Y, U, T>
-    pub type_args: Vec<String>,
+    /// The type parameters of the function <Y, U, T>, name
+    pub type_args: Vec<TypeParam>,
     /// The arguments taken by the function
     pub args: Vec<TypedVar>,
     /// The return type of the function.
@@ -203,7 +219,7 @@ pub struct FunctionSig {
 }
 impl FunctionSig {
     /// Creates a new function signature.
-    pub fn new(type_args : Vec<String>, args : Vec<TypedVar>, ret_type : LisaaType) -> Self {
+    pub fn new(type_args : Vec<TypeParam>, args : Vec<TypedVar>, ret_type : LisaaType) -> Self {
         FunctionSig {
             type_args : type_args,
             args : args,
@@ -238,7 +254,7 @@ impl FunctionDecl {
     /// Creates a new function declaration.
     pub fn new(
         name: String,
-        type_args: Vec<String>,
+        type_args: Vec<TypeParam>,
         args: Vec<TypedVar>,
         scope: Statement,
         ret_type: LisaaType,
@@ -257,7 +273,7 @@ impl FunctionDecl {
         self_type: Option<LisaaType>,
         inline: bool,
         name: String,
-        type_args: Vec<String>,
+        type_args: Vec<TypeParam>,
         args: Vec<TypedVar>,
         scope: Statement,
         ret_type: LisaaType,

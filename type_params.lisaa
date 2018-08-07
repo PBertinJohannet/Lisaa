@@ -1,4 +1,9 @@
-trait Add = method add(Self) -> Self
+
+fn add3<T : Add>(T a, T b, T c) -> T {
+    return a + b + c;
+}
+
+trait Add = method add(Self) -> Self;
 
 //fn add3<T : Add>(T a, T b, T c) -> T {
 //    return a + b + c;
