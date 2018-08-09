@@ -5,10 +5,11 @@ use expression::{
 };
 use native::get_native_types;
 use statement::{
-    Assignment, ClassDecl, Declaration, FunctionDecl, IfStatement, Program, Statement,
+    Assignment, ClassDecl, Declaration, FunctionDecl, FunctionSig, IfStatement, Program, Statement,
     WhileStatement,
 };
 use std::collections::HashMap;
+use types::LisaaType;
 use vm::{IS_PTR_SLICE_BIT, IS_SLICE_BIT, OP, STRING_TYPE};
 
 /// These are unlinked instructions.
@@ -82,7 +83,7 @@ impl Scope {
 /// Contains a programm and functions to resolve types/verify consistency.
 pub struct Compiler {
     code: Vec<UnlinkedInstruction>,
-    functions: HashMap<String, FunctionDecl>,
+    functions: HashMap<FunctionSig, FunctionDecl>,
     classes: HashMap<String, ClassDecl>,
     scopes: Vec<Scope>,
     /// associates the labels with the positions in the code.
@@ -103,7 +104,7 @@ impl Compiler {
     /// Add a lib to the program.
     pub fn add_lib(&mut self, lib: &str) {
         for f in get_native_types(lib) {
-            self.functions.insert(f.name().to_owned(), f);
+            self.functions.insert(f.signature().to_owned(), f);
         }
     }
     /// Creates a variable in the current scope.
@@ -168,9 +169,6 @@ impl Compiler {
         self.emit(OP::End);
         for f in program.functions().iter() {
             self.function(f.1);
-        }
-        if program.functions().get("main").is_none() {
-            return Err(format!("No main function found... wtf ?"));
         }
         Ok(self
             .code
@@ -394,7 +392,7 @@ impl Compiler {
     /// checks for method first.
     /// If it is a method, brings the callee then call the method.
     pub fn generic_call(&mut self, call: &FunctionCall) {
-        let func = self.functions.get(call.name()).unwrap().clone();
+        let func = self.functions.get(&call.signature()).unwrap().clone();
         if func.is_inline() {
             self.inline_call(call);
         } else {
@@ -403,7 +401,7 @@ impl Compiler {
     }
 
     pub fn inline_call(&mut self, call: &FunctionCall) {
-        let func = self.functions.get(call.name()).unwrap().clone();
+        let func = self.functions.get(&call.signature()).unwrap().clone();
         self.push_arguments(call);
         self.statement(&func.scope);
     }

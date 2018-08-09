@@ -3,7 +3,7 @@ Class Dim {
     num y = 97;
 }
 
-fn main()-> num{
+fn main(){
 	for (num i = 0;i< 2; i= i+1;)
 	    Dim();
 }

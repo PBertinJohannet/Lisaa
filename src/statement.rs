@@ -8,7 +8,7 @@ use vm::OP;
 /// Classes and functions.
 #[derive(Debug, Clone)]
 pub struct Program {
-    functions: HashMap<String, FunctionDecl>,
+    functions: HashMap<FunctionSig, FunctionDecl>,
     classes: HashMap<String, ClassDecl>,
     traits: HashMap<String, TraitDecl>,
 }
@@ -23,7 +23,7 @@ impl Program {
     }
     /// Creates a new program with the given classes and functions.
     pub fn new(
-        funcs: HashMap<String, FunctionDecl>,
+        funcs: HashMap<FunctionSig, FunctionDecl>,
         classes: HashMap<String, ClassDecl>,
         traits: HashMap<String, TraitDecl>,
     ) -> Self {
@@ -42,11 +42,15 @@ impl Program {
         &self.traits
     }
     /// Get the functions in the program.
-    pub fn functions(&self) -> &HashMap<String, FunctionDecl> {
+    pub fn traits_mut(&mut self) -> &mut HashMap<String, TraitDecl> {
+        &mut self.traits
+    }
+    /// Get the functions in the program.
+    pub fn functions(&self) -> &HashMap<FunctionSig, FunctionDecl> {
         &self.functions
     }
     /// Get the functinos in the program as mutable.
-    pub fn functions_mut(&mut self) -> &mut HashMap<String, FunctionDecl> {
+    pub fn functions_mut(&mut self) -> &mut HashMap<FunctionSig, FunctionDecl> {
         &mut self.functions
     }
 
@@ -54,7 +58,7 @@ impl Program {
     pub fn initiate_methods(&mut self) {
         for c in self.classes.iter() {
             let cons = c.1.get_constructor();
-            self.functions.insert(cons.name().to_owned(), cons);
+            self.functions.insert(cons.signature().to_owned(), cons);
         }
     }
     /// Merges this program with an other.
@@ -68,16 +72,23 @@ impl Program {
     ) -> Result<(), String> {
         for func in functions {
             if self.functions.get(&func.0).is_some() {
-                return Err(format!("function already exists : {}", func.0));
+                return Err(format!("function already exists : {:?}", func.0));
             } else {
                 self.functions.insert(func.0, func.1);
             }
         }
         for class in classes {
             if self.classes.get(&class.0).is_some() {
-                return Err(format!("class already exists : {}", class.0));
+                return Err(format!("class already exists : {:?}", class.0));
             } else {
                 self.classes.insert(class.0, class.1);
+            }
+        }
+        for t in traits {
+            if self.traits.get(&t.0).is_some() {
+                return Err(format!("class already exists : {:?}", t.0));
+            } else {
+                self.traits.insert(t.0, t.1);
             }
         }
         Ok(())
@@ -109,9 +120,12 @@ impl TraitDecl {
     /// Creates a new trait decl with the given name, sub traits and methods
     pub fn new(
         name: String,
-        sub_traits: Vec<String>,
+        mut sub_traits: Vec<String>,
         methods: HashMap<String, FunctionSig>,
     ) -> Self {
+        if name != "Any" {
+            sub_traits.push("Any".to_string());
+        }
         TraitDecl {
             name: name,
             sub_traits: sub_traits,
@@ -137,14 +151,16 @@ impl TraitDecl {
 pub struct ClassDecl {
     name: String,
     attributes: Vec<Declaration>,
+    type_params: Vec<TypeParam>,
 }
 
 impl ClassDecl {
     /// Creates a new class with the given arguments.
-    pub fn new(name: String, attrs: Vec<Declaration>) -> Self {
+    pub fn new(name: String, attrs: Vec<Declaration>, type_params: Vec<TypeParam>) -> Self {
         ClassDecl {
             name: name,
             attributes: attrs,
+            type_params: type_params,
         }
     }
     /// Returns the type of object, this is a number between 0 and 64 for which the bits represents
@@ -162,6 +178,10 @@ impl ClassDecl {
     pub fn name(&self) -> &String {
         &self.name
     }
+    /// Returns the name of the class.
+    pub fn type_params(&self) -> &Vec<TypeParam> {
+        &self.type_params
+    }
     /// Get the declaration of an attribute given its name.
     pub fn get_attr(&self, str: &String) -> Option<&Declaration> {
         self.attributes.iter().find(|d| &d.val_name == str)
@@ -178,9 +198,21 @@ impl ClassDecl {
         FunctionDecl {
             self_type: None,
             name: self.name.clone(),
-            signature: FunctionSig::new(vec![], vec![], LisaaType::Class(self.name.clone())),
+            signature: FunctionSig::new(
+                self.type_params.clone(),
+                vec![],
+                LisaaType::Class(
+                    self.name.clone(),
+                    self.type_params
+                        .iter()
+                        .map(|t| LisaaType::Class(t.name().to_string(), vec![]))
+                        .collect(),
+                ),
+                self.name.clone(),
+            ),
             inline: false,
             scope: self.create_constructor_scope(),
+            arguments: vec![],
         }
     }
     /// Creates the code for the constructor.
@@ -217,7 +249,7 @@ impl ClassDecl {
         Statement::Scope(scope)
     }
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
 /// A type parameter given to a function.
 pub struct TypeParam {
     name: String,
@@ -243,28 +275,66 @@ impl TypeParam {
 }
 
 /// A function declaration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub struct FunctionSig {
     /// The type parameters of the function <Y, U, T>, name
     pub type_args: Vec<TypeParam>,
     /// The arguments taken by the function
-    pub args: Vec<TypedVar>,
+    pub args: Vec<LisaaType>,
     /// The return type of the function.
     pub ret_type: LisaaType,
+    /// The name
+    pub name: String,
 }
 impl FunctionSig {
     /// Creates a new function signature.
-    pub fn new(type_args: Vec<TypeParam>, args: Vec<TypedVar>, ret_type: LisaaType) -> Self {
+    pub fn new(
+        type_args: Vec<TypeParam>,
+        args: Vec<TypedVar>,
+        ret_type: LisaaType,
+        name: String,
+    ) -> Self {
+        FunctionSig {
+            type_args: type_args,
+            args: args.iter().map(|a| a.type_var().clone().unwrap()).collect(),
+            ret_type: ret_type,
+            name: name,
+        }
+    }
+
+    /// Creates a new function signature.
+    pub fn new_simple_args(
+        type_args: Vec<TypeParam>,
+        args: Vec<LisaaType>,
+        ret_type: LisaaType,
+        name: String,
+    ) -> Self {
         FunctionSig {
             type_args: type_args,
             args: args,
             ret_type: ret_type,
+            name: name,
         }
     }
 
     ///
     pub fn is_equivalent_to(&self, other: FunctionSig) -> bool {
         unimplemented!()
+    }
+    ///
+    pub fn name(&self) -> &String {
+        &self.name
+    }
+    ///
+    pub fn args_as_typevar(&self) -> Vec<TypedVar> {
+        self.args
+            .iter()
+            .map(|a| TypedVar::new(a.clone(), "".to_string()))
+            .collect()
+    }
+    ///
+    pub fn return_type(&self) -> &LisaaType {
+        &self.ret_type
     }
 }
 
@@ -282,6 +352,8 @@ pub struct FunctionDecl {
     pub self_type: Option<LisaaType>,
     /// The signature of the function
     pub signature: FunctionSig,
+    /// The function argument's names
+    pub arguments: Vec<TypedVar>,
 }
 
 impl FunctionDecl {
@@ -295,21 +367,24 @@ impl FunctionDecl {
     ) -> Self {
         FunctionDecl {
             inline: false,
-            name: name,
-            signature: FunctionSig::new(type_args, args, ret_type),
+            name: name.clone(),
+            signature: FunctionSig::new(type_args, args.clone(), ret_type, name),
             scope: scope,
             self_type: None,
+            arguments: args,
         }
     }
 
     /// Creates a new function declaration.
     pub fn from_sig(name: String, sig: FunctionSig) -> Self {
+        let args_typevar = sig.args_as_typevar();
         FunctionDecl {
             inline: false,
-            name: name,
-            signature: sig,
+            name: name.clone(),
+            signature: FunctionSig::new(sig.type_args, args_typevar.clone(), sig.ret_type, name),
             scope: Statement::Native(vec![]),
             self_type: None,
+            arguments: args_typevar,
         }
     }
 
@@ -326,14 +401,19 @@ impl FunctionDecl {
         FunctionDecl {
             self_type: self_type,
             inline: inline,
-            name: name,
-            signature: FunctionSig::new(type_args, args, ret_type),
+            name: name.clone(),
+            signature: FunctionSig::new(type_args, args.clone(), ret_type, name),
             scope: scope,
+            arguments: args,
         }
     }
     /// set the type of the "self" if it is a method.
     pub fn set_self(&mut self, tp: LisaaType) {
         self.self_type = Some(tp)
+    }
+    /// returns the return type of the function.
+    pub fn signature(&self) -> &FunctionSig {
+        &self.signature
     }
     /// returns the return type of the function.
     pub fn ret_type(&self) -> &LisaaType {
@@ -351,7 +431,7 @@ impl FunctionDecl {
     /// Returns the arguments of a function.
     #[allow(dead_code)]
     pub fn args(&self) -> &Vec<TypedVar> {
-        &self.signature.args
+        &self.arguments
     }
     /// Returns the scope of the function.
     /// TODO : this unwrap ?

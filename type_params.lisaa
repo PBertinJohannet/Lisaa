@@ -1,14 +1,40 @@
+Class Point<T : Add> {
+    T x = T();
+    T y = T();
+}
+
+// FORBIDDEN ! type elision cannot rely on return type except for constructors.
+//fn default<T: Add>() -> T {
+//
+//}
 
 fn add3<T : Add>(T a, T b, T c) -> T {
-    return a.add(b) + c;
+   //return a.add(b) + c;
 }
+
+// if these two compiles we can say that generic functions works.
+//fn nestedparams<T : Add, U : Add>(T a, T, b, U c) {
+//}
+//fn callnestedparams<U : Add>(U a) {
+//    nestedparams(1, 2, a);
+//}
 
 trait Add = method add(Self) -> Self;
 
-//fn add3<T : Add>(T a, T b, T c) -> T {
-//    return a + b + c;
+//method add<T : Add>() of Add{
+//    self.add(T);
 //}
 
 fn main(){
-    add3(1, 2, 3).toString().println();
+    Point<num> p = Point::<num>();
+    //p = add3(p, p, p);
 }
+
+//
+//le compilateur arrive a Point<num> et demande a compiler la classe Point<num>
+//il arrive a la fonction Point::<num>(); et demande a la compiler.
+//pour cela il prend la scope de Point::<T>() et remplace T par num des quil le croise ?
+//mais quand le croise til ?
+//changer les scope du compilateur aussi ?
+//hmmmm
+//maybe cest le bon truc a faire...

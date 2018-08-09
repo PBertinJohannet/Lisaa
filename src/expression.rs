@@ -1,6 +1,7 @@
 //! The module containing the code for the different expressions.
 //!
 
+use statement::FunctionSig;
 use std::fmt;
 use token::{Token, TokenType};
 use types::LisaaType;
@@ -106,6 +107,13 @@ impl Expr {
             line: line,
         }
     }
+    pub fn constructor_call(func: FunctionCall, line: usize) -> Self {
+        Expr {
+            expr: ExprEnum::FunctionCall(func),
+            return_type: None,
+            line: line,
+        }
+    }
     pub fn unary(operator: Operator, expr: Expr, line: usize) -> Self {
         Expr {
             expr: ExprEnum::Unary(UnaryExpr::new(operator, expr)),
@@ -130,7 +138,7 @@ impl Expr {
     pub fn string(string: String, line: usize) -> Self {
         Expr {
             expr: ExprEnum::Literal(LiteralExpr::STRING(string)),
-            return_type: Some(LisaaType::Class("String".to_owned())),
+            return_type: Some(LisaaType::Class("String".to_owned(), vec![])),
             line: line,
         }
     }
@@ -209,6 +217,9 @@ pub struct FunctionCall {
     callee: Callee,
     name: String,
     args: Vec<Expr>,
+    signature: Option<FunctionSig>,
+    /// Only if it is a constructor.
+    type_args: Vec<LisaaType>,
 }
 
 impl FunctionCall {
@@ -217,6 +228,8 @@ impl FunctionCall {
             callee: Callee::Method(Box::new(lhs)),
             args: args,
             name: "method".to_owned(),
+            signature: None,
+            type_args: vec![],
         }
     }
     /// Creates a new function call expression
@@ -225,7 +238,34 @@ impl FunctionCall {
             callee: Callee::StaticFunc(name.clone()),
             args: args,
             name: name,
+            signature: None,
+            type_args: vec![],
         }
+    }
+    /// Creates a new function call expression
+    pub fn constructor(name: String, args: Vec<Expr>, type_args: Vec<LisaaType>) -> Self {
+        FunctionCall {
+            callee: Callee::StaticFunc(name.clone()),
+            args: args,
+            name: name,
+            signature: None,
+            type_args: type_args,
+        }
+    }
+    pub fn signature(&self) -> FunctionSig {
+        self.signature
+            .clone()
+            .expect("cant get signature of non typechecked function!")
+    }
+    pub fn signature_mut(&mut self) -> &mut FunctionSig {
+        if let Some(ref mut s) = self.signature {
+            return s;
+        } else {
+            panic!("cant get signature of non typechecked function!")
+        }
+    }
+    pub fn set_signature(&mut self, sig: FunctionSig) {
+        self.signature = Some(sig);
     }
     pub fn callee(&self) -> &Callee {
         &self.callee
@@ -233,7 +273,9 @@ impl FunctionCall {
     pub fn callee_mut(&mut self) -> &mut Callee {
         &mut self.callee
     }
-
+    pub fn type_args(&self) -> &Vec<LisaaType> {
+        &self.type_args
+    }
     /// Returns the name.
     pub fn set_name(&mut self, name: &String) {
         self.name = name.to_owned();

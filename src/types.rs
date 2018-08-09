@@ -1,14 +1,15 @@
-use statement::{ClassDecl, FunctionDecl};
+use expression::{Expr, FunctionCall};
+use statement::{ClassDecl, FunctionDecl, FunctionSig, TypeParam};
 use std::collections::HashMap;
 use std::fmt;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 /// Represents the possible types of the language.
 pub enum LisaaType {
     /// Represents a pointer to a heap allocated ressource.
     Pointer(Box<LisaaType>),
-    /// Represents a Class
-    Class(String),
+    /// Represents a Class with its type parameters
+    Class(String, Vec<LisaaType>),
     /// A simple number (can be heap/stack)
     Num,
     /// A Char (heap/stack too)
@@ -69,7 +70,7 @@ impl LisaaType {
         &self,
         name: &String,
         classes: &HashMap<String, ClassDecl>,
-        functions: &HashMap<String, FunctionDecl>,
+        functions: &HashMap<FunctionSig, FunctionDecl>,
     ) -> Result<LisaaType, String> {
         match self {
             &LisaaType::Pointer(ref inner) => inner.get_attr(name, classes, functions),
@@ -79,23 +80,41 @@ impl LisaaType {
                 format!("slice::{}", name),
                 vec![*inner.clone()],
             )),
-            &LisaaType::Class(ref s) => Ok(LisaaType::pointer(match classes.get(s) {
+            &LisaaType::Class(ref s, ref t) => Ok(LisaaType::pointer(match classes.get(s) {
                 Some(class) => match class.get_attr(name) {
                     Some(decl) => Ok(decl.val_type().clone()),
-                    None => match functions.get(&format!("{}::{}", s, name)) {
-                        Some(f) => Ok(LisaaType::Function(f.name().clone(), vec![])),
-                        None => Err(format!("Can't take attribute {} of class {}", name, s)),
-                    },
+                    None => Self::get_class_attr(s, name, functions),
                 },
                 None => Err(format!("Unknown class : {}", s)),
             }?)),
             _ => Err(format!("can not get attr {} of {}", name, self)),
         }
     }
+    /// If the type is a typevar checks that it is ok
+    pub fn check_typevar(&self, type_params: &Vec<TypeParam>) -> Self {
+        //if let LisaaType::Class(s)
+        self.clone()
+    }
+
+    /// Returns the attr of the class given the class name
+    pub fn get_class_attr(
+        class: &String,
+        attr: &String,
+        functions: &HashMap<FunctionSig, FunctionDecl>,
+    ) -> Result<LisaaType, String> {
+        match functions
+            .iter()
+            .find(|(func, _)| func.name() == &format!("{}::{}", class, attr))
+        {
+            Some(f) => Ok(LisaaType::Function(f.0.name().clone(), vec![])),
+            None => Err(format!("Can't take attribute {} of class {}", attr, class)),
+        }
+    }
+
     /// Returns the attribute's type. Panics if it doesnt exist.
     pub fn get_attr_index(&self, name: &String, classes: &HashMap<String, ClassDecl>) -> usize {
         match self {
-            &LisaaType::Class(ref s) => classes
+            &LisaaType::Class(ref s, ref t) => classes
                 .get(s)
                 .expect("class not found")
                 .get_attr_index(name),
@@ -108,9 +127,24 @@ impl LisaaType {
             &LisaaType::Slice(ref u) => vec![*u.clone()],
             &LisaaType::Num => vec![],
             &LisaaType::Char => vec![],
-            &LisaaType::Class(_) => vec![],
+            &LisaaType::Class(_, ref t) => t.clone(),
             &LisaaType::Pointer(ref p) => p.type_args(),
             _ => panic!("ok im out "),
+        }
+    }
+
+    pub fn get_constructor_call(&self, args: Vec<Expr>) -> FunctionCall {
+        match self {
+            &LisaaType::Slice(ref u) => {
+                FunctionCall::constructor("slice".to_string(), args, vec![*u.clone()])
+            }
+            &LisaaType::Num => FunctionCall::constructor("num".to_string(), args, vec![]),
+            &LisaaType::Char => FunctionCall::constructor("char".to_string(), args, vec![]),
+            &LisaaType::Class(ref c, ref t) => {
+                FunctionCall::constructor(c.clone(), args, t.clone())
+            }
+            &LisaaType::Pointer(ref p) => panic!("no constructor on pointers..."),
+            _ => panic!("no constructor on other types."),
         }
     }
 }
@@ -124,7 +158,7 @@ impl fmt::Display for LisaaType {
             &LisaaType::Void => write!(f, "void"),
             &LisaaType::Pointer(ref p) => write!(f, "&{}", p),
             &LisaaType::Any => write!(f, "any"),
-            &LisaaType::Class(ref c) => write!(f, "class {}", c),
+            &LisaaType::Class(ref c, ref t) => write!(f, "class {}<{:?}>", c, t),
             &LisaaType::TypeArg(ref str) => write!(f, "{}", str),
             &LisaaType::Function(ref str, _) => write!(f, "{}", str),
         }
@@ -132,7 +166,7 @@ impl fmt::Display for LisaaType {
 }
 
 /// A variable associated with a type.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub struct TypedVar {
     type_var: Option<LisaaType>,
     name: String,

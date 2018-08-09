@@ -1,4 +1,5 @@
-use statement::{FunctionDecl, Statement};
+use statement::{FunctionDecl, FunctionSig, Statement, TraitDecl};
+use std::collections::HashMap;
 use types::{LisaaType, TypedVar};
 use vm::OP;
 
@@ -64,7 +65,7 @@ impl NativeFunc for FunctionDecl {
                 vec![],
                 vec![],
                 Statement::Native(vec![OP::ToStr]),
-                LisaaType::Class("String".to_owned()),
+                LisaaType::Class("String".to_owned(), vec![]),
             ),
             FunctionDecl::new_complete(
                 None,
@@ -236,4 +237,18 @@ pub fn get_native_types(library: &str) -> Vec<FunctionDecl> {
         } //, time, rand],
         _ => vec![],
     }
+}
+
+pub fn get_any_trait() -> TraitDecl {
+    let mut map = HashMap::new();
+    map.insert(
+        "".to_string(),
+        FunctionSig::new_simple_args(
+            vec![],
+            vec![],
+            LisaaType::Class("Self".to_string(), vec![]),
+            "".to_string(),
+        ),
+    );
+    TraitDecl::new("Any".to_string(), vec![], map)
 }

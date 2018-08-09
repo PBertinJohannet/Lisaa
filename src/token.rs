@@ -31,6 +31,8 @@ pub enum TokenType {
     SEMICOLON,
     /// A colon
     COLON,
+    /// A double colon ::
+    DOUBLECOLON,
     /// A slash, used to divide.
     SLASH,
     /// A star "*".

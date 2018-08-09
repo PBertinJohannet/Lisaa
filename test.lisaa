@@ -1,0 +1,11 @@
+
+
+fn allah(num b) -> num {
+	return b + 1;
+}
+
+fn main() {
+    slice<char> a = newslice(2);
+    a[1] = 'h';
+    allah(5);
+}

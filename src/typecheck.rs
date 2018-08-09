@@ -1,10 +1,11 @@
 use expression::{BinaryExpr, Callee, Expr, ExprEnum, FunctionCall, Operator, UnaryExpr};
-use native::get_native_types;
+use generic_inference::Inferer;
+use native::{get_any_trait, get_native_types};
 use statement::{
     Assignment, ClassDecl, Declaration, FunctionDecl, FunctionSig, IfStatement, Program, Statement,
     TraitDecl, TypeParam, WhileStatement,
 };
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 use types::{LisaaType, TypedVar};
 
@@ -52,8 +53,9 @@ impl Scope {
 /// Contains a program and functions to resolve types/verify consistency.
 /// Also check for lvalues and assignment.
 pub struct TypeChecker {
-    functions: HashMap<String, FunctionDecl>,
-    dispatched_functions: HashMap<String, FunctionDecl>,
+    functions: HashMap<FunctionSig, FunctionDecl>,
+    /// Returns all the local functions that can be called on generics
+    local_functions: HashSet<FunctionSig>,
     classes: HashMap<String, ClassDecl>,
     traits: HashMap<String, HashMap<String, FunctionSig>>,
     scopes: Vec<Scope>,
@@ -65,7 +67,7 @@ impl TypeChecker {
         TypeChecker {
             scopes: vec![Scope::new(1)],
             functions: HashMap::new(),
-            dispatched_functions: HashMap::new(),
+            local_functions: HashSet::new(),
             classes: HashMap::new(),
             traits: HashMap::new(),
         }
@@ -73,10 +75,10 @@ impl TypeChecker {
     /// Add a lib to the program.
     pub fn add_natives(&mut self, lib: &str) {
         for f in get_native_types(lib) {
-            self.functions.insert(f.name().to_owned(), f);
+            self.functions.insert(f.signature().clone(), f);
         }
     }
-    /// Creates a variable in the current scope.g
+    /// Creates a variable in the current scope
     pub fn create_var(&mut self, var: TypedVar) {
         self.scopes.last_mut().unwrap().create_var(var);
     }
@@ -117,10 +119,19 @@ impl TypeChecker {
         self.functions = program.functions().clone();
         self.classes = program.classes().clone();
         self.add_natives("base");
+        program
+            .traits_mut()
+            .insert("Any".to_string(), get_any_trait());
         self.complete_traits(program.traits())?;
         for (_, mut func) in program.functions_mut() {
             self.function(&mut func)?;
         }
+        let mut main = program.functions_mut().get_mut(&FunctionSig::new(
+            vec![],
+            vec![],
+            LisaaType::Void,
+            "main".to_string(),
+        ));
         Ok(())
     }
 
@@ -137,7 +148,7 @@ impl TypeChecker {
                     .ok_or(format!("unknown trait : {:?}", name.clone()))?
                     .sub_traits()
                     .iter()
-                    .filter(|&t| self.traits.contains_key(t))
+                    .filter(|&t| !self.traits.contains_key(t))
                     .collect::<Vec<&String>>();
                 if uncompleted.len() == 0 {
                     self.insert_trait(name, traits.get(name).unwrap());
@@ -156,6 +167,9 @@ impl TypeChecker {
         for sub in t.sub_traits() {
             new_map.extend(self.traits.get(sub).unwrap().clone().into_iter())
         }
+        for sub in t.methods() {
+            new_map.insert(sub.0.clone(), sub.1.clone());
+        }
         self.traits.insert(name.clone(), new_map);
     }
 
@@ -173,20 +187,24 @@ impl TypeChecker {
     ///     Checks statements inside.
     ///     Checks the return type
     /// TODO: split this it is too long.
+    /// TODO: add checks that type params appear in arguments.
     pub fn function(&mut self, func: &mut FunctionDecl) -> Result<(), String> {
+        self.add_function_in_scope(func);
+        self.add_func_type_args(func);
+        self.check_function(func)?;
+        self.leave_function(func);
+        Ok(())
+    }
+
+    /// leave the function, remove the scope and the functions for type arguments.
+    pub fn leave_function(&mut self, func: &mut FunctionDecl) {
+        self.scopes.pop();
+        self.local_functions = HashSet::new();
+    }
+
+    /// typechecks the function.
+    pub fn check_function(&mut self, func: &mut FunctionDecl) -> Result<(), String> {
         let (ret_type, name) = (func.ret_type().clone(), func.name().to_string());
-        let depth = self.scopes.len();
-        self.scopes.push(Scope::new(depth));
-        func.self_type
-            .clone()
-            .map(|t| self.create_var(TypedVar::new(t, "self".to_string())));
-        for arg in func.args() {
-            self.create_var(arg.clone());
-        }
-        for arg in func.type_args() {
-            let trait_name = arg.trait_name().clone();
-            self.create_type_param(arg.name().clone(), trait_name);
-        }
         for st in func.scope_mut() {
             self.statement(st)?;
             if let &mut Statement::ReturnStatement(ref mut expr) = st {
@@ -201,9 +219,40 @@ impl TypeChecker {
                 })?;
             }
         }
-        self.scopes.pop();
         Ok(())
     }
+
+    /// Adds the type arguments and theyre constructors in scope.
+    pub fn add_func_type_args(&mut self, func: &mut FunctionDecl) {
+        for arg in func.type_args() {
+            let trait_name = arg.trait_name().clone();
+            self.create_type_param(arg.name().clone(), trait_name);
+            self.add_local_funcs_for(arg);
+        }
+    }
+
+    /// Add all the local functions of the given generic type
+    pub fn add_local_funcs_for(&mut self, arg: &TypeParam) {
+        for func_sig in self
+            .traits
+            .get(arg.trait_name())
+            .ok_or(|| format!("Unknown trait : {}", arg.trait_name()))?
+            .iter()
+        {}
+    }
+
+    /// Add the parameters of the function in scope (including self etc...)
+    pub fn add_function_in_scope(&mut self, func: &mut FunctionDecl) {
+        let depth = self.scopes.len();
+        self.scopes.push(Scope::new(depth));
+        func.self_type
+            .clone()
+            .map(|t| self.create_var(TypedVar::new(t, "self".to_string())));
+        for arg in func.args() {
+            self.create_var(arg.clone());
+        }
+    }
+
     /// Resolve what needs to be resolved in a statement.
     pub fn statement(&mut self, statement: &mut Statement) -> Result<(), String> {
         match statement {
@@ -323,24 +372,22 @@ impl TypeChecker {
     pub fn get_classes_with_type_params(&self) -> HashMap<String, ClassDecl> {
         let mut new_map = self.classes.clone();
         for (name, _) in self.scopes.last().unwrap().type_params.iter() {
-            new_map.insert(name.clone(), ClassDecl::new(name.clone(), vec![]));
+            new_map.insert(name.clone(), ClassDecl::new(name.clone(), vec![], vec![]));
         }
-        println!("classes with type params : {:?}", new_map);
         new_map
     }
 
-    pub fn get_functions_with_type_params(&self) -> HashMap<String, FunctionDecl> {
+    /// Returns a hashmap of all the functions currently in scope
+    pub fn get_functions_with_type_params(&self) -> HashMap<FunctionSig, FunctionDecl> {
         let mut new_map = self.functions.clone();
         for (type_name, trait_name) in self.scopes.last().unwrap().type_params.iter() {
+            println!("trait name : {}", trait_name);
             for (func_name, func_sig) in self.traits.get(trait_name).unwrap() {
                 let complete_name = format!("{}::{}", type_name, func_name);
-                new_map.insert(
-                    complete_name.clone(),
-                    FunctionDecl::from_sig(complete_name, func_sig.clone()),
-                );
+                let func_decl = FunctionDecl::from_sig(complete_name, func_sig.clone());
+                new_map.insert(func_decl.signature().clone(), func_decl);
             }
         }
-        println!("funcs with type params : {:?}", new_map);
         new_map
     }
 
@@ -365,69 +412,92 @@ impl TypeChecker {
             }
         }
     }
-
-    /// Aalright so we have the declaration of the function and the call with the types so surely
-    /// we can get the return type
-    /// From a call and a declaration : returns some infos.
-    /// with static dispatch this is maybe going to disapear
-    pub fn resolve_method_call<'a>(
-        decl: &'a FunctionDecl,
-        call: &FunctionCall,
-    ) -> Result<(LisaaType, &'a Vec<TypedVar>), String> {
-        if let &LisaaType::TypeArg(n) = decl.ret_type() {
-            let ret = &call
-                .callee()
-                .get_method()
-                .unwrap()
-                .return_type()
-                .type_args()[n];
-            return Ok((ret.clone(), decl.args()));
-        } else {
-            return Ok((decl.ret_type().clone(), decl.args()));
+    /*
+    /// Dispatch the function, given a function call and a matching signature, change the signature
+    /// to match the type parameters.
+    /// To do that...
+    /// sig : add<T : Add>(T a, T b)
+    /// call : add(1, 2);
+    /// 1 => we find the generic in the function's signature (T : Add).
+    /// 2 => we find where it should appear in the function's signature (T a, T b).
+    /// 3 => we check that the arguments given are the same and respect the constraints.
+    /// 4 => we rewrite the signature without the generic type.
+    /// -> add(num a, num b)
+    /// but that will be next :
+    /// first the constructor
+    /// we have the arg in the function's signature
+    /// Checks that they match the constraints on the class
+    /// sig : Point<T : Add>()
+    /// call : Point::<num>()
+    /// 1 => we find the generic in the function signature (T : Add)
+    /// 2 => we check that the given generics match the given generics (num : Add)
+    /// 3 => we change the return type (Point<num>)
+    /// -> Point::<num>() -> Point<num>
+    pub fn resolve_generics(&mut self, func: &mut FunctionCall) -> Result<(), String> {
+        println!("resolve generics");
+        let type_args = func.type_args().clone();
+        if type_args.len() > 0 {
+            if let LisaaType::Class(c, _) = func.signature().ret_type.clone() {
+                self.check_type_constraints(
+                    self.classes.get(&c).unwrap().type_params(),
+                    &type_args,
+                )?;
+                func.signature_mut().ret_type = LisaaType::Class(c, type_args)
+            }
         }
+        for arg in func.signature().type_args {}
+        Ok(())
     }
-
-    /// This is where the static dispatch happens.
-    /// We have the type of the callee and the arguments, we need to find a function decl that
-    /// matches it.
-    pub fn erase_generic_type(&mut self, call: &FunctionCall, name: &String) -> Result<(), String> {
+    /// Checks that a list type respects the bounds of a list of generics :
+    pub fn check_type_constraints(
+        &self,
+        type_params: &Vec<TypeParam>,
+        type_args: &Vec<LisaaType>,
+    ) -> Result<(), String> {
+        for (p, a) in type_params.iter().zip(type_args.iter()) {
+            self.check_type_constraint(p, a)?;
+        }
         Ok(())
     }
 
-    /// Returns the return type and the arguments of the function.
-    pub fn get_function(
-        &mut self,
-        func: &mut FunctionCall,
-    ) -> Result<(LisaaType, &Vec<TypedVar>), String> {
-        let name = self.get_function_name(func)?;
-        func.set_name(&name);
-        self.erase_generic_type(func, &name)?;
-        match self.functions.get(&name) {
-            Some(f) => Self::resolve_method_call(f, func),
-            None => Err(String::from(format!("Unknown function : {:?}", name))),
+    /// Checks that a type respects the bound on a generic :
+    /// TODO: actually check that the bounds are respected.
+    pub fn check_type_constraint(
+        &self,
+        type_param: &TypeParam,
+        arg: &LisaaType,
+    ) -> Result<(), String> {
+        for method in self.traits.get(type_param.trait_name()).iter() {
+            //println!("respect : {:?}", method);
         }
+        Ok(())
     }
+
+*/
 
     /// Find the return type of a function call expression and returns it.
     /// Checks that arguments lists are the same size.
     /// Checks for arguments given to the function.
     pub fn function_call(&mut self, exp: &mut FunctionCall) -> Result<LisaaType, String> {
-        let (ret, args) = {
-            let (r, a) = self.get_function(exp)?;
-            (r.clone(), a.clone())
-        };
-        let (args_count_given, args_count_expected) = (exp.args().len(), args.len());
-        if args_count_expected != args_count_given {
-            return Err(String::from(format!(
-                "Error : expected {} arguments, {} given",
-                args_count_expected, args_count_given
-            )));
-        }
+        let args_count_given = exp.args().len();
+        let mut given_types = vec![];
         for i in 0..args_count_given {
             self.expression(&mut exp.args_mut()[i])?;
-            self.check_type(&exp.args_mut()[i], &args[i].type_var().clone().unwrap())?;
+            given_types.push(exp.args_mut()[i].return_type());
         }
-        Ok(ret)
+        let name = self.get_function_name(exp)?;
+        let type_args = exp.type_args().clone();
+        let sig = Inferer::new(
+            &self.functions,
+            &self.local_functions,
+            given_types,
+            exp.type_args(),
+            None,
+            name,
+            &self.traits,
+        ).infer()?;
+        exp.set_signature(sig);
+        Ok(exp.signature().return_type().clone())
     }
 
     /// Find the return type of a unary expression and returns it.

@@ -73,7 +73,7 @@ impl Parser {
         while !self.is_at_end() {
             match self.element() {
                 Ok(Element::Function(e)) => {
-                    let name = e.name().to_string();
+                    let name = e.signature().clone();
                     functions.insert(name, e);
                 }
                 Ok(Element::Class(c)) => {
@@ -150,8 +150,8 @@ impl Parser {
                     Ok(traits.push(clo_self.advance().get_lexeme().to_string()))
                 }
                 TokenType::METHOD => Ok({
-                    let (name, meth) = clo_self.parse_signature()?;
-                    methods.insert(name, meth);
+                    let method = clo_self.parse_signature()?;
+                    methods.insert(method.name().clone(), method);
                 }),
                 e => Err(format!("expected : identifier or method, got : {:?}", e)),
             };
@@ -166,15 +166,17 @@ impl Parser {
 
     /// Parses a function signature in a trait eg :
     /// method actually(num c) -> Self
-    pub fn parse_signature(&mut self) -> Result<(String, FunctionSig), String> {
+    pub fn parse_signature(&mut self) -> Result<FunctionSig, String> {
         self.advance();
         let name = self.expect_ident("method")?;
         let type_parameters = self.parse_type_list()?;
         let mut arguments = self.parse_unnamed_args()?;
         let return_type = self.func_return_type()?;
-        Ok((
+        Ok(FunctionSig::new(
+            type_parameters,
+            arguments,
+            return_type,
             name,
-            FunctionSig::new(type_parameters, arguments, return_type),
         ))
     }
 
@@ -189,6 +191,21 @@ impl Parser {
         {
             types.push(TypedVar::new(self.parse_type()?, "".to_string()));
             self.advance(); // parse comma or closing paren;
+        }
+        Ok(types)
+    }
+
+    /// Parses a list of known types
+    /// <num, Point, char>
+    pub fn parse_known_type_list(&mut self) -> Result<Vec<LisaaType>, String> {
+        let mut types = vec![];
+        if self.peek().get_type() == &TokenType::LESS {
+            self.advance();
+            types.push(self.parse_type()?);
+            while self.peek().get_type() == &TokenType::COMMA {
+                types.push(self.parse_type()?);
+            }
+            self.expect(TokenType::GREATER)?;
         }
         Ok(types)
     }
@@ -210,7 +227,7 @@ impl Parser {
             scope,
             return_type,
         );
-        res.set_self(LisaaType::Class(class_name));
+        res.set_self(LisaaType::Class(class_name, vec![]));
         Ok(res)
     }
 
@@ -218,6 +235,7 @@ impl Parser {
         self.advance();
         // skip the func keyword
         let name = self.expect_ident("class")?;
+        let type_parameters = self.parse_type_list()?;
         self.expect(TokenType::LeftCurlyBrace)?;
         let mut attrs = vec![];
         while self.peek().get_type() != &TokenType::RightCurlyBrace {
@@ -232,7 +250,7 @@ impl Parser {
                 name,
                 attrs.len()
             )),
-            _ => Ok(ClassDecl::new(name, attrs)),
+            _ => Ok(ClassDecl::new(name, attrs, type_parameters)),
         }
     }
 
@@ -330,10 +348,10 @@ impl Parser {
     }
 
     pub fn parse_type(&mut self) -> Result<LisaaType, String> {
-        match self.peek().get_type() {
+        match self.peek().get_type().clone() {
             TokenType::BIGSELF => {
                 self.advance();
-                Ok(LisaaType::Class(String::from("Self")))
+                Ok(LisaaType::Class(String::from("Self"), vec![]))
             }
             TokenType::IDENTIFIER => {
                 let ident = self.advance().get_lexeme().to_string();
@@ -346,10 +364,13 @@ impl Parser {
                     }
                     "num" => Ok(LisaaType::Num),
                     "char" => Ok(LisaaType::Char),
-                    i => Ok(LisaaType::Class(i.to_string())),
+                    i => Ok({
+                        let type_params = self.parse_known_type_list()?;
+                        LisaaType::Class(i.to_string(), type_params)
+                    }),
                 }
             }
-            _ => Err(String::from("Expected Type or \"Self\" here")),
+            other => Err(format!("Expected Type or \"Self\" here, got : {:?}", other)),
         }
     }
 
@@ -466,7 +487,7 @@ impl Parser {
     /// When it arrives at an identifier it checks for the next element :
     /// If it is a < we have a type.
     /// If it is an identifier we also have a type.
-    /// In the two cases we parse an assignment.
+    /// In the two cases we parse the type followed by the variable's name then an assignment.
     /// Else we go to the assignment part.
     pub fn declaration(&mut self) -> Result<Statement, String> {
         let decl = match self.peek().get_type() {
@@ -642,6 +663,7 @@ impl Parser {
                 &TokenType::LeftParen => self.parse_function_call(expr)?,
                 &TokenType::LeftBrace => self.parse_indexing(expr)?,
                 &TokenType::DOT => self.parse_getattr(expr)?,
+                &TokenType::DOUBLECOLON => self.parse_constructor(expr)?,
                 _ => {
                     break;
                 }
@@ -649,6 +671,28 @@ impl Parser {
         }
         Ok(expr)
     }
+
+    /// Parse a constructor call.
+    pub fn parse_constructor(&mut self, lit: Expr) -> Result<Expr, String> {
+        self.expect(TokenType::DOUBLECOLON)?;
+        let mut tp = LisaaType::Class(lit.get_identifier()?.clone(), self.parse_known_type_list()?);
+        self.expect(TokenType::LeftParen)?;
+        let args = match self.peek().get_type() {
+            &TokenType::NUMBER => vec![Expr::number(
+                self.advance().get_lexeme().parse::<f64>().unwrap(),
+                lit.get_line(),
+            )],
+            &TokenType::RightParen => vec![],
+            _ => return Err(String::from("expected right paren here ")),
+        };
+        self.expect(TokenType::RightParen)?;
+        return Ok(Expr::constructor_call(
+            tp.get_constructor_call(args),
+            lit.get_line(),
+        ));
+    }
+
+    /// parses a list of comma separated known types : <num, Point, char, slice<num>>
 
     /// Parse the function call but it is ugly and should be modified.
     pub fn parse_function_call(&mut self, lit: Expr) -> Result<Expr, String> {
