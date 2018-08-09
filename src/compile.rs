@@ -198,7 +198,7 @@ impl Compiler {
         self.create_var("0".to_string()); // return value.
         self.create_var("1".to_string()); // next instruction.
         self.create_var("2".to_string()); // offset.
-        func.self_type
+        func.self_type()
             .clone()
             .map(|_| self.create_var("self".to_string()));
         for var in func.args() {

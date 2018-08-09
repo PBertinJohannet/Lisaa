@@ -196,7 +196,6 @@ impl ClassDecl {
     /// Returns the constructor's function.
     pub fn get_constructor(&self) -> FunctionDecl {
         FunctionDecl {
-            self_type: None,
             name: self.name.clone(),
             signature: FunctionSig::new(
                 self.type_params.clone(),
@@ -209,6 +208,7 @@ impl ClassDecl {
                         .collect(),
                 ),
                 self.name.clone(),
+                None,
             ),
             inline: false,
             scope: self.create_constructor_scope(),
@@ -285,6 +285,8 @@ pub struct FunctionSig {
     pub ret_type: LisaaType,
     /// The name
     pub name: String,
+    /// If the function is a method, the type of self.
+    pub self_type: Option<LisaaType>,
 }
 impl FunctionSig {
     /// Creates a new function signature.
@@ -293,12 +295,14 @@ impl FunctionSig {
         args: Vec<TypedVar>,
         ret_type: LisaaType,
         name: String,
+        self_type: Option<LisaaType>
     ) -> Self {
         FunctionSig {
             type_args: type_args,
             args: args.iter().map(|a| a.type_var().clone().unwrap()).collect(),
             ret_type: ret_type,
             name: name,
+            self_type : self_type
         }
     }
 
@@ -308,12 +312,14 @@ impl FunctionSig {
         args: Vec<LisaaType>,
         ret_type: LisaaType,
         name: String,
+        self_type: Option<LisaaType>
     ) -> Self {
         FunctionSig {
             type_args: type_args,
             args: args,
             ret_type: ret_type,
             name: name,
+            self_type : self_type
         }
     }
 
@@ -348,8 +354,6 @@ pub struct FunctionDecl {
     pub name: String,
     /// The scope of the function, the statement inside it.
     pub scope: Statement,
-    /// If the function is a method, the type of self.
-    pub self_type: Option<LisaaType>,
     /// The signature of the function
     pub signature: FunctionSig,
     /// The function argument's names
@@ -368,9 +372,8 @@ impl FunctionDecl {
         FunctionDecl {
             inline: false,
             name: name.clone(),
-            signature: FunctionSig::new(type_args, args.clone(), ret_type, name),
+            signature: FunctionSig::new(type_args, args.clone(), ret_type, name, None),
             scope: scope,
-            self_type: None,
             arguments: args,
         }
     }
@@ -381,9 +384,8 @@ impl FunctionDecl {
         FunctionDecl {
             inline: false,
             name: name.clone(),
-            signature: FunctionSig::new(sig.type_args, args_typevar.clone(), sig.ret_type, name),
+            signature: FunctionSig::new(sig.type_args, args_typevar.clone(), sig.ret_type, name, None),
             scope: Statement::Native(vec![]),
-            self_type: None,
             arguments: args_typevar,
         }
     }
@@ -399,21 +401,24 @@ impl FunctionDecl {
         ret_type: LisaaType,
     ) -> Self {
         FunctionDecl {
-            self_type: self_type,
             inline: inline,
             name: name.clone(),
-            signature: FunctionSig::new(type_args, args.clone(), ret_type, name),
+            signature: FunctionSig::new(type_args, args.clone(), ret_type, name, self_type),
             scope: scope,
             arguments: args,
         }
     }
     /// set the type of the "self" if it is a method.
     pub fn set_self(&mut self, tp: LisaaType) {
-        self.self_type = Some(tp)
+        self.signature.self_type = Some(tp)
     }
     /// returns the return type of the function.
     pub fn signature(&self) -> &FunctionSig {
         &self.signature
+    }
+    /// returns the return type of the function.
+    pub fn self_type(&self) -> &Option<LisaaType> {
+        &self.signature.self_type
     }
     /// returns the return type of the function.
     pub fn ret_type(&self) -> &LisaaType {

@@ -248,6 +248,7 @@ pub fn get_any_trait() -> TraitDecl {
             vec![],
             LisaaType::Class("Self".to_string(), vec![]),
             "".to_string(),
+            None,
         ),
     );
     TraitDecl::new("Any".to_string(), vec![], map)

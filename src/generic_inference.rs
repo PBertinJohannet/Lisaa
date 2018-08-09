@@ -13,6 +13,7 @@ use types::{LisaaType, TypedVar};
 /// Given inforamtions on functions etc... find a function matching the given parameters.
 pub struct Inferer<'a> {
     functions: &'a HashMap<FunctionSig, FunctionDecl>,
+    local_functions: &'a HashSet<FunctionSig>,
     given_argument_types: Vec<LisaaType>,
     given_generics: &'a Vec<LisaaType>,
     callee_type: Option<LisaaType>,
@@ -23,7 +24,7 @@ pub struct Inferer<'a> {
 impl<'a> Inferer<'a> {
     pub fn new(
         functions: &'a HashMap<FunctionSig, FunctionDecl>,
-        local_functions: &'a HashSet<FunctionSig, FunctionDecl>,
+        local_functions: &'a HashSet<FunctionSig>,
         given_argument_types: Vec<LisaaType>,
         given_generics: &'a Vec<LisaaType>,
         callee_type: Option<LisaaType>,
@@ -32,6 +33,7 @@ impl<'a> Inferer<'a> {
     ) -> Self {
         Inferer {
             functions: functions,
+            local_functions: local_functions,
             given_argument_types: given_argument_types,
             given_generics: given_generics,
             callee_type: callee_type,
@@ -44,7 +46,15 @@ impl<'a> Inferer<'a> {
     /// 1 The arguments are given : check number and trait bounds.
     /// 2 The arguments are not given : check all functions bound.
     pub fn infer(&self) -> Result<FunctionSig, String> {
-        for (f, d) in self.functions {
+        for (f, _) in self.functions {
+            if f.name() == &self.func_name {
+                match self.is_match(f) {
+                    Some(f) => return Ok(f),
+                    None => (),
+                };
+            }
+        }
+        for f in self.local_functions {
             if f.name() == &self.func_name {
                 match self.is_match(f) {
                     Some(f) => return Ok(f),
@@ -62,16 +72,14 @@ impl<'a> Inferer<'a> {
     ///
     /// Returns the morphised signature
     pub fn is_match(&self, sig: &FunctionSig) -> Option<FunctionSig> {
-        if !self.given_generics.is_empty() {
+        if !self.given_generics.is_empty() && sig.type_args.len() == self.given_generics.len(){
             if self.check_type_constraints(&sig.type_args, &self.given_argument_types) {
                 Some(self.get_sig_from_generics(sig, self.given_generics.clone()))
             } else {
                 None
             }
-        } else if sig.type_args.len() == self.given_generics.len() {
-            self.check_signature(sig)
         } else {
-            None
+            self.check_signature(sig)
         }
     }
 
@@ -79,14 +87,15 @@ impl<'a> Inferer<'a> {
     pub fn get_sig_from_generics(&self, orig: &FunctionSig, actual: Vec<LisaaType>) -> FunctionSig {
         let generics = &orig.type_args;
         // then use the generics to identify the return type.
-        let ret_type = self.replace_gen(&orig.ret_type, generics, &actual);
+        let ret_type = Self::replace_gen(&orig.ret_type, generics, &actual);
+        let self_type = orig.self_type.clone().map(|t|Self::replace_gen(&t, generics, &actual));
         // then use the generics to identify the parameters.
         let actual_args = self
             .given_argument_types
             .iter()
-            .map(|arg| self.replace_gen(arg, generics, &actual))
+            .map(|arg| Self::replace_gen(arg, generics, &actual))
             .collect();
-        FunctionSig::new_simple_args(vec![], actual_args, ret_type, orig.name().clone())
+        FunctionSig::new_simple_args(vec![], actual_args, ret_type, orig.name().clone(), self_type)
     }
 
     /// Checks the two signatures and then returns the actualised signature
@@ -109,7 +118,6 @@ impl<'a> Inferer<'a> {
 
     /// Given a type, returns an actual type if the it is a generic
     pub fn replace_gen(
-        &self,
         orig: &LisaaType,
         gens: &Vec<TypeParam>,
         actual: &Vec<LisaaType>,
@@ -125,7 +133,7 @@ impl<'a> Inferer<'a> {
                     s.clone(),
                     generics
                         .iter()
-                        .map(|g| self.replace_gen(g, gens, actual))
+                        .map(|g| Self::replace_gen(g, gens, actual))
                         .collect(),
                 ),
             },
@@ -139,6 +147,11 @@ impl<'a> Inferer<'a> {
     /// 3 It should respect the type constraints.
     pub fn check_generic_appearance(&self, sig: &FunctionSig, g: &TypeParam) -> Option<LisaaType> {
         let mut appearances = vec![];
+        if let Some(LisaaType::Class(ref name, _)) = sig.self_type {
+            if name == g.name() {
+                appearances.push(self.callee_type.clone().unwrap());
+            }
+        }
         for (id, arg) in sig.args.iter().enumerate() {
             // find all occurences of that generic
             if let &LisaaType::Class(ref name, _) = arg {

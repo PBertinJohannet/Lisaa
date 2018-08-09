@@ -169,7 +169,8 @@ impl Parser {
     pub fn parse_signature(&mut self) -> Result<FunctionSig, String> {
         self.advance();
         let name = self.expect_ident("method")?;
-        let type_parameters = self.parse_type_list()?;
+        let mut type_parameters = self.parse_type_list()?;
+        type_parameters.push(TypeParam::new("Self".to_string(), "Any".to_string()));
         let mut arguments = self.parse_unnamed_args()?;
         let return_type = self.func_return_type()?;
         Ok(FunctionSig::new(
@@ -177,6 +178,7 @@ impl Parser {
             arguments,
             return_type,
             name,
+            Some(LisaaType::Class("Self".to_string(), vec![])),
         ))
     }
 

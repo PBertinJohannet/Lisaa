@@ -22,8 +22,8 @@ pub enum LisaaType {
     Any,
     /// THe type argument with number usize.
     TypeArg(usize),
-    /// A method, represented by the type :: the name.
-    Function(String, Vec<LisaaType>),
+    /// A method, represented by the caller :: the type :: the name.
+    Function(Box<LisaaType>, String, Vec<LisaaType>),
 }
 
 impl LisaaType {
@@ -38,8 +38,16 @@ impl LisaaType {
 
     pub fn function_name(&self) -> Result<String, ()> {
         match self {
-            &LisaaType::Function(ref s, _) => Ok(s.to_owned()),
+            &LisaaType::Function(_, ref s, _) => Ok(s.to_owned()),
             &LisaaType::Pointer(ref inner) => Ok(inner.function_name()?),
+            _ => Err(()),
+        }
+    }
+    /// The function type
+    pub fn function_type(&self) -> Result<LisaaType, ()> {
+        match self {
+            &LisaaType::Function(ref t, _, _) => Ok(*t.clone()),
+            &LisaaType::Pointer(ref inner) => Ok(inner.function_type()?),
             _ => Err(()),
         }
     }
@@ -74,16 +82,17 @@ impl LisaaType {
     ) -> Result<LisaaType, String> {
         match self {
             &LisaaType::Pointer(ref inner) => inner.get_attr(name, classes, functions),
-            &LisaaType::Num => Ok(LisaaType::Function(format!("num::{}", name), vec![])),
-            &LisaaType::Char => Ok(LisaaType::Function(format!("num::{}", name), vec![])),
+            &LisaaType::Num => Ok(LisaaType::Function(Box::new(self.clone()),format!("num::{}", name), vec![])),
+            &LisaaType::Char => Ok(LisaaType::Function(Box::new(self.clone()),format!("num::{}", name), vec![])),
             &LisaaType::Slice(ref inner) => Ok(LisaaType::Function(
+                Box::new(self.clone()),
                 format!("slice::{}", name),
                 vec![*inner.clone()],
             )),
             &LisaaType::Class(ref s, ref t) => Ok(LisaaType::pointer(match classes.get(s) {
                 Some(class) => match class.get_attr(name) {
                     Some(decl) => Ok(decl.val_type().clone()),
-                    None => Self::get_class_attr(s, name, functions),
+                    None => self.get_class_attr(s, name, functions),
                 },
                 None => Err(format!("Unknown class : {}", s)),
             }?)),
@@ -98,6 +107,7 @@ impl LisaaType {
 
     /// Returns the attr of the class given the class name
     pub fn get_class_attr(
+        &self,
         class: &String,
         attr: &String,
         functions: &HashMap<FunctionSig, FunctionDecl>,
@@ -106,7 +116,7 @@ impl LisaaType {
             .iter()
             .find(|(func, _)| func.name() == &format!("{}::{}", class, attr))
         {
-            Some(f) => Ok(LisaaType::Function(f.0.name().clone(), vec![])),
+            Some(f) => Ok(LisaaType::Function(Box::new(self.clone()), f.0.name().clone(), vec![])),
             None => Err(format!("Can't take attribute {} of class {}", attr, class)),
         }
     }
@@ -160,7 +170,7 @@ impl fmt::Display for LisaaType {
             &LisaaType::Any => write!(f, "any"),
             &LisaaType::Class(ref c, ref t) => write!(f, "class {}<{:?}>", c, t),
             &LisaaType::TypeArg(ref str) => write!(f, "{}", str),
-            &LisaaType::Function(ref str, _) => write!(f, "{}", str),
+            &LisaaType::Function(_, ref str, _) => write!(f, "{}", str),
         }
     }
 }

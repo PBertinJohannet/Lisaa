@@ -131,6 +131,7 @@ impl TypeChecker {
             vec![],
             LisaaType::Void,
             "main".to_string(),
+            None,
         ));
         Ok(())
     }
@@ -190,7 +191,7 @@ impl TypeChecker {
     /// TODO: add checks that type params appear in arguments.
     pub fn function(&mut self, func: &mut FunctionDecl) -> Result<(), String> {
         self.add_function_in_scope(func);
-        self.add_func_type_args(func);
+        self.add_func_type_args(func)?;
         self.check_function(func)?;
         self.leave_function(func);
         Ok(())
@@ -223,29 +224,71 @@ impl TypeChecker {
     }
 
     /// Adds the type arguments and theyre constructors in scope.
-    pub fn add_func_type_args(&mut self, func: &mut FunctionDecl) {
+    pub fn add_func_type_args(&mut self, func: &mut FunctionDecl) -> Result<(), String> {
         for arg in func.type_args() {
             let trait_name = arg.trait_name().clone();
             self.create_type_param(arg.name().clone(), trait_name);
-            self.add_local_funcs_for(arg);
+            self.add_local_funcs_for(arg)?;
         }
+        Ok(())
     }
 
     /// Add all the local functions of the given generic type
-    pub fn add_local_funcs_for(&mut self, arg: &TypeParam) {
-        for func_sig in self
+    /// create functions of the form T::add(T) -> T
+    pub fn add_local_funcs_for(&mut self, arg: &TypeParam) -> Result<(), String> {
+        for (name, sig) in self
             .traits
             .get(arg.trait_name())
-            .ok_or(|| format!("Unknown trait : {}", arg.trait_name()))?
+            .ok_or(format!("Unknown trait : {}", arg.trait_name()))?
             .iter()
-        {}
+        {
+            let full_name = if name == &"".to_string() {
+                arg.name().clone()
+            } else {
+                format!("{}::{}", arg.name(), name)
+            };
+            let sig = FunctionSig::new_simple_args(
+                Self::replace_big_self_in_generics(&sig.type_args, arg.name()), // the arguments of the signature
+                Self::replace_big_self(&sig.args, arg.name()), // the arguments but replace Self by th,
+                Self::replace_big_self_once(&sig.ret_type, arg.name()),
+                full_name.clone(),
+                if &full_name == name {None} else {Some(LisaaType::Class(arg.name().clone(), vec![]))}
+            );
+            self.local_functions.insert(sig);
+        }
+        Ok(())
     }
-
+    /// Replace big self by a type parameter in a list of types
+    pub fn replace_big_self_in_generics(orig : &Vec<TypeParam>, type_name : &String) -> Vec<TypeParam>{
+        orig.iter()
+            .map(|a| TypeParam::new(a.name().replace("Self", type_name.as_ref()), a.trait_name().clone()))
+            .collect()
+    }
+    /// Replace big self by a type parameter in a list of types
+    pub fn replace_big_self(orig : &Vec<LisaaType>, type_name : &String) -> Vec<LisaaType>{
+        orig.iter()
+            .map(|a| Self::replace_big_self_once(a, type_name))
+            .collect()
+    }
+    /// Replace big self by a type parameter in a list of types
+    pub fn replace_big_self_once(arg : &LisaaType, type_name : &String) -> LisaaType{
+        match arg {
+            &LisaaType::Class(ref class_name, ref e) => LisaaType::Class(
+                if class_name == &"Self".to_string() {
+                    type_name.clone()
+                } else {
+                    class_name.clone()
+                },
+                e.clone(),
+            ),
+            e => e.clone(),
+        }
+    }
     /// Add the parameters of the function in scope (including self etc...)
     pub fn add_function_in_scope(&mut self, func: &mut FunctionDecl) {
         let depth = self.scopes.len();
         self.scopes.push(Scope::new(depth));
-        func.self_type
+        func.self_type()
             .clone()
             .map(|t| self.create_var(TypedVar::new(t, "self".to_string())));
         for arg in func.args() {
@@ -381,7 +424,6 @@ impl TypeChecker {
     pub fn get_functions_with_type_params(&self) -> HashMap<FunctionSig, FunctionDecl> {
         let mut new_map = self.functions.clone();
         for (type_name, trait_name) in self.scopes.last().unwrap().type_params.iter() {
-            println!("trait name : {}", trait_name);
             for (func_name, func_sig) in self.traits.get(trait_name).unwrap() {
                 let complete_name = format!("{}::{}", type_name, func_name);
                 let func_decl = FunctionDecl::from_sig(complete_name, func_sig.clone());
@@ -412,68 +454,7 @@ impl TypeChecker {
             }
         }
     }
-    /*
-    /// Dispatch the function, given a function call and a matching signature, change the signature
-    /// to match the type parameters.
-    /// To do that...
-    /// sig : add<T : Add>(T a, T b)
-    /// call : add(1, 2);
-    /// 1 => we find the generic in the function's signature (T : Add).
-    /// 2 => we find where it should appear in the function's signature (T a, T b).
-    /// 3 => we check that the arguments given are the same and respect the constraints.
-    /// 4 => we rewrite the signature without the generic type.
-    /// -> add(num a, num b)
-    /// but that will be next :
-    /// first the constructor
-    /// we have the arg in the function's signature
-    /// Checks that they match the constraints on the class
-    /// sig : Point<T : Add>()
-    /// call : Point::<num>()
-    /// 1 => we find the generic in the function signature (T : Add)
-    /// 2 => we check that the given generics match the given generics (num : Add)
-    /// 3 => we change the return type (Point<num>)
-    /// -> Point::<num>() -> Point<num>
-    pub fn resolve_generics(&mut self, func: &mut FunctionCall) -> Result<(), String> {
-        println!("resolve generics");
-        let type_args = func.type_args().clone();
-        if type_args.len() > 0 {
-            if let LisaaType::Class(c, _) = func.signature().ret_type.clone() {
-                self.check_type_constraints(
-                    self.classes.get(&c).unwrap().type_params(),
-                    &type_args,
-                )?;
-                func.signature_mut().ret_type = LisaaType::Class(c, type_args)
-            }
-        }
-        for arg in func.signature().type_args {}
-        Ok(())
-    }
-    /// Checks that a list type respects the bounds of a list of generics :
-    pub fn check_type_constraints(
-        &self,
-        type_params: &Vec<TypeParam>,
-        type_args: &Vec<LisaaType>,
-    ) -> Result<(), String> {
-        for (p, a) in type_params.iter().zip(type_args.iter()) {
-            self.check_type_constraint(p, a)?;
-        }
-        Ok(())
-    }
-
-    /// Checks that a type respects the bound on a generic :
-    /// TODO: actually check that the bounds are respected.
-    pub fn check_type_constraint(
-        &self,
-        type_param: &TypeParam,
-        arg: &LisaaType,
-    ) -> Result<(), String> {
-        for method in self.traits.get(type_param.trait_name()).iter() {
-            //println!("respect : {:?}", method);
-        }
-        Ok(())
-    }
-
-*/
+    
 
     /// Find the return type of a function call expression and returns it.
     /// Checks that arguments lists are the same size.
@@ -492,7 +473,7 @@ impl TypeChecker {
             &self.local_functions,
             given_types,
             exp.type_args(),
-            None,
+            exp.callee().get_caller_type(),
             name,
             &self.traits,
         ).infer()?;
