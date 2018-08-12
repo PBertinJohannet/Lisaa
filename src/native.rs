@@ -1,4 +1,4 @@
-use statement::{FunctionDecl, FunctionSig, Statement, TraitDecl};
+use statement::{FunctionDecl, FunctionSig, Statement, TraitDecl, TypeParam};
 use std::collections::HashMap;
 use types::{LisaaType, TypedVar};
 use vm::OP;
@@ -6,12 +6,24 @@ use vm::OP;
 /// A native function.
 trait NativeFunc {
     fn print() -> FunctionDecl;
+    fn empty() -> FunctionDecl;
     fn rand() -> FunctionDecl;
     fn num_funcs() -> Vec<FunctionDecl>;
     fn slice_funcs() -> Vec<FunctionDecl>;
 }
 
 impl NativeFunc for FunctionDecl {
+    fn empty() -> Self {
+        FunctionDecl::new_complete(
+            None,
+            true,
+            "empty".to_owned(),
+            vec![TypeParam::new("T".to_string(), "Any".to_string())],
+            vec![],
+            Statement::Native(vec![OP::PushNum(0.0)]),
+            LisaaType::Class("T".to_string(), vec![]),
+        )
+    }
     fn print() -> Self {
         FunctionDecl::new_complete(
             None,
@@ -230,6 +242,7 @@ pub fn get_native_types(library: &str) -> Vec<FunctionDecl> {
             let mut base = vec![
                 FunctionDecl::print(),
                 FunctionDecl::rand(),
+                FunctionDecl::empty(),
             ];
             base.append(&mut FunctionDecl::num_funcs());
             base.append(&mut FunctionDecl::slice_funcs());
@@ -240,16 +253,5 @@ pub fn get_native_types(library: &str) -> Vec<FunctionDecl> {
 }
 
 pub fn get_any_trait() -> TraitDecl {
-    let mut map = HashMap::new();
-    map.insert(
-        "".to_string(),
-        FunctionSig::new_simple_args(
-            vec![],
-            vec![],
-            LisaaType::Class("Self".to_string(), vec![]),
-            "".to_string(),
-            None,
-        ),
-    );
-    TraitDecl::new("Any".to_string(), vec![], map)
+    TraitDecl::new("Any".to_string(), vec![], HashMap::new())
 }

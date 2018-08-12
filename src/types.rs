@@ -43,6 +43,21 @@ impl LisaaType {
             _ => Err(()),
         }
     }
+    /// Returns the name used in method calls (eg num::add or Point::add).
+    pub fn name(&self) -> String {
+        match self {
+            &LisaaType::Char => "char".to_string(),
+            &LisaaType::Num => "num".to_string(),
+            &LisaaType::Slice(ref u) => "slice".to_string(),
+            &LisaaType::Void => "void".to_string(),
+            &LisaaType::Pointer(ref p) => format!("&{}", p),
+            &LisaaType::Any => "any".to_string(),
+            &LisaaType::Class(ref c, ref t) => c.to_string(),
+            &LisaaType::TypeArg(ref s) => s.to_string(),
+            &LisaaType::Function(_, ref s, _) => s.to_string(),
+        }
+    }
+
     /// The function type
     pub fn function_type(&self) -> Result<LisaaType, ()> {
         match self {
@@ -82,8 +97,16 @@ impl LisaaType {
     ) -> Result<LisaaType, String> {
         match self {
             &LisaaType::Pointer(ref inner) => inner.get_attr(name, classes, functions),
-            &LisaaType::Num => Ok(LisaaType::Function(Box::new(self.clone()),format!("num::{}", name), vec![])),
-            &LisaaType::Char => Ok(LisaaType::Function(Box::new(self.clone()),format!("num::{}", name), vec![])),
+            &LisaaType::Num => Ok(LisaaType::Function(
+                Box::new(self.clone()),
+                format!("num::{}", name),
+                vec![],
+            )),
+            &LisaaType::Char => Ok(LisaaType::Function(
+                Box::new(self.clone()),
+                format!("num::{}", name),
+                vec![],
+            )),
             &LisaaType::Slice(ref inner) => Ok(LisaaType::Function(
                 Box::new(self.clone()),
                 format!("slice::{}", name),
@@ -116,7 +139,11 @@ impl LisaaType {
             .iter()
             .find(|(func, _)| func.name() == &format!("{}::{}", class, attr))
         {
-            Some(f) => Ok(LisaaType::Function(Box::new(self.clone()), f.0.name().clone(), vec![])),
+            Some(f) => Ok(LisaaType::Function(
+                Box::new(self.clone()),
+                f.0.name().clone(),
+                vec![],
+            )),
             None => Err(format!("Can't take attribute {} of class {}", attr, class)),
         }
     }

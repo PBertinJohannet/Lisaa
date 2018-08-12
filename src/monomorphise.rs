@@ -7,6 +7,7 @@ use statement::{
 use std::collections::{HashMap, VecDeque};
 use std::iter::FromIterator;
 use types::{LisaaType, TypedVar};
+
 /*
 ///Once we made sure that the program typechecks we can create all the functions that will need to
 /// be called.
@@ -42,13 +43,13 @@ impl Monomorphiser {
         self.dispatch_func(main.signature())?;
         Ok(Program::new(self.functions, self.classes, HashMap::new()))
     }
+
     /// Dispatch the function with the given signature :
     /// The function should never be generic in any ways.
     /// Clone the function decl and run through it with the given
     ///
     /// In order :
     /// When we encounter a function call
-    /// take the functiondecl from the signature (howto?)
     ///
     pub fn dispatch_func(&mut self, func: FunctionDecl) -> Result<(), String> {
         if self.morphised_functions.contains_key(&func) {

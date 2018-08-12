@@ -11,7 +11,7 @@ use types::{LisaaType, TypedVar};
 
 /// Represents a scope with its variables.
 #[derive(Debug)]
-struct Scope {
+pub struct Scope {
     type_params: HashMap<String, String>,
     variables: HashMap<String, TypedVar>,
     /// This represents the number of scopes that shares variables with this one.
@@ -53,6 +53,7 @@ impl Scope {
 /// Contains a program and functions to resolve types/verify consistency.
 /// Also check for lvalues and assignment.
 pub struct TypeChecker {
+    called_functions: HashMap<FunctionSig, FunctionDecl>,
     functions: HashMap<FunctionSig, FunctionDecl>,
     /// Returns all the local functions that can be called on generics
     local_functions: HashSet<FunctionSig>,
@@ -65,6 +66,7 @@ impl TypeChecker {
     /// Creates a new typechekcer object.
     pub fn new() -> Self {
         TypeChecker {
+            called_functions: HashMap::new(),
             scopes: vec![Scope::new(1)],
             functions: HashMap::new(),
             local_functions: HashSet::new(),
@@ -126,14 +128,46 @@ impl TypeChecker {
         for (_, mut func) in program.functions_mut() {
             self.function(&mut func)?;
         }
-        let mut main = program.functions_mut().get_mut(&FunctionSig::new(
+        let funcs = match program.functions().get(&FunctionSig::new(
             vec![],
             vec![],
             LisaaType::Void,
             "main".to_string(),
             None,
-        ));
+        )) {
+            Some(main) => Ok(self.monomorphise(main.clone())?),
+            None => Err("No main function found".to_string()),
+        }?;
+        program.set_functions(funcs);
         Ok(())
+    }
+
+    /// Monomorphise all functions and return them all
+    ///
+    pub fn monomorphise(
+        &mut self,
+        mut main: FunctionDecl,
+    ) -> Result<HashMap<FunctionSig, FunctionDecl>, String> {
+        self.called_functions = HashMap::new();
+        self.function(&mut main)?;
+        let mut morphised = HashMap::new();
+        while self.called_functions.len() > 0 {
+            let (key, mut new_decl) = {
+                let (key, mut decl) = self.called_functions.iter_mut().next().unwrap();
+                (key.clone(), decl.clone())
+            };
+            self.called_functions.remove(&key);
+            if !morphised.contains_key(&key) {
+                /*println!("calling : {:?}", &key.name);
+                println!("as : {:#?}", new_decl);*/
+                if !new_decl.inline {
+                    self.function(&mut new_decl)?;
+                }
+                morphised.insert(key, new_decl);
+                //println!("called functions by main : {:?}", self.called_functions.iter().map(|(s, d)|&s.name).collect::<Vec<&String>>());
+            }
+        }
+        Ok(morphised)
     }
 
     /// Complete all the traits by replacing the inner traits by a list of methods.
@@ -184,10 +218,6 @@ impl TypeChecker {
     }
 
     /// Resolve/check types for a function declaration
-    /// This does two things :
-    ///     Checks statements inside.
-    ///     Checks the return type
-    /// TODO: split this it is too long.
     /// TODO: add checks that type params appear in arguments.
     pub fn function(&mut self, func: &mut FunctionDecl) -> Result<(), String> {
         self.add_function_in_scope(func);
@@ -252,26 +282,38 @@ impl TypeChecker {
                 Self::replace_big_self(&sig.args, arg.name()), // the arguments but replace Self by th,
                 Self::replace_big_self_once(&sig.ret_type, arg.name()),
                 full_name.clone(),
-                if &full_name == name {None} else {Some(LisaaType::Class(arg.name().clone(), vec![]))}
+                if &full_name == name {
+                    None
+                } else {
+                    Some(LisaaType::Class(arg.name().clone(), vec![]))
+                },
             );
             self.local_functions.insert(sig);
         }
         Ok(())
     }
     /// Replace big self by a type parameter in a list of types
-    pub fn replace_big_self_in_generics(orig : &Vec<TypeParam>, type_name : &String) -> Vec<TypeParam>{
+    pub fn replace_big_self_in_generics(
+        orig: &Vec<TypeParam>,
+        type_name: &String,
+    ) -> Vec<TypeParam> {
         orig.iter()
-            .map(|a| TypeParam::new(a.name().replace("Self", type_name.as_ref()), a.trait_name().clone()))
+            .map(|a| {
+                TypeParam::new(
+                    a.name().replace("Self", type_name.as_ref()),
+                    a.trait_name().clone(),
+                )
+            })
             .collect()
     }
     /// Replace big self by a type parameter in a list of types
-    pub fn replace_big_self(orig : &Vec<LisaaType>, type_name : &String) -> Vec<LisaaType>{
+    pub fn replace_big_self(orig: &Vec<LisaaType>, type_name: &String) -> Vec<LisaaType> {
         orig.iter()
             .map(|a| Self::replace_big_self_once(a, type_name))
             .collect()
     }
     /// Replace big self by a type parameter in a list of types
-    pub fn replace_big_self_once(arg : &LisaaType, type_name : &String) -> LisaaType{
+    pub fn replace_big_self_once(arg: &LisaaType, type_name: &String) -> LisaaType {
         match arg {
             &LisaaType::Class(ref class_name, ref e) => LisaaType::Class(
                 if class_name == &"Self".to_string() {
@@ -454,7 +496,6 @@ impl TypeChecker {
             }
         }
     }
-    
 
     /// Find the return type of a function call expression and returns it.
     /// Checks that arguments lists are the same size.
@@ -468,17 +509,36 @@ impl TypeChecker {
         }
         let name = self.get_function_name(exp)?;
         let type_args = exp.type_args().clone();
-        let sig = Inferer::new(
+        let (sig, decl) = Inferer::new(
             &self.functions,
             &self.local_functions,
             given_types,
-            exp.type_args(),
+            exp.type_args().clone(),
             exp.callee().get_caller_type(),
             name,
             &self.traits,
         ).infer()?;
+        let to_ins = self.try_insert_called_function(&sig, &decl);
         exp.set_signature(sig);
+        if let Some((key, val)) = to_ins {
+            self.called_functions.insert(key, val);
+        }
         Ok(exp.signature().return_type().clone())
+    }
+
+    pub fn try_insert_called_function(
+        &self,
+        sig: &FunctionSig,
+        decl: &Option<&FunctionDecl>,
+    ) -> Option<(FunctionSig, FunctionDecl)> {
+        if !self.called_functions.contains_key(&sig) {
+            if let &Some(d) = decl {
+                let mut new_decl = d.clone();
+                new_decl.set_signature(sig.clone());
+                return Some((sig.clone(), new_decl));
+            }
+        }
+        None
     }
 
     /// Find the return type of a unary expression and returns it.

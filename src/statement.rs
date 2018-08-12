@@ -54,6 +54,11 @@ impl Program {
         &mut self.functions
     }
 
+    /// Get the functinos in the program as mutable.
+    pub fn set_functions(&mut self, funcs: HashMap<FunctionSig, FunctionDecl>) {
+        self.functions = funcs
+    }
+
     /// Takes all the classes methods and add them to the program's functions.
     pub fn initiate_methods(&mut self) {
         for c in self.classes.iter() {
@@ -295,14 +300,14 @@ impl FunctionSig {
         args: Vec<TypedVar>,
         ret_type: LisaaType,
         name: String,
-        self_type: Option<LisaaType>
+        self_type: Option<LisaaType>,
     ) -> Self {
         FunctionSig {
             type_args: type_args,
             args: args.iter().map(|a| a.type_var().clone().unwrap()).collect(),
             ret_type: ret_type,
             name: name,
-            self_type : self_type
+            self_type: self_type,
         }
     }
 
@@ -312,14 +317,14 @@ impl FunctionSig {
         args: Vec<LisaaType>,
         ret_type: LisaaType,
         name: String,
-        self_type: Option<LisaaType>
+        self_type: Option<LisaaType>,
     ) -> Self {
         FunctionSig {
             type_args: type_args,
             args: args,
             ret_type: ret_type,
             name: name,
-            self_type : self_type
+            self_type: self_type,
         }
     }
 
@@ -384,7 +389,13 @@ impl FunctionDecl {
         FunctionDecl {
             inline: false,
             name: name.clone(),
-            signature: FunctionSig::new(sig.type_args, args_typevar.clone(), sig.ret_type, name, None),
+            signature: FunctionSig::new(
+                sig.type_args,
+                args_typevar.clone(),
+                sig.ret_type,
+                name,
+                None,
+            ),
             scope: Statement::Native(vec![]),
             arguments: args_typevar,
         }
@@ -416,6 +427,14 @@ impl FunctionDecl {
     pub fn signature(&self) -> &FunctionSig {
         &self.signature
     }
+    /// sets the signature of the function.
+    pub fn set_signature(&mut self, sig: FunctionSig) {
+        for i in 0..self.arguments.len() {
+            let name = self.arguments[i].name().to_string();
+            self.arguments[i] = TypedVar::new(sig.args[i].clone(), name);
+        }
+        self.signature = sig;
+    }
     /// returns the return type of the function.
     pub fn self_type(&self) -> &Option<LisaaType> {
         &self.signature.self_type
@@ -441,6 +460,7 @@ impl FunctionDecl {
     /// Returns the scope of the function.
     /// TODO : this unwrap ?
     pub fn scope(&self) -> &Vec<Statement> {
+        println!("call scope on : {:?}", self);
         let val = match &self.scope {
             &Statement::Scope(ref v) => Some(v),
             _ => None,

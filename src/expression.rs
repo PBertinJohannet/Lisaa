@@ -196,16 +196,16 @@ pub enum Callee {
 }
 
 impl Callee {
-    pub fn get_caller_type(&self) -> Option<LisaaType>{
+    pub fn get_caller_type(&self) -> Option<LisaaType> {
         match self {
             &Callee::StaticFunc(_) => None,
             &Callee::Method(ref e) => {
-                if let (LisaaType::Function(box t, _, _), _) = e.return_type().max_deref(){
+                if let (LisaaType::Function(box t, _, _), _) = e.return_type().max_deref() {
                     Some(t)
                 } else {
                     panic!("calling a function on a non function type")
                 }
-            },
+            }
         }
     }
 

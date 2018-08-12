@@ -1,8 +1,11 @@
 Class Point<T : Add> {
-    T x = T();
-    T y = T();
+    T x = empty::<T>();
+    T y = empty::<T>();
 }
 
+method add<T : Add>(Point<T> other) -> Point<T> of Point {
+
+}
 
 fn add3<T : Add>(T a, T b, T c) -> T {
    return a.add(b) + c;
@@ -15,13 +18,15 @@ fn nestedparams<T : Add, U : Add>(T a, T b, U c) {
 
 fn callnestedparams<U : Add>(U a) {
     nestedparams(1, 2, a);
+    nestedparams(a, a, 5);
 }
 
 trait Add = method add(Self) -> Self;
 
 
 fn main(){
-    Point<num> p = Point::<num>();
+    //Point<num> p = Point::<num>();
+    num p = 5;
     p = add3(p, p, p);
     callnestedparams(p);
 }
