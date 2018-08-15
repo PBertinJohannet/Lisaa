@@ -188,8 +188,8 @@ impl ClassDecl {
         &self.type_params
     }
     /// Get the declaration of an attribute given its name.
-    pub fn get_attr(&self, str: &String) -> Option<&Declaration> {
-        self.attributes.iter().find(|d| &d.val_name == str)
+    pub fn get_attr(&self, attr_name: &String) -> Option<&Declaration> {
+        self.attributes.iter().find(|d| &d.val_name == attr_name)
     }
     /// Get the declaration of an attribute given its name.
     pub fn get_attr_index(&self, str: &String) -> usize {

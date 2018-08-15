@@ -114,7 +114,7 @@ impl LisaaType {
             )),
             &LisaaType::Class(ref s, ref t) => Ok(LisaaType::pointer(match classes.get(s) {
                 Some(class) => match class.get_attr(name) {
-                    Some(decl) => Ok(decl.val_type().clone()),
+                    Some(decl) => Ok(Self::morphise_attr(decl.val_type(), class, t)),
                     None => self.get_class_attr(s, name, functions),
                 },
                 None => Err(format!("Unknown class : {}", s)),
@@ -122,6 +122,19 @@ impl LisaaType {
             _ => Err(format!("can not get attr {} of {}", name, self)),
         }
     }
+
+    /// Morphise an attribute : given the return type the class decl and the actual type parameter
+    /// eg : U, Point<T, U>, [num, str] -> str
+    pub fn morphise_attr(type_found : &LisaaType, class_decl : &ClassDecl, actual_type_params : &Vec<LisaaType>) -> LisaaType {
+        if let LisaaType::Class(name, _) = type_found {
+            return match class_decl.type_params().iter().enumerate().find(|(id, param)| param.name()==name){
+                Some((id, _)) => actual_type_params[id].clone(),
+                None => type_found.clone()
+            }
+        }
+        type_found.clone()
+    }
+
     /// If the type is a typevar checks that it is ok
     pub fn check_typevar(&self, type_params: &Vec<TypeParam>) -> Self {
         //if let LisaaType::Class(s)

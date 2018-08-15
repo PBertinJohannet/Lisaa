@@ -1,3 +1,6 @@
+/// For the slices : have a function newslice<T : Any>() -> slice<T>
+/// and have slice<T>::index() working as Point<T>.x
+
 Class Point<T : Add> {
     T x = empty::<T>();
     T y = empty::<T>();
@@ -25,8 +28,10 @@ trait Add = method add(Self) -> Self;
 
 
 fn main(){
-    //Point<num> p = Point::<num>();
-    num p = 5;
-    p = add3(p, p, p);
+    Point<num> p = Point::<num>();
+    p.x = 5;
+    slice<num> mySlice = newslice(5);
+    mySlice[5] = 5;
+    print(p);
     callnestedparams(p);
 }

@@ -168,7 +168,9 @@ impl Compiler {
         self.function_call(&FunctionCall::function("main".to_string(), vec![]));
         self.emit(OP::End);
         for f in program.functions().iter() {
-            self.function(f.1);
+            if !f.1.inline {
+                self.function(f.1);
+            }
         }
         Ok(self
             .code
@@ -176,6 +178,7 @@ impl Compiler {
             .map(|e| match e {
                 &UnlinkedInstruction::Op(ref o) => o.clone(),
                 &UnlinkedInstruction::Goto(ref label) => {
+                    println!("goto ! {:?}", label);
                     OP::Goto(self.labels.get(label).unwrap().unwrap())
                 }
                 &UnlinkedInstruction::Push(ref label) => {

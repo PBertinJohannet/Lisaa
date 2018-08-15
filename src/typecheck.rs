@@ -151,6 +151,7 @@ impl TypeChecker {
         self.called_functions = HashMap::new();
         self.function(&mut main)?;
         let mut morphised = HashMap::new();
+        morphised.insert(main.signature().clone(), main);
         while self.called_functions.len() > 0 {
             let (key, mut new_decl) = {
                 let (key, mut decl) = self.called_functions.iter_mut().next().unwrap();
