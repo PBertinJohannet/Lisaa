@@ -1,6 +1,6 @@
 use expression::{BinaryExpr, Callee, Expr, ExprEnum, FunctionCall, Operator, UnaryExpr};
 use generic_inference::Inferer;
-use native::{get_any_trait, get_native_types};
+use native::{get_any_trait, get_native_funcs, get_native_types};
 use statement::{
     Assignment, ClassDecl, Declaration, FunctionDecl, FunctionSig, IfStatement, Program, Statement,
     TraitDecl, TypeParam, WhileStatement,
@@ -76,8 +76,11 @@ impl TypeChecker {
     }
     /// Add a lib to the program.
     pub fn add_natives(&mut self, lib: &str) {
-        for f in get_native_types(lib) {
+        for f in get_native_funcs(lib) {
             self.functions.insert(f.signature().clone(), f);
+        }
+        for c in get_native_types() {
+            self.classes.insert(c.name().to_owned(), c);
         }
     }
     /// Creates a variable in the current scope
@@ -422,11 +425,12 @@ impl TypeChecker {
     /// Sets the type of incoming and outcoming variables so the compiler will know what it needs to.
     pub fn expression(&mut self, expr: &mut Expr) -> Result<(), String> {
         let ret_type = expr.return_type_uncheck().clone();
+        let line = expr.get_line();
         let tp = match expr.expr_mut() {
             &mut ExprEnum::Literal(_) => Ok(ret_type.unwrap()),
             &mut ExprEnum::Unary(ref mut u) => self.unary(u),
             &mut ExprEnum::GetAttr(ref mut b) => self.getattr(b),
-            &mut ExprEnum::Identifier(ref mut i) => self.identifier(i),
+            &mut ExprEnum::Identifier(ref mut i) => self.identifier(i, line),
             &mut ExprEnum::FunctionCall(ref mut f) => self.function_call(f),
             &mut ExprEnum::Deref(ref mut d) => {
                 self.expression(d.inner_mut())?;
@@ -477,10 +481,10 @@ impl TypeChecker {
     }
 
     /// Returns the type of the given identifier if it exists in scope.
-    pub fn identifier(&mut self, id: &String) -> Result<LisaaType, String> {
+    pub fn identifier(&mut self, id: &String, line : usize) -> Result<LisaaType, String> {
         match self.get_var(id) {
             Some(ref var) => Ok(var.type_var().clone().unwrap()),
-            None => Err(String::from(format!("Unknown variable : {}", id))),
+            None => Err(String::from(format!("Unknown variable : {} line {}", id, line))),
         }
     }
 

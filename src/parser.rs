@@ -138,7 +138,7 @@ impl Parser {
     }
 
     /// Parses a trait's signature, eg :
-    /// B + method actually(num c) -> Self
+    /// B + method actually(num c) -> Self + A
     pub fn parse_trait_expr(
         &mut self,
     ) -> Result<(Vec<String>, HashMap<String, FunctionSig>), String> {
@@ -156,7 +156,7 @@ impl Parser {
                 e => Err(format!("expected : identifier or method, got : {:?}", e)),
             };
             get_next(self)?;
-            while self.peek().get_type() == &TokenType::COMMA {
+            while self.peek().get_type() == &TokenType::PLUS {
                 self.advance();
                 get_next(self)?;
             }
@@ -679,13 +679,10 @@ impl Parser {
         self.expect(TokenType::DOUBLECOLON)?;
         let mut tp = LisaaType::Class(lit.get_identifier()?.clone(), self.parse_known_type_list()?);
         self.expect(TokenType::LeftParen)?;
-        let args = match self.peek().get_type() {
-            &TokenType::NUMBER => vec![Expr::number(
-                self.advance().get_lexeme().parse::<f64>().unwrap(),
-                lit.get_line(),
-            )],
-            &TokenType::RightParen => vec![],
-            _ => return Err(String::from("expected right paren here ")),
+        let args = if self.peek().get_type() == &TokenType::RightParen {
+            vec![]
+        } else {
+            vec!(self.expression()?)
         };
         self.expect(TokenType::RightParen)?;
         return Ok(Expr::constructor_call(

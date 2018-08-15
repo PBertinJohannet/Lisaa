@@ -1,5 +1,5 @@
 use expression::{BinaryExpr, Callee, Expr, ExprEnum, FunctionCall, Operator, UnaryExpr};
-use native::get_native_types;
+use native::get_native_funcs;
 use statement::{
     Assignment, ClassDecl, Declaration, FunctionDecl, FunctionSig, IfStatement, Program, Statement,
     TraitDecl, TypeParam, WhileStatement,

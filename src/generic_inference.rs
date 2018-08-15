@@ -1,5 +1,5 @@
 use expression::{BinaryExpr, Callee, Expr, ExprEnum, FunctionCall, Operator, UnaryExpr};
-use native::get_native_types;
+use native::get_native_funcs;
 use statement::{
     Assignment, ClassDecl, Declaration, FunctionDecl, FunctionSig, IfStatement, Program, Statement,
     TraitDecl, TypeParam, WhileStatement,
@@ -159,11 +159,19 @@ impl<'a> Inferer<'a> {
     pub fn check_generic_appearance(&self, sig: &FunctionSig, g: &TypeParam) -> Option<LisaaType> {
         let mut appearances = vec![];
         if sig.self_type.is_some() {
-            appearances.append(&mut self.check_generic_in_class(g.name(), &sig.self_type.clone().unwrap(), &self.callee_type.clone().unwrap()))
+            appearances.append(&mut self.check_generic_in_class(
+                g.name(),
+                &sig.self_type.clone().unwrap(),
+                &self.callee_type.clone().unwrap(),
+            ))
         }
         for (id, arg) in sig.args.iter().enumerate() {
             // find all occurences of that generic
-            appearances.append(&mut self.check_generic_in_class(g.name(), arg, &self.given_argument_types[id]))
+            appearances.append(&mut self.check_generic_in_class(
+                g.name(),
+                arg,
+                &self.given_argument_types[id],
+            ))
         }
         appearances.dedup_by(|a, b| a == b); // if all occurences are the same it should be length one
         if appearances.len() != 1 || !self.check_type_constraint(&g, &appearances[0]) {
@@ -179,18 +187,24 @@ impl<'a> Inferer<'a> {
     /// arg is the argument required by the function
     /// given is the argument given to the function.
     /// given T, Point<T>, Point<Num> it should return [Num]
-    pub fn check_generic_in_class(&self, gen_name : &String, arg : &LisaaType, given : &LisaaType) -> Vec<LisaaType>{
+    pub fn check_generic_in_class(
+        &self,
+        gen_name: &String,
+        arg: &LisaaType,
+        given: &LisaaType,
+    ) -> Vec<LisaaType> {
         if let &LisaaType::Class(ref name, ref generics) = arg {
             if gen_name == name {
-                return vec!(given.clone());
+                return vec![given.clone()];
             }
             let mut occurences = vec![];
             for (id, sub_arg) in generics.iter().enumerate() {
                 if let LisaaType::Class(_, ref args) = given {
-                    occurences.append(&mut self.check_generic_in_class(gen_name, sub_arg, &args[id]));
+                    occurences
+                        .append(&mut self.check_generic_in_class(gen_name, sub_arg, &args[id]));
                 }
             }
-            return occurences
+            return occurences;
         }
         vec![]
     }
@@ -213,7 +227,6 @@ impl<'a> Inferer<'a> {
     /// for each candidate : Point::add
     /// check that the function has first generic Self and return type self
     pub fn check_type_constraint(&self, type_param: &TypeParam, arg: &LisaaType) -> bool {
-
         self.traits
             .get(type_param.trait_name())
             .iter()

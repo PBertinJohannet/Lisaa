@@ -1,8 +1,8 @@
 import string
 
 fn main() {
-	slice<num> a= newslice(5);
-	slice<slice<num>> b = newslice(1);
+	slice<num> a= slice::<num>(5);
+	slice<slice<num>> b = slice::<slice<num>>(1);
 	b[0] = a;
 	b[0][0] = 1;
 	b[0][0].toString().print();

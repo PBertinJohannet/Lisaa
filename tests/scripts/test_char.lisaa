@@ -1,8 +1,8 @@
 import string
 
-fn main() -> char{
+fn main(){
 	char b = 'i';
-	slice<char> a = newslice(2);
+	slice<char> a = slice::<char>(2);
 	a[0] = b;
 	a[1] = '4';
 	print(a[0]);

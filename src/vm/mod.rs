@@ -292,12 +292,12 @@ impl<'a> Vm<'a> {
                 }
                 //_ => panic!("unsupported operand"),
             }
-            println!("stack : {:?}", self.stack);
+            /*println!("stack : {:?}", self.stack);
             println!(
                 "root refs : {:?}",
                 self.root_references.iter().collect::<Vec<&usize>>()
             );
-            println!("heap : {:?}", self.allocator.heap());
+            println!("heap : {:?}", self.allocator.heap());*/
         }
     }
 }

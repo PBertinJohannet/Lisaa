@@ -1,4 +1,4 @@
-use statement::{FunctionDecl, FunctionSig, Statement, TraitDecl, TypeParam};
+use statement::{ClassDecl, FunctionDecl, FunctionSig, Statement, TraitDecl, TypeParam};
 use std::collections::HashMap;
 use types::{LisaaType, TypedVar};
 use vm::OP;
@@ -51,20 +51,26 @@ impl NativeFunc for FunctionDecl {
             FunctionDecl::new_complete(
                 None,
                 true,
-                "newslice".to_owned(),
-                vec![],
+                "slice".to_owned(),
+                vec![TypeParam::new("T".to_string(), "Any".to_string())],
                 vec![TypedVar::new(LisaaType::Num, "n".to_string())],
                 Statement::Native(vec![OP::AllocSlice]),
-                LisaaType::slice(LisaaType::Any),
+                LisaaType::Class(
+                    "slice".to_string(),
+                    vec![LisaaType::Class("T".to_string(), vec![])],
+                ),
             ),
             FunctionDecl::new_complete(
-                None,
+                Some(LisaaType::Class(
+                    "slice".to_string(),
+                    vec![LisaaType::Class("T".to_string(), vec![])],
+                )),
                 true,
                 "slice::index".to_owned(),
-                vec![],
+                vec![TypeParam::new("T".to_string(), "Any".to_string())],
                 vec![TypedVar::new(LisaaType::Num, "n".to_string())],
                 Statement::Native(vec![OP::Add]),
-                LisaaType::TypeArg(0),
+                LisaaType::Class("T".to_string(), vec![]),
             ),
         ]
     }
@@ -236,7 +242,7 @@ impl NativeFunc for FunctionDecl {
     }
 }
 
-pub fn get_native_types(library: &str) -> Vec<FunctionDecl> {
+pub fn get_native_funcs(library: &str) -> Vec<FunctionDecl> {
     match library {
         "base" => {
             let mut base = vec![
@@ -250,6 +256,13 @@ pub fn get_native_types(library: &str) -> Vec<FunctionDecl> {
         } //, time, rand],
         _ => vec![],
     }
+}
+pub fn get_native_types() -> Vec<ClassDecl> {
+    return vec![ClassDecl::new(
+        "slice".to_string(),
+        vec![],
+        vec![TypeParam::new("T".to_string(), "Any".to_string())],
+    )];
 }
 
 pub fn get_any_trait() -> TraitDecl {

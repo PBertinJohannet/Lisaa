@@ -460,7 +460,6 @@ impl FunctionDecl {
     /// Returns the scope of the function.
     /// TODO : this unwrap ?
     pub fn scope(&self) -> &Vec<Statement> {
-        println!("call scope on : {:?}", self);
         let val = match &self.scope {
             &Statement::Scope(ref v) => Some(v),
             _ => None,

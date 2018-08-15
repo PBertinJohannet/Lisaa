@@ -3,7 +3,7 @@
 use expression::{
     BinaryExpr, Deref, Expr, ExprEnum, FunctionCall, LiteralExpr, Operator, UnaryExpr,
 };
-use native::get_native_types;
+use native::{get_native_funcs, get_native_types};
 use statement::{
     Assignment, ClassDecl, Declaration, FunctionDecl, FunctionSig, IfStatement, Program, Statement,
     WhileStatement,
@@ -103,8 +103,11 @@ impl Compiler {
     }
     /// Add a lib to the program.
     pub fn add_lib(&mut self, lib: &str) {
-        for f in get_native_types(lib) {
+        for f in get_native_funcs(lib) {
             self.functions.insert(f.signature().to_owned(), f);
+        }
+        for c in get_native_types() {
+            self.classes.insert(c.name().to_owned(), c);
         }
     }
     /// Creates a variable in the current scope.
@@ -151,6 +154,9 @@ impl Compiler {
     }
 
     pub fn emit_goto(&mut self, s: String) {
+        if s == "method".to_string(){
+            panic!("ouuuuu");
+        }
         self.code.push(UnlinkedInstruction::Goto(s));
     }
 
@@ -158,8 +164,7 @@ impl Compiler {
         self.code.push(UnlinkedInstruction::Push(s));
     }
 
-    /// Resolve types if possible
-    /// The aim is to traverse the tree and resolve the return type of all expressions.
+    /// Compiles the functions and emit a "goto main" instruction at the beggining.
     pub fn compile(&mut self, program: &Program) -> Result<Vec<OP>, String> {
         self.functions = program.functions().clone();
         self.classes = program.classes().clone();
@@ -178,7 +183,6 @@ impl Compiler {
             .map(|e| match e {
                 &UnlinkedInstruction::Op(ref o) => o.clone(),
                 &UnlinkedInstruction::Goto(ref label) => {
-                    println!("goto ! {:?}", label);
                     OP::Goto(self.labels.get(label).unwrap().unwrap())
                 }
                 &UnlinkedInstruction::Push(ref label) => {

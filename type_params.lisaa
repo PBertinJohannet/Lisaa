@@ -1,5 +1,6 @@
 /// For the slices : have a function newslice<T : Any>() -> slice<T>
 /// and have slice<T>::index() working as Point<T>.x
+import string
 
 Class Point<T : Add> {
     T x = empty::<T>();
@@ -7,7 +8,10 @@ Class Point<T : Add> {
 }
 
 method add<T : Add>(Point<T> other) -> Point<T> of Point {
-
+    Point<T> p = Point::<T>();
+    p.x = self.x+other.x;
+    p.y = self.y+other.y;
+    return p;
 }
 
 fn add3<T : Add>(T a, T b, T c) -> T {
@@ -16,22 +20,30 @@ fn add3<T : Add>(T a, T b, T c) -> T {
 }
 
 fn nestedparams<T : Add, U : Add>(T a, T b, U c) {
-
+    a = a +b;
+    c = c + c;
 }
 
-fn callnestedparams<U : Add>(U a) {
+fn callnestedparams<U : Add>(U a) -> U{
     nestedparams(1, 2, a);
     nestedparams(a, a, 5);
+    return a;
 }
 
 trait Add = method add(Self) -> Self;
-
+trait Mul = method mul(Self) -> Self;
+trait Div = method div(Self) -> Self;
+trait BasicAlgebra = Add + Mul + Div;
 
 fn main(){
     Point<num> p = Point::<num>();
     p.x = 5;
-    slice<num> mySlice = newslice(5);
-    mySlice[5] = 5;
+    slice<num> mySlice = slice::<num>(5);
+    mySlice[4] = 5;
+    mySlice[3] = 51;
+    mySlice[2] = 25;
+    mySlice[1] = 1;
+    mySlice[0] = 12;
     print(p);
-    callnestedparams(p);
+    p = callnestedparams(p);
 }

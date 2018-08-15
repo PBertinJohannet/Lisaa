@@ -294,8 +294,9 @@ impl FunctionCall {
         self.name = name.to_owned();
     }
     /// Returns the name.
-    pub fn name(&self) -> &String {
-        &self.name
+    /// If the function call was not completed it should be self.name then it will be in the signature
+    pub fn name(&self) -> String {
+        self.signature.clone().map(|a|a.name().clone()).unwrap_or(self.name.clone())
     }
     /// Returns the list of arguments.
     pub fn args(&self) -> &Vec<Expr> {

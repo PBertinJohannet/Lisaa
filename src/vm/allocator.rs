@@ -111,7 +111,7 @@ impl Allocator {
     /// The type must reference an actual type in the "struct_types" table.
     /// Returns the reference to the start of the object's value (not its type).
     pub fn alloc(&mut self, size: usize, type_obj: u64) -> usize {
-        println!("creating type obj : {}", type_obj);
+        //println!("creating type obj : {}", type_obj);
         let obj = ObjectType::new(type_obj);
         assert_eq!(size, obj.get_size());
         if size == 0 {
@@ -212,14 +212,14 @@ impl Allocator {
     /// The object types are converted to u64 using from_bytes to keep the bitpattern unchanged.
     pub fn heap(&self) -> Vec<u64> {
         let allocated = self.get_objects();
-        println!("\n\n\nallocated are : {:?}", allocated);
+        //println!("\n\n\nallocated are : {:?}", allocated);
         let mut to_ret = vec![];
         let mut starting_point = 0;
         for target in allocated.into_iter() {
-            println!(
+            /*println!(
                 "starting point is : {} and target : {}",
                 starting_point, target
-            );
+            );*/
             for i in starting_point..target {
                 to_ret.push(self.heap[i] as u64)
             }
@@ -242,11 +242,11 @@ impl Allocator {
     pub fn get_objects(&self) -> Vec<usize> {
         let mut objects = vec![];
         let mut current_pos = 0usize;
-        println!("holes : {:?}", self.get_holes());
+        //println!("holes : {:?}", self.get_holes());
         let mut holes = self.get_holes().into_iter();
         let mut next_hole = holes.next().unwrap();
         loop {
-            println!("current pos : {}, next_hole : {}", current_pos, next_hole);
+            //println!("current pos : {}, next_hole : {}", current_pos, next_hole);
             if current_pos == next_hole {
                 if let Some(next) = holes.next() {
                     current_pos += self.heap[current_pos + 1] as usize;
@@ -269,7 +269,7 @@ impl Allocator {
         let mut next_hole = self.first_hole as usize;
         holes.push(next_hole);
         while self.heap[next_hole + 1] != MAX_HEAP_SIZE_F64 {
-            println!("next hole : {}", next_hole);
+            //println!("next hole : {}", next_hole);
             next_hole = self.heap[next_hole] as usize;
             holes.push(next_hole);
         }

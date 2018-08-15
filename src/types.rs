@@ -14,14 +14,10 @@ pub enum LisaaType {
     Num,
     /// A Char (heap/stack too)
     Char,
-    /// An array of the given type allocated on the heap.
-    Slice(Box<LisaaType>),
     /// Nothing.
     Void,
-    /// Any type the legendary void*
+    /// Any type
     Any,
-    /// THe type argument with number usize.
-    TypeArg(usize),
     /// A method, represented by the caller :: the type :: the name.
     Function(Box<LisaaType>, String, Vec<LisaaType>),
 }
@@ -33,7 +29,7 @@ impl LisaaType {
     }
     /// Creates a slice of the given type.
     pub fn slice(inner: LisaaType) -> Self {
-        LisaaType::Slice(Box::new(inner))
+        LisaaType::Class("slice".to_string(), vec![inner])
     }
 
     pub fn function_name(&self) -> Result<String, ()> {
@@ -48,12 +44,10 @@ impl LisaaType {
         match self {
             &LisaaType::Char => "char".to_string(),
             &LisaaType::Num => "num".to_string(),
-            &LisaaType::Slice(ref u) => "slice".to_string(),
             &LisaaType::Void => "void".to_string(),
             &LisaaType::Pointer(ref p) => format!("&{}", p),
             &LisaaType::Any => "any".to_string(),
             &LisaaType::Class(ref c, ref t) => c.to_string(),
-            &LisaaType::TypeArg(ref s) => s.to_string(),
             &LisaaType::Function(_, ref s, _) => s.to_string(),
         }
     }
@@ -78,9 +72,7 @@ impl LisaaType {
     }
     /// Tells if a type is equivalent to another
     pub fn is_equivalent(&self, other: &Self) -> bool {
-        if let (&LisaaType::Slice(ref lhs), &LisaaType::Slice(ref rhs)) = (self, other) {
-            return lhs.is_equivalent(rhs);
-        } else if let (&LisaaType::Any, _) = (self, other) {
+        if let (&LisaaType::Any, _) = (self, other) {
             return true;
         } else if let (_, &LisaaType::Any) = (self, other) {
             return true;
@@ -107,11 +99,6 @@ impl LisaaType {
                 format!("num::{}", name),
                 vec![],
             )),
-            &LisaaType::Slice(ref inner) => Ok(LisaaType::Function(
-                Box::new(self.clone()),
-                format!("slice::{}", name),
-                vec![*inner.clone()],
-            )),
             &LisaaType::Class(ref s, ref t) => Ok(LisaaType::pointer(match classes.get(s) {
                 Some(class) => match class.get_attr(name) {
                     Some(decl) => Ok(Self::morphise_attr(decl.val_type(), class, t)),
@@ -125,12 +112,21 @@ impl LisaaType {
 
     /// Morphise an attribute : given the return type the class decl and the actual type parameter
     /// eg : U, Point<T, U>, [num, str] -> str
-    pub fn morphise_attr(type_found : &LisaaType, class_decl : &ClassDecl, actual_type_params : &Vec<LisaaType>) -> LisaaType {
+    pub fn morphise_attr(
+        type_found: &LisaaType,
+        class_decl: &ClassDecl,
+        actual_type_params: &Vec<LisaaType>,
+    ) -> LisaaType {
         if let LisaaType::Class(name, _) = type_found {
-            return match class_decl.type_params().iter().enumerate().find(|(id, param)| param.name()==name){
+            return match class_decl
+                .type_params()
+                .iter()
+                .enumerate()
+                .find(|(id, param)| param.name() == name)
+            {
                 Some((id, _)) => actual_type_params[id].clone(),
-                None => type_found.clone()
-            }
+                None => type_found.clone(),
+            };
         }
         type_found.clone()
     }
@@ -174,7 +170,6 @@ impl LisaaType {
 
     pub fn type_args(&self) -> Vec<LisaaType> {
         match self {
-            &LisaaType::Slice(ref u) => vec![*u.clone()],
             &LisaaType::Num => vec![],
             &LisaaType::Char => vec![],
             &LisaaType::Class(_, ref t) => t.clone(),
@@ -185,9 +180,6 @@ impl LisaaType {
 
     pub fn get_constructor_call(&self, args: Vec<Expr>) -> FunctionCall {
         match self {
-            &LisaaType::Slice(ref u) => {
-                FunctionCall::constructor("slice".to_string(), args, vec![*u.clone()])
-            }
             &LisaaType::Num => FunctionCall::constructor("num".to_string(), args, vec![]),
             &LisaaType::Char => FunctionCall::constructor("char".to_string(), args, vec![]),
             &LisaaType::Class(ref c, ref t) => {
@@ -204,12 +196,10 @@ impl fmt::Display for LisaaType {
         match self {
             &LisaaType::Char => write!(f, "char"),
             &LisaaType::Num => write!(f, "num"),
-            &LisaaType::Slice(ref u) => write!(f, "slice<{}>", u),
             &LisaaType::Void => write!(f, "void"),
             &LisaaType::Pointer(ref p) => write!(f, "&{}", p),
             &LisaaType::Any => write!(f, "any"),
             &LisaaType::Class(ref c, ref t) => write!(f, "class {}<{:?}>", c, t),
-            &LisaaType::TypeArg(ref str) => write!(f, "{}", str),
             &LisaaType::Function(_, ref str, _) => write!(f, "{}", str),
         }
     }
