@@ -188,6 +188,10 @@ impl Parser {
     pub fn parse_unnamed_args(&mut self) -> Result<Vec<TypedVar>, String> {
         self.expect(TokenType::LeftParen)?;
         let mut types = vec![];
+        if self.peek().get_type() == &TokenType::RightParen {
+            self.advance();
+            return Ok(types);
+        }
         while self.peek().get_type() == &TokenType::IDENTIFIER
             || self.peek().get_type() == &TokenType::BIGSELF
         {

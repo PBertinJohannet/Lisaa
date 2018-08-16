@@ -47,7 +47,7 @@ impl<'a> Inferer<'a> {
     /// Returns the function alongside with the declaration, the original type parameters and the actual types given.
     pub fn infer(&self, line : usize) -> Result<(FunctionSig, Option<(&'a FunctionDecl, Vec<TypeParam>, Vec<LisaaType>)>), String> {
         for (f, d) in self.functions {
-            if f.name() == &self.func_name {
+            if f.name() == &self.func_name && f.args.len() == self.given_argument_types.len() {
                 match self.is_match(f) {
                     Some((f, gen, act)) => return Ok((f, Some((d, gen, act)))),
                     None => (),
@@ -55,7 +55,7 @@ impl<'a> Inferer<'a> {
             }
         }
         for f in self.local_functions {
-            if f.name() == &self.func_name {
+            if f.name() == &self.func_name && f.args.len() == self.given_argument_types.len(){
                 match self.is_match(f) {
                     Some(f) => return Ok((f.0, None)),
                     None => (),

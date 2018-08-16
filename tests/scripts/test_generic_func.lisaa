@@ -1,0 +1,33 @@
+import string
+
+trait Add = method add(Self) -> Self;
+
+Class Point<T : Add> {
+    T x = empty::<T>();
+    T y = empty::<T>();
+}
+
+method toString() -> String of Point<num> {
+    return self.x.toString()+", "+self.y.toString();
+}
+
+method add<T : Add>(Point<T> other) -> Point<T> of Point<T> {
+    Point<T> p = other;
+    p.x = self.x+other.x;
+    p.y = self.y+other.y;
+    return p;
+}
+
+
+fn sum<T : Add>(Point<T> p, T a, T b) -> Point<T> {
+    p.x = p.x + a;
+    p.y = p.y + b;
+    return p;
+}
+
+fn main(){
+    Point<num> p = Point::<num>();
+    p.x = 5;
+    p.y = 2;
+    sum(p, 52, -1).toString().println();
+}

@@ -64,3 +64,15 @@ fn test_overloading() {
 fn test_import() {
     test_for("import");
 }
+#[test]
+fn test_generic_class() {
+    test_for("generic_class");
+}
+#[test]
+fn test_generic_func() {
+    test_for("generic_func");
+}
+#[test]
+fn test_nested_generics() {
+    test_for("nested_generics");
+}
