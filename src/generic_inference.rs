@@ -43,15 +43,13 @@ impl<'a> Inferer<'a> {
         }
     }
 
-    /// How does it work...
-    /// three possibilities :
-    /// 1 The arguments are given : check number and trait bounds.
-    /// 2 The arguments are not given : check all functions bound.
-    pub fn infer(&self) -> Result<(FunctionSig, Option<&'a FunctionDecl>), String> {
+    /// Given enough information in the inferer find the correct function/mehtod to call.
+    /// Returns the function alongside with the declaration, the original type parameters and the actual types given.
+    pub fn infer(&self, line : usize) -> Result<(FunctionSig, Option<(&'a FunctionDecl, Vec<TypeParam>, Vec<LisaaType>)>), String> {
         for (f, d) in self.functions {
             if f.name() == &self.func_name {
                 match self.is_match(f) {
-                    Some(f) => return Ok((f, Some(d))),
+                    Some((f, gen, act)) => return Ok((f, Some((d, gen, act)))),
                     None => (),
                 };
             }
@@ -59,21 +57,22 @@ impl<'a> Inferer<'a> {
         for f in self.local_functions {
             if f.name() == &self.func_name {
                 match self.is_match(f) {
-                    Some(f) => return Ok((f, None)),
+                    Some(f) => return Ok((f.0, None)),
                     None => (),
                 };
             }
         }
         Err(format!(
-            "could not find a function satisfying type constraints for : {:?}",
-            self.func_name
+            "could not find a function satisfying type constraints for : {:?} line : {}",
+            self.func_name,
+            line,
         ))
     }
 
     /// Try to match the two functions :
     ///
     /// Returns the morphised signature
-    pub fn is_match(&self, sig: &FunctionSig) -> Option<FunctionSig> {
+    pub fn is_match(&self, sig: &FunctionSig) -> Option<(FunctionSig, Vec<TypeParam>, Vec<LisaaType>)> {
         if !self.given_generics.is_empty() && sig.type_args.len() == self.given_generics.len() {
             if self.check_type_constraints(&sig.type_args, &self.given_argument_types) {
                 Some(self.get_sig_from_generics(sig, self.given_generics.clone()))
@@ -86,7 +85,7 @@ impl<'a> Inferer<'a> {
     }
 
     /// Returns a signature from a signature and the actual types given to the generics.
-    pub fn get_sig_from_generics(&self, orig: &FunctionSig, actual: Vec<LisaaType>) -> FunctionSig {
+    pub fn get_sig_from_generics(&self, orig: &FunctionSig, actual: Vec<LisaaType>) -> (FunctionSig, Vec<TypeParam>, Vec<LisaaType>){
         let generics = &orig.type_args;
         // then use the generics to identify the return type.
         let ret_type = Self::replace_gen(&orig.ret_type, generics, &actual);
@@ -100,13 +99,13 @@ impl<'a> Inferer<'a> {
             .iter()
             .map(|arg| Self::replace_gen(arg, generics, &actual))
             .collect();
-        FunctionSig::new_simple_args(
+        (FunctionSig::new_simple_args(
             vec![],
             actual_args,
             ret_type,
             orig.name().clone(),
             self_type,
-        )
+        ), generics.clone(), actual)
     }
 
     /// Checks the two signatures and then returns the actualised signature
@@ -114,7 +113,7 @@ impl<'a> Inferer<'a> {
     /// 2 => we find where it should appear in the function's signature (T a, T b).
     /// 3 => we check that the arguments given are the same and respect the constraints.
     /// 4 => we rewrite the signature without the generic type.
-    pub fn check_signature(&self, sig: &FunctionSig) -> Option<FunctionSig> {
+    pub fn check_signature(&self, sig: &FunctionSig) -> Option<(FunctionSig, Vec<TypeParam>, Vec<LisaaType>)> {
         let generics = &sig.type_args;
         let mut actual_types = vec![];
         // first identify the types using the args.
@@ -193,6 +192,9 @@ impl<'a> Inferer<'a> {
         arg: &LisaaType,
         given: &LisaaType,
     ) -> Vec<LisaaType> {
+        if let &LisaaType::Pointer(ref i) = given {
+            return self.check_generic_in_class(gen_name, arg, i);
+        }
         if let &LisaaType::Class(ref name, ref generics) = arg {
             if gen_name == name {
                 return vec![given.clone()];

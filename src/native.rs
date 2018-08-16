@@ -32,7 +32,7 @@ impl NativeFunc for FunctionDecl {
             vec![],
             vec![TypedVar::new(LisaaType::Char, "a".to_owned())],
             Statement::Native(vec![OP::PrintChar, OP::PushNum(0.0)]),
-            LisaaType::Num,
+            LisaaType::Void,
         )
     }
     fn rand() -> Self {

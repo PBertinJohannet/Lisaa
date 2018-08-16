@@ -53,8 +53,9 @@ impl Scope {
 /// Contains a program and functions to resolve types/verify consistency.
 /// Also check for lvalues and assignment.
 pub struct TypeChecker {
-    called_functions: HashMap<FunctionSig, FunctionDecl>,
+    called_functions: HashMap<FunctionSig, (FunctionDecl, Vec<TypeParam>, Vec<LisaaType>)>,
     functions: HashMap<FunctionSig, FunctionDecl>,
+    current_morphisation : HashMap<String, LisaaType>,
     /// Returns all the local functions that can be called on generics
     local_functions: HashSet<FunctionSig>,
     classes: HashMap<String, ClassDecl>,
@@ -70,6 +71,7 @@ impl TypeChecker {
             scopes: vec![Scope::new(1)],
             functions: HashMap::new(),
             local_functions: HashSet::new(),
+            current_morphisation : HashMap::new(),
             classes: HashMap::new(),
             traits: HashMap::new(),
         }
@@ -156,15 +158,14 @@ impl TypeChecker {
         let mut morphised = HashMap::new();
         morphised.insert(main.signature().clone(), main);
         while self.called_functions.len() > 0 {
-            let (key, mut new_decl) = {
+            let (key, mut new_decl, params, actual) = {
                 let (key, mut decl) = self.called_functions.iter_mut().next().unwrap();
-                (key.clone(), decl.clone())
+                (key.clone(), decl.0.clone(), decl.1.clone(), decl.2.clone())
             };
             self.called_functions.remove(&key);
             if !morphised.contains_key(&key) {
-                /*println!("calling : {:?}", &key.name);
-                println!("as : {:#?}", new_decl);*/
                 if !new_decl.inline {
+                    self.set_current_morphisation(params, actual);
                     self.function(&mut new_decl)?;
                 }
                 morphised.insert(key, new_decl);
@@ -172,6 +173,14 @@ impl TypeChecker {
             }
         }
         Ok(morphised)
+    }
+
+    /// sets the current morphisation's values :
+    pub fn set_current_morphisation(&mut self, params : Vec<TypeParam>, actual : Vec<LisaaType>){
+        self.current_morphisation = HashMap::new();
+        for (generic, actual) in params.iter().zip(actual.into_iter()){
+            self.current_morphisation.insert(generic.name().clone(), actual);
+        }
     }
 
     /// Complete all the traits by replacing the inner traits by a list of methods.
@@ -386,11 +395,25 @@ impl TypeChecker {
     /// checks that types match.
     /// creates a new variable with the given type in the scope.
     pub fn declaration(&mut self, decl: &mut Declaration) -> Result<(), String> {
-        let val_type = decl.val_type().clone();
+        let val_type = self.replace_gen(decl.val_type());
         self.expression(decl.expr_mut())?;
         self.check_type(decl.expr(), &val_type)?;
         self.create_var(TypedVar::new(val_type.clone(), decl.name().to_string()));
         Ok(())
+    }
+
+
+    /// Replace all generics in a type.
+    ///used in assignements.
+    pub fn replace_gen(&self, declared_type : &LisaaType) -> LisaaType {
+        match declared_type {
+            LisaaType::Pointer(ref t) => LisaaType::Pointer(Box::new(self.replace_gen(t))),
+            LisaaType::Class(ref n, ref args) => match self.current_morphisation.get(n){
+                Some(actual_type) => actual_type.clone(),
+                None => LisaaType::Class(n.clone(), args.iter().map(|a|self.replace_gen(a)).collect()),
+            }
+            other => other.clone()
+        }
     }
 
     /// Checks the assignment :
@@ -431,13 +454,13 @@ impl TypeChecker {
             &mut ExprEnum::Unary(ref mut u) => self.unary(u),
             &mut ExprEnum::GetAttr(ref mut b) => self.getattr(b),
             &mut ExprEnum::Identifier(ref mut i) => self.identifier(i, line),
-            &mut ExprEnum::FunctionCall(ref mut f) => self.function_call(f),
+            &mut ExprEnum::FunctionCall(ref mut f) => self.function_call(f, line),
             &mut ExprEnum::Deref(ref mut d) => {
                 self.expression(d.inner_mut())?;
                 Ok(d.inner().return_type())
             }
         }?;
-        expr.set_type(tp);
+        expr.set_type(self.replace_gen(&tp));
         Ok(())
     }
 
@@ -505,7 +528,7 @@ impl TypeChecker {
     /// Find the return type of a function call expression and returns it.
     /// Checks that arguments lists are the same size.
     /// Checks for arguments given to the function.
-    pub fn function_call(&mut self, exp: &mut FunctionCall) -> Result<LisaaType, String> {
+    pub fn function_call(&mut self, exp: &mut FunctionCall, line : usize) -> Result<LisaaType, String> {
         let args_count_given = exp.args().len();
         let mut given_types = vec![];
         for i in 0..args_count_given {
@@ -522,11 +545,11 @@ impl TypeChecker {
             exp.callee().get_caller_type(),
             name,
             &self.traits,
-        ).infer()?;
+        ).infer(line)?;
         let to_ins = self.try_insert_called_function(&sig, &decl);
-        exp.set_signature(sig);
-        if let Some((key, val)) = to_ins {
-            self.called_functions.insert(key, val);
+        exp.set_signature(sig.clone());
+        if let Some(val) = to_ins {
+            self.called_functions.insert(sig, val);
         }
         Ok(exp.signature().return_type().clone())
     }
@@ -534,13 +557,13 @@ impl TypeChecker {
     pub fn try_insert_called_function(
         &self,
         sig: &FunctionSig,
-        decl: &Option<&FunctionDecl>,
-    ) -> Option<(FunctionSig, FunctionDecl)> {
+        decl: &Option<(&FunctionDecl, Vec<TypeParam>, Vec<LisaaType>)>,
+    ) -> Option<(FunctionDecl, Vec<TypeParam>, Vec<LisaaType>)> {
         if !self.called_functions.contains_key(&sig) {
-            if let &Some(d) = decl {
-                let mut new_decl = d.clone();
+            if let &Some((ref d, ref gen, ref act)) = decl {
+                let mut new_decl = d.to_owned().clone();
                 new_decl.set_signature(sig.clone());
-                return Some((sig.clone(), new_decl));
+                return Some((new_decl, gen.clone(), act.clone()));
             }
         }
         None

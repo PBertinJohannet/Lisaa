@@ -199,7 +199,7 @@ impl fmt::Display for LisaaType {
             &LisaaType::Void => write!(f, "void"),
             &LisaaType::Pointer(ref p) => write!(f, "&{}", p),
             &LisaaType::Any => write!(f, "any"),
-            &LisaaType::Class(ref c, ref t) => write!(f, "class {}<{:?}>", c, t),
+            &LisaaType::Class(ref c, ref t) => write!(f, "class {}<{}>", c, t.iter().map(|i|format!("{}", i)).collect::<Vec<String>>().join(", ").replace("class ", "").replace("<>", "")),
             &LisaaType::Function(_, ref str, _) => write!(f, "{}", str),
         }
     }

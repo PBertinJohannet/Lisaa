@@ -221,6 +221,7 @@ impl Parser {
         let return_type = self.func_return_type()?;
         self.expect(TokenType::OF)?;
         let class_name = self.expect_ident("of")?;
+        let type_params = self.parse_known_type_list()?;
         let scope = self.scope()?;
         let mut res = FunctionDecl::new(
             format!("{}::{}", class_name, name),
@@ -229,7 +230,7 @@ impl Parser {
             scope,
             return_type,
         );
-        res.set_self(LisaaType::Class(class_name, vec![]));
+        res.set_self(LisaaType::Class(class_name, type_params));
         Ok(res)
     }
 

@@ -2,13 +2,23 @@
 /// and have slice<T>::index() working as Point<T>.x
 import string
 
+trait Any2 = Any;
+
 Class Point<T : Add> {
     T x = empty::<T>();
     T y = empty::<T>();
 }
 
-method add<T : Add>(Point<T> other) -> Point<T> of Point {
-    Point<T> p = Point::<T>();
+method toString() -> String of Point<num> {
+    return self.x.toString()+", "+self.y.toString();
+}
+
+method add<T : Add>(Point<T> other) -> Point<T> of Point<T> {
+    Point<T> p = other;
+    slice<T> a = slice::<T>(2);
+    a[0] = p.x;
+    a[1] = p.y;
+
     p.x = self.x+other.x;
     p.y = self.y+other.y;
     return p;
@@ -44,6 +54,10 @@ fn main(){
     mySlice[2] = 25;
     mySlice[1] = 1;
     mySlice[0] = 12;
-    print(p);
+    //print(p);
     p = callnestedparams(p);
+    ("point is : "+p.toString()).println();
+    for (num i = 0; i < 5; i=i+1;){
+        mySlice[i].toString().println();
+    }
 }
