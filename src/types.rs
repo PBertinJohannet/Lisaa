@@ -144,6 +144,7 @@ impl LisaaType {
         attr: &String,
         functions: &HashMap<FunctionSig, FunctionDecl>,
     ) -> Result<LisaaType, String> {
+        println!("\n\n\n\nfunctions : {:?}", functions.iter().map(|(s, d)|s.name()).collect::<Vec<&String>>());
         match functions
             .iter()
             .find(|(func, _)| func.name() == &format!("{}::{}", class, attr))

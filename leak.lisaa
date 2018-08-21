@@ -1,3 +1,5 @@
+import stdlib
+
 Class Dim {
     num x = 97;
     num y = 97;
@@ -6,4 +8,5 @@ Class Dim {
 fn main(){
 	for (num i = 0;i< 2; i= i+1;)
 	    Dim();
+
 }

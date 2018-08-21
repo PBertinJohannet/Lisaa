@@ -9,6 +9,7 @@ trait NativeFunc {
     fn empty() -> FunctionDecl;
     fn rand() -> FunctionDecl;
     fn num_funcs() -> Vec<FunctionDecl>;
+    fn char_funcs() -> Vec<FunctionDecl>;
     fn slice_funcs() -> Vec<FunctionDecl>;
 }
 
@@ -51,10 +52,22 @@ impl NativeFunc for FunctionDecl {
             FunctionDecl::new_complete(
                 None,
                 true,
-                "slice".to_owned(),
+                "objectslice".to_owned(),
                 vec![TypeParam::new("T".to_string(), "Any".to_string())],
                 vec![TypedVar::new(LisaaType::Num, "n".to_string())],
-                Statement::Native(vec![OP::AllocSlice]),
+                Statement::Native(vec![OP::PushNum(1.0), OP::AllocSlice]),
+                LisaaType::Class(
+                    "slice".to_string(),
+                    vec![LisaaType::Class("T".to_string(), vec![])],
+                ),
+            ),
+            FunctionDecl::new_complete(
+                None,
+                true,
+                "nativeslice".to_owned(),
+                vec![TypeParam::new("T".to_string(), "Any".to_string())],
+                vec![TypedVar::new(LisaaType::Num, "n".to_string())],
+                Statement::Native(vec![OP::PushNum(0.0), OP::AllocSlice]),
                 LisaaType::Class(
                     "slice".to_string(),
                     vec![LisaaType::Class("T".to_string(), vec![])],
@@ -72,10 +85,43 @@ impl NativeFunc for FunctionDecl {
                 Statement::Native(vec![OP::Add]),
                 LisaaType::Class("T".to_string(), vec![]),
             ),
+            FunctionDecl::new_complete(
+                Some(LisaaType::Class(
+                    "slice".to_string(),
+                    vec![LisaaType::Class("T".to_string(), vec![])],
+                )),
+                true,
+                "slice::isOject".to_owned(),
+                vec![],
+                vec![],
+                Statement::Native(vec![]),
+                LisaaType::Void,
+            ),
         ]
+    }
+    fn char_funcs() -> Vec<Self> {
+        vec![
+            FunctionDecl::new_complete(
+                None,
+                true,
+                "char::isNotObject".to_owned(),
+                vec![],
+                vec![],
+                Statement::Native(vec![]),
+                LisaaType::Void,
+            )]
     }
     fn num_funcs() -> Vec<Self> {
         vec![
+            FunctionDecl::new_complete(
+                None,
+                true,
+                "num::isNotObject".to_owned(),
+                vec![],
+                vec![],
+                Statement::Native(vec![]),
+                LisaaType::Void,
+            ),
             FunctionDecl::new_complete(
                 None,
                 true,
@@ -251,6 +297,7 @@ pub fn get_native_funcs(library: &str) -> Vec<FunctionDecl> {
                 FunctionDecl::empty(),
             ];
             base.append(&mut FunctionDecl::num_funcs());
+            base.append(&mut FunctionDecl::char_funcs());
             base.append(&mut FunctionDecl::slice_funcs());
             base
         } //, time, rand],

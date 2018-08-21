@@ -43,7 +43,7 @@ fn main() {
             Arg::with_name("INPUT")
                 .index(1)
                 .help("the file to run")
-                .default_value("type_params.lisaa")
+                .default_value("leak.lisaa")
                 .required(true),
         )
         .arg(

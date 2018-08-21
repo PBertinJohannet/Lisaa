@@ -52,7 +52,7 @@ pub enum OP {
     /// In the incorrect case the reference is droped and will be freed on the next gc run...
     /// Takes the memory descriptor of the object to allocate it.
     AllocObj(u64),
-    /// Allocates a slice, temporary...
+    /// Allocates a slice, temporary... TODO -> it should use two arguments.
     AllocSlice,
     /// Access the value in the heap and push it to the stack.
     GetHeap,
@@ -103,7 +103,7 @@ impl<'a> Vm<'a> {
         while instruction_pointer < program.len() {
             let op = &program[instruction_pointer];
             instruction_pointer += 1;
-            //println!("executing {:?}", op);
+            println!("executing {:?}", op);
             match op {
                 &OP::End => {
                     //println!("program execution terminated");
@@ -270,8 +270,9 @@ impl<'a> Vm<'a> {
                 }
                 &OP::AllocSlice => {
                     self.allocator.run_gc();
+                    let is_ptr = if self.stack.pop().unwrap() == 1.0 {IS_PTR_SLICE_BIT} else {0};
                     let size = self.stack.pop().unwrap() as i32 as usize;
-                    let val = self.allocator.alloc(size, size as u64+IS_SLICE_BIT);
+                    let val = self.allocator.alloc(size, size as u64+IS_SLICE_BIT+is_ptr);
                     self.root_references.insert(self.stack.len());
                     self.stack.push(val as f64);
                 }
@@ -292,12 +293,13 @@ impl<'a> Vm<'a> {
                 }
                 //_ => panic!("unsupported operand"),
             }
-            /*println!("stack : {:?}", self.stack);
-            println!(
+
+            println!("stack : {:?}", self.stack);
+            /*println!(
                 "root refs : {:?}",
                 self.root_references.iter().collect::<Vec<&usize>>()
-            );
-            println!("heap : {:?}", self.allocator.heap());*/
+            );*/
+            println!("heap : {:?}", self.allocator.heap());
         }
     }
 }

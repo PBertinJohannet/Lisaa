@@ -60,10 +60,15 @@ impl Program {
     }
 
     /// Takes all the classes methods and add them to the program's functions.
+    /// this include :
+    /// - The constructor.
+    /// - The isObject method.
     pub fn initiate_methods(&mut self) {
         for c in self.classes.iter() {
             let cons = c.1.get_constructor();
+            let isobj = c.1.get_isobj_method();
             self.functions.insert(cons.signature().to_owned(), cons);
+            self.functions.insert(isobj.signature().to_owned(), isobj);
         }
     }
     /// Merges this program with an other.
@@ -217,6 +222,22 @@ impl ClassDecl {
             ),
             inline: false,
             scope: self.create_constructor_scope(),
+            arguments: vec![],
+        }
+    }
+    /// Returns the basic isObject method
+    pub fn get_isobj_method(&self) -> FunctionDecl {
+        FunctionDecl {
+            name: format!("{}::isObject", self.name.clone()),
+            signature: FunctionSig::new(
+                vec![],
+                vec![],
+                LisaaType::Void,
+                format!("{}::isObject", self.name.clone()),
+                None,
+            ),
+            inline: true,
+            scope: Statement::Scope(vec![]),
             arguments: vec![],
         }
     }
@@ -469,11 +490,11 @@ impl FunctionDecl {
     /// Returns the scope of the function.
     /// TODO : this unwrap ?
     pub fn scope_mut(&mut self) -> &mut Vec<Statement> {
-        let val = match &mut self.scope {
-            &mut Statement::Scope(ref mut v) => Some(v),
-            _ => None,
-        };
-        val.unwrap()
+        let sc = self.clone();
+        match &mut self.scope {
+            &mut Statement::Scope(ref mut v) => v,
+            v => panic!(format!("cannot take scope mut of {:?} as vec", sc)),
+        }
     }
     /// Checks if the function must be inlined.
     pub fn is_inline(&self) -> bool {

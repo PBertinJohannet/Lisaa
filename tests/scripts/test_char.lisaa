@@ -2,7 +2,7 @@ import string
 
 fn main(){
 	char b = 'i';
-	slice<char> a = slice::<char>(2);
+	slice<char> a = newslice::<char>(2);
 	a[0] = b;
 	a[1] = '4';
 	print(a[0]);

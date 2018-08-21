@@ -15,7 +15,7 @@ method toString() -> String of Point<num> {
 
 method add<T : Add>(Point<T> other) -> Point<T> of Point<T> {
     Point<T> p = other;
-    slice<T> a = slice::<T>(2);
+    slice<T> a = newslice::<T>(2);
     a[0] = p.x;
     a[1] = p.y;
 
@@ -48,7 +48,7 @@ trait BasicAlgebra = Add + Mul + Div;
 fn main(){
     Point<num> p = Point::<num>();
     p.x = 5;
-    slice<num> mySlice = slice::<num>(5);
+    slice<num> mySlice = newslice::<num>(5);
     mySlice[4] = 5;
     mySlice[3] = 51;
     mySlice[2] = 25;

@@ -1,11 +1,13 @@
+import stdlib
+
 Class String {
     num len = 0;
-    slice<char> inner = slice::<char>(0);
+    slice<char> inner = newslice::<char>(0);
 }
 
 method extend(num a) of String {
     self.len = self.len + a;
-    self.inner = slice::<char>(self.len);
+    self.inner = newslice::<char>(self.len);
 }
 
 method print() of String {
@@ -32,4 +34,22 @@ method add(String s) -> String of String {
         new.inner[i+self.len] = s[i];
     }
     return new;
+}
+
+trait toString = method toString() -> String;
+
+method toString() -> String of String {
+    return self;
+}
+
+method toString<T : toString>() -> String of slice<T> {
+    String s = String();
+    for (num i = 0; i< self.len; i = i+1;){
+        s = s + self[i].toString();
+    }
+    return s;
+}
+
+fn println<T : toString>(T a) {
+    a.toString().println();
 }

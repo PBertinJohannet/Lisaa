@@ -1,11 +1,8 @@
-
-
-fn allah(num b) -> num {
-	return b + 1;
-}
+import stdlib
 
 fn main() {
-    slice<char> a = newslice(2);
-    a[1] = 'h';
-    allah(5);
+    slice<String> a = newslice::<String>(2);
+    a[1] = "hal";
+    a[0] = "po : ";
+    println(a);
 }

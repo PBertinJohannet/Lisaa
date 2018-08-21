@@ -1,11 +1,11 @@
 Class String {
     num len = 0;
-    slice<char> inner = slice::<char>(0);
+    slice<char> inner = newslice::<char>(0);
 }
 
 method extend(num a) of String {
     self.len = self.len + a;
-    self.inner = slice::<char>(self.len);
+    self.inner = newslice::<char>(self.len);
 }
 
 method print() of String {

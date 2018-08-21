@@ -1,0 +1,12 @@
+import string
+trait IsObject = method isObject();
+trait IsNotObject = method isNotObject();
+
+fn newslice<T : IsObject>(num i) -> slice<T>{
+    "objectslice : ".println();
+    return objectslice::<T>(i);
+}
+
+fn newslice<T : IsNotObject>(num i) -> slice<T>{
+    return nativeslice::<T>(i);
+}

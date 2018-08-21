@@ -1,0 +1,16 @@
+import string
+
+fn main(){
+    num soFar = 0;
+    num coef = 1;
+    num sign = 1;
+    for (num iterations = 0; 1; iterations = iterations+1;){
+        soFar = soFar+sign*1/coef;
+        sign = -sign;
+        coef = coef + 2;
+        if iterations == 1000000 {
+            iterations = 0;
+            ("pi is : "+(4*soFar).toString()).println();
+        }
+    }
+}
