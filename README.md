@@ -84,5 +84,5 @@ The machine has a few instructions that manipulates the stack and can allocate m
 
 # Garbage Collection
 
-Coming soon
+No garbage collector at the moment, everything leaks.
 
