@@ -100,10 +100,10 @@ fn main(){
 | Language/interpreter | time  |
 | -------------------- | --------- |
 | lisaa (ast based interpreter) | 6000 ms |
-| lisaa (using the vm) | 500 ms |
-| rust | 7 ms |
 | python | 1269 ms |
+| lisaa (using the vm) | 500 ms |
 | java | 60 ms |
+| rust | 7 ms |
 
 The Vm interpreting the bytecode is way faster than the original interpreter.
 
