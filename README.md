@@ -2,7 +2,14 @@
 
 Lisaa is surely an acronym
 
-The lisaa language is a simple scripting language featuring static typing.
+The lisaa language is a simple scripting language featuring :
+
+* Static typing
+* Traits
+* Generic types
+* Constrained generics
+* function overloading
+* modules
 
 # Usage
 
@@ -15,23 +22,52 @@ target/release/lisaa my_file.lisaa
 
 
 # Example
-
+This example demonstrates the features of the lisaa language : 
+It defines trait PointInner containing two methods and Point class containing type variables constrained by the PointInner class. 
+Then uses them in various ways.
 ```
 import string
-fn main() {
-     num a = 0;
-     num b = 5;
-     while b < 50 {
-        b=b+1;
-	    a = fac(b) + a;
-	    a.toString().println();
-    }
+
+trait PointInner = method add(Self) -> Self + method toString() -> String;
+
+Class Point<T : PointInner> {
+    T x = empty::<T>();
+    T y = empty::<T>();
 }
-fn fac(num a) -> num{
-    if a == 1{
-        return 1;
-    }
-    return a * fac(a-1);
+
+fn NewPoint<T : PointInner>(T x, T y) -> Point<T> {
+    Point<T> p = Point::<T>();
+    p.x = x;
+    p.y = y;
+    return p;
+}
+
+method toString() -> String of Point<num> {
+    return self.x.toString()+", "+self.y.toString();
+}
+
+method add<T : PointInner>(Point<T> other) -> Point<T> of Point<T> {
+    Point<T> p = Point::<T>();
+    p.x = self.x+other.x;
+    p.y = self.y+other.y;
+    return p;
+}
+
+method joinInners<U : PointInner>(String s) -> String of Point<U>{
+    return self.x.toString()+s+self.y.toString();
+}
+
+fn sum<T : PointInner>(Point<T> p, T a, T b) -> Point<T> {
+    p.x = p.x + a;
+    p.y = p.y + b;
+    return p;
+}
+
+fn main(){
+    Point<num> p = NewPoint(2, 52);
+    Point<num> c = NewPoint(25, -11);
+    Point<Point<num>> big = NewPoint(p, c);
+    sum(big, c, c).joinInners(" : ").println();
 }
 ```
 
