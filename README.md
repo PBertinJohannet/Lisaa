@@ -99,8 +99,8 @@ fn main(){
 
 | Language/interpreter | time  |
 | -------------------- | --------- |
-| lisaa (ast based interpreter) | 6000 ms |
-| python | 1269 ms |
+| lisaa (ast based interpreter) | 6 sec |
+| python | 1.3 sec |
 | lisaa (using the vm) | 500 ms |
 | java | 60 ms |
 | rust | 7 ms |
